@@ -1,0 +1,14 @@
+{
+  "name": "cafecampus-v3",
+  "version": "3.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -k -n SERVER,CLIENT -c magenta,cyan \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "install:all": "npm install && cd server && npm install && cd ../client && npm install",
+    "setup": "cd server && npx prisma db push && node src/prisma/seed.js && cd ..",
+    "build": "cd client && npm run build"
+  },
+  "devDependencies": { "concurrently": "^8.2.2" }
+}

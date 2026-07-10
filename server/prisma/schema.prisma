@@ -1,0 +1,304 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── RESTAURANTS ────────────────────────────────────────────────────────────
+
+model Restaurant {
+  id            String   @id @default(uuid())
+  // Account info
+  ownerName     String
+  ownerEmail    String   @unique
+  ownerPhone    String?
+  passwordHash  String
+  // Restaurant details
+  name          String
+  slug          String   @unique
+  description   String   @default("")
+  emoji         String   @default("🍽️")
+  logo          String?
+  coverColor    String   @default("#f97316")
+  category      String   @default("General")
+  tags          String   @default("[]")
+  phone         String?
+  location      String?
+  floor         String?
+  // Venue & fulfillment
+  venueType      String   @default("CAFETERIA") // CAFETERIA | MARKETPLACE
+  offersPickup   Boolean  @default(true)
+  offersDelivery Boolean  @default(false)
+  deliveryFee    Float    @default(0)
+  deliveryNote   String?
+  // Status
+  isApproved    Boolean  @default(true)   // super-admin can suspend
+  isOpen        Boolean  @default(false)  // toggled by restaurant
+  isAccepting   Boolean  @default(true)
+  isDeleted     Boolean  @default(false)  // soft delete
+  deletedAt     DateTime?
+  // Hours
+  openTime      String   @default("07:00")
+  closeTime     String   @default("18:00")
+  // Config
+  prepTimeMin   Int      @default(10)
+  prepTimeMax   Int      @default(20)
+  minOrder      Float    @default(0)
+  taxRate       Float    @default(0)
+  notice        String?
+  // Stats
+  rating        Float    @default(0)
+  ratingCount   Int      @default(0)
+  totalOrders   Int      @default(0)
+  totalRevenue  Float    @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  staff         RestaurantStaff[]
+  categories    MenuCategory[]
+  items         MenuItem[]
+  orders        Order[]
+  reviews       Review[]
+  promotions    Promotion[]
+}
+
+model RestaurantStaff {
+  id            String     @id @default(uuid())
+  restaurantId  String
+  name          String
+  username      String     @unique
+  passwordHash  String
+  role          String     @default("staff")  // owner | manager | staff
+  isActive      Boolean    @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime   @default(now())
+
+  restaurant    Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+}
+
+// ─── MENU ───────────────────────────────────────────────────────────────────
+
+model MenuCategory {
+  id           String     @id @default(uuid())
+  restaurantId String
+  name         String
+  emoji        String     @default("🍴")
+  sortOrder    Int        @default(0)
+  isVisible    Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  items        MenuItem[]
+}
+
+model MenuItem {
+  id            String        @id @default(uuid())
+  restaurantId  String
+  categoryId    String?
+  name          String
+  description   String?
+  price         Float
+  originalPrice Float?
+  emoji         String        @default("🍴")
+  image         String?
+  tags          String        @default("[]")
+  allergens     String        @default("[]")
+  calories      Int?
+  isVeg         Boolean       @default(false)
+  isVegan       Boolean       @default(false)
+  isSpicy       Boolean       @default(false)
+  isAvailable   Boolean       @default(true)
+  isFeatured    Boolean       @default(false)
+  isPopular     Boolean       @default(false)
+  prepTime      Int           @default(10)
+  sortOrder     Int           @default(0)
+  totalOrdered  Int           @default(0)
+  // Stock (marketplace)
+  trackStock    Boolean       @default(false)
+  stock         Int?
+  hasVariants   Boolean       @default(false)
+  sku           String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  restaurant    Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  category      MenuCategory? @relation(fields: [categoryId], references: [id])
+  orderItems    OrderItem[]
+  variants      ItemVariant[]
+}
+
+model ItemVariant {
+  id          String   @id @default(uuid())
+  menuItemId  String
+  name        String        // display label, e.g. "Small / Black"
+  options     String   @default("{}") // JSON e.g. {"Size":"Small","Color":"Black"}
+  priceDelta  Float    @default(0)
+  stock       Int      @default(0)
+  sku         String?
+  isAvailable Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  menuItem    MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  orderItems  OrderItem[]
+}
+
+// ─── CUSTOMERS ──────────────────────────────────────────────────────────────
+
+model Customer {
+  id            String    @id @default(uuid())
+  // Account type
+  accountType   String    @default("registered")  // registered | guest
+  // Registered fields
+  name          String
+  email         String?   @unique
+  passwordHash  String?
+  phone         String?
+  studentId     String?   @unique
+  year          String?
+  department    String?
+  // Guest fields
+  guestToken    String?   @unique  // browser fingerprint token for guests
+  // Stats
+  totalSpent    Float     @default(0)
+  orderCount    Int       @default(0)
+  points        Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  orders        Order[]
+  reviews       Review[]
+  favorites     Favorite[]
+}
+
+// ─── ORDERS ─────────────────────────────────────────────────────────────────
+
+model Order {
+  id                  String      @id @default(uuid())
+  orderNumber         String      @unique
+  customerId          String
+  restaurantId        String
+  // Status
+  status              String      @default("pending")
+  // Payment
+  paymentMethod       String      @default("cash")
+  subtotal            Float
+  taxAmount           Float       @default(0)
+  discountAmount      Float       @default(0)
+  totalPrice          Float
+  // Fulfillment
+  fulfillmentType     String      @default("pickup") // pickup | delivery
+  deliveryLocation    String?
+  deliveryFee         Float       @default(0)
+  // Meta
+  specialInstructions String?
+  guestName           String?     // for guest orders
+  guestPhone          String?
+  estimatedReadyAt    DateTime?
+  confirmedAt         DateTime?
+  preparingAt         DateTime?
+  readyAt             DateTime?
+  pickedUpAt          DateTime?
+  cancelledAt         DateTime?
+  cancelReason        String?
+  cancelledBy         String?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  customer            Customer    @relation(fields: [customerId], references: [id])
+  restaurant          Restaurant  @relation(fields: [restaurantId], references: [id])
+  items               OrderItem[]
+  review              Review?
+  statusHistory       OrderStatusHistory[]
+}
+
+model OrderItem {
+  id                String       @id @default(uuid())
+  orderId           String
+  menuItemId        String
+  menuItemName      String
+  menuItemEmoji     String       @default("🍴")
+  variantId         String?
+  variantName       String?
+  quantity          Int
+  unitPrice         Float
+  subtotal          Float
+  notes             String?
+
+  order             Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem          MenuItem     @relation(fields: [menuItemId], references: [id])
+  variant           ItemVariant? @relation(fields: [variantId], references: [id])
+}
+
+model OrderStatusHistory {
+  id        String   @id @default(uuid())
+  orderId   String
+  status    String
+  note      String?
+  createdAt DateTime @default(now())
+
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+// ─── EXTRAS ─────────────────────────────────────────────────────────────────
+
+model Review {
+  id            String     @id @default(uuid())
+  orderId       String     @unique
+  customerId    String
+  restaurantId  String
+  foodRating    Int
+  serviceRating Int
+  overallRating Int
+  comment       String?
+  reply         String?
+  repliedAt     DateTime?
+  createdAt     DateTime   @default(now())
+
+  order         Order      @relation(fields: [orderId], references: [id])
+  customer      Customer   @relation(fields: [customerId], references: [id])
+  restaurant    Restaurant @relation(fields: [restaurantId], references: [id])
+}
+
+model Favorite {
+  id           String   @id @default(uuid())
+  customerId   String
+  restaurantId String
+  createdAt    DateTime @default(now())
+
+  customer     Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, restaurantId])
+}
+
+model Promotion {
+  id           String     @id @default(uuid())
+  restaurantId String
+  code         String     @unique
+  title        String
+  description  String?
+  type         String     @default("percentage")
+  value        Float
+  minOrder     Float      @default(0)
+  maxDiscount  Float?
+  usageLimit   Int?
+  usageCount   Int        @default(0)
+  validFrom    DateTime
+  validUntil   DateTime
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+}
+
+// ─── SUPER ADMIN ────────────────────────────────────────────────────────────
+
+model SuperAdmin {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}

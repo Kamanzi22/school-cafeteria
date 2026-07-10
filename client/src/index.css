@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { font-family: 'DM Sans', system-ui, sans-serif; }
+  body { @apply bg-alu-bg text-alu-cream antialiased; }
+  h1,h2,h3,h4 { font-weight: 700; letter-spacing: -0.02em; }
+  ::-webkit-scrollbar { width: 3px; }
+  ::-webkit-scrollbar-thumb { background: #2C2C2C; border-radius: 99px; }
+}
+
+@layer components {
+  .btn { @apply inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition-all duration-150 active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed select-none; }
+  .btn-primary { @apply btn bg-alu-red hover:bg-alu-red-hover text-white px-5 py-2.5 text-sm shadow-sm; }
+  .btn-secondary { @apply btn bg-alu-surface hover:bg-alu-card text-alu-cream border border-alu-border px-5 py-2.5 text-sm; }
+  .btn-ghost { @apply btn hover:bg-alu-surface text-alu-muted px-3 py-2 text-sm; }
+  .btn-danger { @apply btn bg-red-900/20 hover:bg-red-900/30 text-red-400 border border-red-800/30 px-5 py-2.5 text-sm; }
+  .btn-dark { @apply btn bg-alu-card hover:bg-alu-border text-alu-cream px-5 py-2.5 text-sm; }
+  .btn-lg { @apply px-7 py-3.5 text-base; }
+  .btn-sm { @apply px-3 py-1.5 text-xs; }
+  .btn-icon { @apply p-2 rounded-xl; }
+  .card { @apply bg-alu-surface rounded-2xl border border-alu-border; }
+  .card-hover { @apply card hover:border-alu-muted/30 hover:-translate-y-0.5 transition-all duration-200; }
+  .input { @apply w-full bg-alu-surface border border-alu-border rounded-xl px-3.5 py-2.5 text-sm text-alu-cream placeholder-alu-muted focus:outline-none focus:ring-2 focus:ring-alu-red/30 focus:border-alu-red transition-all; }
+  .label { @apply block text-xs font-semibold text-alu-muted uppercase tracking-wider mb-1.5; }
+  .badge { @apply inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full; }
+  .badge-pending { @apply badge bg-alu-gold/20 text-alu-gold; }
+  .badge-confirmed { @apply badge bg-blue-900/30 text-blue-400; }
+  .badge-preparing { @apply badge bg-orange-900/30 text-orange-400; }
+  .badge-ready { @apply badge bg-alu-success/20 text-alu-success-fg; }
+  .badge-picked_up { @apply badge bg-alu-card text-alu-muted; }
+  .badge-cancelled { @apply badge bg-red-900/30 text-red-400; }
+  .badge-open { @apply badge bg-alu-success/20 text-alu-success-fg; }
+  .badge-closed { @apply badge bg-red-900/30 text-red-400; }
+  .badge-warning { @apply badge bg-alu-gold/20 text-alu-gold; }
+  .notice-warning { @apply bg-alu-gold/10 border border-alu-gold/25 rounded-xl p-3 text-sm text-alu-gold; }
+  .skeleton { @apply rounded-xl bg-gradient-to-r from-alu-surface via-alu-card to-alu-surface bg-[length:200%_100%] animate-shimmer; }
+  .page-wrap { @apply max-w-5xl mx-auto px-4; }
+  .page-container { @apply max-w-5xl mx-auto px-4; }
+  .nav-item { @apply flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer; }
+  .nav-active { @apply bg-alu-red text-white; }
+  .nav-inactive { @apply text-alu-muted hover:bg-alu-surface hover:text-alu-cream; }
+  .nav-item-active { @apply bg-alu-red text-white; }
+  .nav-item-inactive { @apply text-alu-muted hover:bg-alu-surface hover:text-alu-cream; }
+  .gradient-brand { background: linear-gradient(135deg, #E0432B, #C73826); }
+  .gradient-dark { background: linear-gradient(160deg, #121212, #1E1E1E); }
+  .text-gradient { background: linear-gradient(135deg, #E0432B, #D4A04C); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .scrollbar-hide { -ms-overflow-style:none; scrollbar-width:none; }
+  .scrollbar-hide::-webkit-scrollbar { display:none; }
+}
