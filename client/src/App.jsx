@@ -18,10 +18,9 @@ import SearchPage from './pages/student/SearchPage'
 import RestaurantAuthPage from './pages/restaurant/RestaurantAuthPage'
 import DashboardPage from './pages/restaurant/DashboardPage'
 import MenuPage from './pages/restaurant/MenuPage'
-import AnalyticsPage from './pages/restaurant/AnalyticsPage'
+import SalesReportPage from './pages/restaurant/SalesReportPage'
 import PromotionsPage from './pages/restaurant/PromotionsPage'
 import ReviewsPage from './pages/restaurant/ReviewsPage'
-import StaffPage from './pages/restaurant/StaffPage'
 import SettingsPage from './pages/restaurant/SettingsPage'
 
 // Super admin
@@ -33,8 +32,9 @@ function AdminGuard({ children }) {
 }
 
 function HomeGate() {
-  const { venueType } = useVenueStore()
-  return venueType ? <HomePage /> : <VenueChoicePage />
+  const { venueType, storeMode } = useVenueStore()
+  const needsChoice = !venueType || (venueType === 'MARKETPLACE' && !storeMode)
+  return needsChoice ? <VenueChoicePage /> : <HomePage />
 }
 
 export default function App() {
@@ -56,10 +56,9 @@ export default function App() {
       <Route path="/restaurant/auth/:tab" element={<RestaurantAuthPage />} />
       <Route path="/admin" element={<AdminGuard><DashboardPage /></AdminGuard>} />
       <Route path="/admin/menu" element={<AdminGuard><MenuPage /></AdminGuard>} />
-      <Route path="/admin/analytics" element={<AdminGuard><AnalyticsPage /></AdminGuard>} />
+      <Route path="/admin/sales-report" element={<AdminGuard><SalesReportPage /></AdminGuard>} />
       <Route path="/admin/promotions" element={<AdminGuard><PromotionsPage /></AdminGuard>} />
       <Route path="/admin/reviews" element={<AdminGuard><ReviewsPage /></AdminGuard>} />
-      <Route path="/admin/staff" element={<AdminGuard><StaffPage /></AdminGuard>} />
       <Route path="/admin/settings" element={<AdminGuard><SettingsPage /></AdminGuard>} />
 
       {/* ── Super admin ────────────────────────────────── */}

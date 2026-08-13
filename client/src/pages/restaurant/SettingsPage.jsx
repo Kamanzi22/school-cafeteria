@@ -7,9 +7,10 @@ import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 
 export default function SettingsPage() {
-  const { restaurant, updateRestaurant, logout } = useAdminStore()
+  const { restaurant, role, updateRestaurant, logout } = useAdminStore()
+  const isViewer = role === 'viewer'
   const navigate = useNavigate()
-  const [form, setForm] = useState({ name:'', description:'', phone:'', prepTimeMin:10, prepTimeMax:20, openTime:'07:00', closeTime:'18:00', minOrder:0, notice:'', coverColor:'#f97316', ownerPhone:'', offersPickup:true, offersDelivery:false, deliveryFee:0, deliveryNote:'' })
+  const [form, setForm] = useState({ name:'', description:'', phone:'', prepTimeMin:10, prepTimeMax:20, openTime:'07:00', closeTime:'18:00', minOrder:0, notice:'', coverColor:'#f97316', ownerPhone:'', storeMode:'ON_CAMPUS', offersPickup:true, offersDelivery:false, deliveryNote:'', offersCampusDelivery:true, offersOffCampusDelivery:false, campusDeliveryFee:0, offCampusDeliveryFee:0 })
   const [logoPreview, setLogoPreview] = useState('')
   const [logoUploading, setLogoUploading] = useState(false)
   const logoInputRef = useRef(null)
@@ -21,10 +22,11 @@ export default function SettingsPage() {
   const [deleteForm, setDeleteForm] = useState({ password:'', reason:'' })
   const [deleting, setDeleting] = useState(false)
   const f = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
+  const isVirtual = restaurant?.venueType === 'MARKETPLACE' && form.storeMode === 'VIRTUAL'
 
   useEffect(() => {
     if (restaurant) {
-      setForm({ name:restaurant.name||'', description:restaurant.description||'', phone:restaurant.phone||'', prepTimeMin:restaurant.prepTimeMin||10, prepTimeMax:restaurant.prepTimeMax||20, openTime:restaurant.openTime||'07:00', closeTime:restaurant.closeTime||'18:00', minOrder:restaurant.minOrder||0, notice:restaurant.notice||'', coverColor:restaurant.coverColor||'#f97316', ownerPhone:restaurant.ownerPhone||'', offersPickup:restaurant.offersPickup!==false, offersDelivery:!!restaurant.offersDelivery, deliveryFee:restaurant.deliveryFee||0, deliveryNote:restaurant.deliveryNote||'' })
+      setForm({ name:restaurant.name||'', description:restaurant.description||'', phone:restaurant.phone||'', prepTimeMin:restaurant.prepTimeMin||10, prepTimeMax:restaurant.prepTimeMax||20, openTime:restaurant.openTime||'07:00', closeTime:restaurant.closeTime||'18:00', minOrder:restaurant.minOrder||0, notice:restaurant.notice||'', coverColor:restaurant.coverColor||'#f97316', ownerPhone:restaurant.ownerPhone||'', storeMode:restaurant.storeMode||'ON_CAMPUS', offersPickup:restaurant.offersPickup!==false, offersDelivery:!!restaurant.offersDelivery, deliveryNote:restaurant.deliveryNote||'', offersCampusDelivery:restaurant.offersCampusDelivery!==false, offersOffCampusDelivery:!!restaurant.offersOffCampusDelivery, campusDeliveryFee:restaurant.campusDeliveryFee||0, offCampusDeliveryFee:restaurant.offCampusDeliveryFee||0 })
       setLogoPreview(restaurant.logo || '')
     }
   }, [restaurant])
@@ -104,7 +106,7 @@ export default function SettingsPage() {
           <h2 className="font-bold text-ink-900 mb-4">Quick Controls</h2>
           <div className="flex items-center justify-between">
             <div><p className="font-semibold text-sm">Accept Orders</p><p className="text-xs text-ink-400">Pause ordering without closing</p></div>
-            <button onClick={handleToggleAccepting} disabled={toggling} className={`btn btn-sm ${restaurant?.isAccepting ? 'btn-secondary text-emerald-600 border-emerald-200' : 'btn-secondary text-red-500 border-red-200'}`}>
+            <button onClick={handleToggleAccepting} disabled={toggling || isViewer} className={`btn btn-sm ${restaurant?.isAccepting ? 'btn-secondary text-emerald-600 border-emerald-200' : 'btn-secondary text-red-500 border-red-200'}`}>
               {restaurant?.isAccepting ? <ToggleRight size={16}/> : <ToggleLeft size={16}/>}
               {restaurant?.isAccepting ? 'Accepting' : 'Paused'}
             </button>
@@ -115,6 +117,7 @@ export default function SettingsPage() {
         <div className="card p-5">
           <h2 className="font-bold text-ink-900 mb-4">{restaurant?.venueType === 'MARKETPLACE' ? 'Store Profile' : 'Restaurant Profile'}</h2>
           <form onSubmit={save} className="space-y-4">
+          <fieldset disabled={isViewer} className="space-y-4 border-0 p-0 m-0 disabled:opacity-60">
             {/* Logo */}
             <div>
               <label className="label">Restaurant Logo</label>
@@ -156,21 +159,60 @@ export default function SettingsPage() {
               <div><label className="label">Closes At</label><input type="time" value={form.closeTime} onChange={f('closeTime')} className="input" /></div>
               <div><label className="label">Min Order (RWF)</label><input type="number" value={form.minOrder} onChange={f('minOrder')} className="input" min="0" /></div>
 
+              {/* Store mode — marketplace only */}
+              {restaurant?.venueType === 'MARKETPLACE' && (
+                <div className="col-span-2 border border-ink-100 rounded-xl p-3.5 space-y-3">
+                  <p className="label mb-0">Store Type</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { mode: 'ON_CAMPUS', emoji: '🏬', title: 'On Campus' },
+                      { mode: 'VIRTUAL', emoji: '🌐', title: 'Virtual' },
+                    ].map(v => (
+                      <button key={v.mode} type="button"
+                        onClick={() => setForm(p => ({ ...p, storeMode: v.mode, ...(v.mode === 'VIRTUAL' ? { offersPickup: false, offersDelivery: true } : { offersPickup: true }) }))}
+                        className={`flex items-center gap-2 p-2.5 rounded-xl border-2 transition text-sm font-semibold ${form.storeMode === v.mode ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-ink-200 text-ink-500 hover:border-ink-300'}`}>
+                        <span className="text-lg">{v.emoji}</span>{v.title}
+                      </button>
+                    ))}
+                  </div>
+                  {isVirtual && (
+                    <p className="text-xs text-ink-400">🌐 Virtual stores have no physical spot, so they're delivery-only — pickup isn't offered.</p>
+                  )}
+                </div>
+              )}
+
               {/* Fulfillment */}
               <div className="col-span-2 border border-ink-100 rounded-xl p-3.5 space-y-3">
                 <p className="label mb-0">Fulfillment</p>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input type="checkbox" checked={form.offersPickup} onChange={e => setForm(p => ({ ...p, offersPickup: e.target.checked }))} className="w-4 h-4 rounded accent-brand-500" />
-                  <span className="text-sm font-medium text-ink-700">Offer pickup</span>
-                </label>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input type="checkbox" checked={form.offersDelivery} onChange={e => setForm(p => ({ ...p, offersDelivery: e.target.checked }))} className="w-4 h-4 rounded accent-brand-500" />
-                  <span className="text-sm font-medium text-ink-700">Offer delivery</span>
-                </label>
+                {!isVirtual && (
+                  <>
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input type="checkbox" checked={form.offersPickup} onChange={e => setForm(p => ({ ...p, offersPickup: e.target.checked }))} className="w-4 h-4 rounded accent-brand-500" />
+                      <span className="text-sm font-medium text-ink-700">Offer pickup</span>
+                    </label>
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input type="checkbox" checked={form.offersDelivery} onChange={e => setForm(p => ({ ...p, offersDelivery: e.target.checked }))} className="w-4 h-4 rounded accent-brand-500" />
+                      <span className="text-sm font-medium text-ink-700">Offer delivery</span>
+                    </label>
+                  </>
+                )}
                 {form.offersDelivery && (
-                  <div className="grid grid-cols-2 gap-3 pl-7">
-                    <div><label className="label">Delivery Fee (RWF)</label><input type="number" value={form.deliveryFee} onChange={f('deliveryFee')} className="input" min="0" /></div>
-                    <div><label className="label">Delivery Note</label><input value={form.deliveryNote} onChange={f('deliveryNote')} className="input" placeholder="e.g. Delivered within 30 min" /></div>
+                  <div className="pl-7 space-y-3">
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input type="checkbox" checked={form.offersCampusDelivery} onChange={e => setForm(p => ({ ...p, offersCampusDelivery: e.target.checked }))} className="w-4 h-4 rounded accent-brand-500" />
+                      <span className="text-sm text-ink-700">Deliver on campus</span>
+                    </label>
+                    {form.offersCampusDelivery && (
+                      <div className="pl-7"><label className="label">On-Campus Delivery Fee (RWF)</label><input type="number" value={form.campusDeliveryFee} onChange={f('campusDeliveryFee')} className="input" min="0" /></div>
+                    )}
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input type="checkbox" checked={form.offersOffCampusDelivery} onChange={e => setForm(p => ({ ...p, offersOffCampusDelivery: e.target.checked }))} className="w-4 h-4 rounded accent-brand-500" />
+                      <span className="text-sm text-ink-700">Deliver off campus</span>
+                    </label>
+                    {form.offersOffCampusDelivery && (
+                      <div className="pl-7"><label className="label">Off-Campus Delivery Fee (RWF)</label><input type="number" value={form.offCampusDeliveryFee} onChange={f('offCampusDeliveryFee')} className="input" min="0" /></div>
+                    )}
+                    <div><label className="label">Delivery Note</label><input value={form.deliveryNote} onChange={f('deliveryNote')} className="input" placeholder="e.g. Delivered within 30 min. On-campus map coming soon." /></div>
                   </div>
                 )}
               </div>
@@ -182,10 +224,12 @@ export default function SettingsPage() {
               {saving ? <Loader size={14} className="animate-spin"/> : <Save size={14}/>}
               {saving ? 'Saving…' : 'Save Settings'}
             </button>
+          </fieldset>
           </form>
         </div>
 
-        {/* Change password */}
+        {/* Change password — not applicable to a read-only viewer session */}
+        {!isViewer && (
         <div className="card p-5">
           <h2 className="font-bold text-ink-900 mb-4 flex items-center gap-2"><Lock size={16}/>Change Password</h2>
           <form onSubmit={changePassword} className="space-y-3">
@@ -195,8 +239,10 @@ export default function SettingsPage() {
             <button type="submit" disabled={pwSaving} className="btn btn-secondary">{pwSaving?'Changing…':'Change Password'}</button>
           </form>
         </div>
+        )}
 
-        {/* ── DANGER ZONE — Delete Account ── */}
+        {/* ── DANGER ZONE — Delete Account — not applicable to a read-only viewer session ── */}
+        {!isViewer && (
         <div className="card p-5 border-red-200 bg-red-50/50">
           <h2 className="font-bold text-red-700 mb-1 flex items-center gap-2"><AlertTriangle size={16}/>Danger Zone</h2>
           <p className="text-sm text-red-600 mb-4">Deleting your account removes your restaurant <strong>immediately</strong> from the student app. All your menus, orders, and data will be permanently deleted.</p>
@@ -220,6 +266,7 @@ export default function SettingsPage() {
             </div>
           )}
         </div>
+        )}
       </div>
     </AdminLayout>
   )

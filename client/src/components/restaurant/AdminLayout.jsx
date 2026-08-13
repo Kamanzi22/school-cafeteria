@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, UtensilsCrossed, BarChart2, Tag, Star, Users, Settings, LogOut, ToggleLeft, ToggleRight, Bell, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, UtensilsCrossed, Receipt, Tag, Star, Settings, LogOut, ToggleLeft, ToggleRight, Bell, ChevronRight, Eye, X } from 'lucide-react'
 import { useAdminStore } from '../../store'
 import { restaurantAPI } from '../../services/api'
 import { useState } from 'react'
@@ -8,19 +8,19 @@ import toast from 'react-hot-toast'
 const navFor = (venueType) => [
   { path: '/admin', icon: LayoutDashboard, label: 'Live Orders' },
   { path: '/admin/menu', icon: UtensilsCrossed, label: venueType === 'MARKETPLACE' ? 'Products' : 'Menu' },
-  { path: '/admin/analytics', icon: BarChart2, label: 'Analytics' },
+  { path: '/admin/sales-report', icon: Receipt, label: 'Sales Report' },
   { path: '/admin/promotions', icon: Tag, label: 'Promotions' },
   { path: '/admin/reviews', icon: Star, label: 'Reviews' },
-  { path: '/admin/staff', icon: Users, label: 'Staff' },
   { path: '/admin/settings', icon: Settings, label: 'Settings' },
 ]
 
 export default function AdminLayout({ children, newOrderCount = 0 }) {
-  const { admin, restaurant, logout, updateRestaurant } = useAdminStore()
+  const { admin, restaurant, role, logout, updateRestaurant } = useAdminStore()
   const location = useLocation()
   const navigate = useNavigate()
   const [toggling, setToggling] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const isViewer = role === 'viewer'
   const NAV = navFor(restaurant?.venueType)
 
   const handleToggle = async () => {
@@ -34,6 +34,7 @@ export default function AdminLayout({ children, newOrderCount = 0 }) {
   }
 
   const handleLogout = () => { logout(); navigate('/restaurant/auth') }
+  const exitViewer = () => { logout(); navigate('/superadmin') }
 
   const isOpen = restaurant?.isOpen
 
@@ -50,16 +51,26 @@ export default function AdminLayout({ children, newOrderCount = 0 }) {
         </div>
       </div>
 
-      {/* Open/Close toggle */}
+      {/* Open/Close toggle — read-only status pill for a viewer, real toggle for staff/owner */}
       <div className="px-4 py-3 border-b border-white/10">
-        <button onClick={handleToggle} disabled={toggling}
-          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-semibold text-sm transition-all ${isOpen ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30'}`}>
-          <span className="flex items-center gap-2">
-            <span className={`w-2 h-2 rounded-full ${isOpen ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
-            {isOpen ? 'Open for orders' : 'Store closed'}
-          </span>
-          {isOpen ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
-        </button>
+        {isViewer ? (
+          <div className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-semibold text-sm ${isOpen ? 'bg-emerald-500/10 text-emerald-400/80 border border-emerald-500/20' : 'bg-red-500/10 text-red-400/80 border border-red-500/20'}`}>
+            <span className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${isOpen ? 'bg-emerald-400' : 'bg-red-400'}`} />
+              {isOpen ? 'Open for orders' : 'Store closed'}
+            </span>
+            <Eye size={15} />
+          </div>
+        ) : (
+          <button onClick={handleToggle} disabled={toggling}
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-semibold text-sm transition-all ${isOpen ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30'}`}>
+            <span className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${isOpen ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
+              {isOpen ? 'Open for orders' : 'Store closed'}
+            </span>
+            {isOpen ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+          </button>
+        )}
       </div>
 
       {/* Nav */}
@@ -83,9 +94,15 @@ export default function AdminLayout({ children, newOrderCount = 0 }) {
 
       {/* Footer */}
       <div className="px-3 py-4 border-t border-white/10">
-        <button onClick={handleLogout} className="nav-item nav-item-inactive w-full text-red-400 hover:bg-red-500/10">
-          <LogOut size={17} />Sign Out
-        </button>
+        {isViewer ? (
+          <button onClick={exitViewer} className="nav-item nav-item-inactive w-full text-brand-400 hover:bg-brand-500/10">
+            <X size={17} />Exit to Super Admin
+          </button>
+        ) : (
+          <button onClick={handleLogout} className="nav-item nav-item-inactive w-full text-red-400 hover:bg-red-500/10">
+            <LogOut size={17} />Sign Out
+          </button>
+        )}
       </div>
     </div>
   )
@@ -109,6 +126,14 @@ export default function AdminLayout({ children, newOrderCount = 0 }) {
 
       {/* Main */}
       <main className="flex-1 overflow-auto min-w-0">
+        {isViewer && (
+          <div className="sticky top-0 z-30 bg-brand-500 text-white px-4 py-2 flex items-center justify-between gap-3 text-sm font-semibold">
+            <span className="flex items-center gap-2"><Eye size={15} /> Viewing {restaurant?.name} as Super Admin — read only, live</span>
+            <button onClick={exitViewer} className="flex items-center gap-1 bg-white/15 hover:bg-white/25 rounded-lg px-2.5 py-1 text-xs transition-colors shrink-0">
+              <X size={12} /> Exit
+            </button>
+          </div>
+        )}
         {/* Mobile topbar */}
         <div className="md:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-ink-100 sticky top-0 z-30">
           <button onClick={() => setSidebarOpen(true)} className="btn btn-ghost btn-icon">

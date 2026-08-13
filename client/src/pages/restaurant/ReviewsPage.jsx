@@ -11,7 +11,8 @@ export default function ReviewsPage() {
   const [loading, setLoading] = useState(true)
   const [replyId, setReplyId] = useState(null)
   const [reply, setReply] = useState('')
-  const { restaurant } = useAdminStore()
+  const { restaurant, role } = useAdminStore()
+  const isViewer = role === 'viewer'
 
   useEffect(() => {
     restaurantAPI.getReviews(restaurant.id).then(r => { setReviews(r.data.data); setLoading(false) })
@@ -46,11 +47,11 @@ export default function ReviewsPage() {
               <div key={r.id} className="card p-5">
                 <div className="flex items-start gap-3 mb-3">
                   <div className="w-10 h-10 rounded-full gradient-flame flex items-center justify-center text-white font-bold shrink-0">
-                    {r.student?.name[0]}
+                    {r.customer?.name[0]}
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-ink-900 text-sm">{r.student?.name}</span>
+                      <span className="font-bold text-ink-900 text-sm">{r.customer?.name}</span>
                       <span className="text-xs text-ink-400">{format(new Date(r.createdAt), 'dd MMM yyyy')}</span>
                     </div>
                     <div className="flex items-center gap-3 text-xs text-ink-500 mt-0.5">
@@ -70,7 +71,7 @@ export default function ReviewsPage() {
                 )}
 
                 {/* Reply input */}
-                {replyId === r.id ? (
+                {isViewer ? null : replyId === r.id ? (
                   <div className="mt-3 space-y-2">
                     <textarea value={reply} onChange={e => setReply(e.target.value)} className="input resize-none h-20 text-sm" placeholder="Write a reply…" />
                     <div className="flex gap-2">

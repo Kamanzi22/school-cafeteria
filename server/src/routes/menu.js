@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const { PrismaClient } = require('@prisma/client');
-const { authStaff } = require('../middleware/auth');
+const { authStaff, blockViewer } = require('../middleware/auth');
 const prisma = new PrismaClient();
 
 // Replace all variants for a menu item inside the given transaction client
@@ -48,7 +48,7 @@ router.get('/admin', authStaff, async (req, res) => {
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
 
-router.post('/', authStaff, async (req, res) => {
+router.post('/', authStaff, blockViewer, async (req, res) => {
   try {
     const { name, description, price, image, isAvailable, prepTime, sortOrder, trackStock, stock, hasVariants, sku, variants } = req.body;
     if (!name || !price) return res.status(400).json({ success:false, error:'Name and price required' });
@@ -66,7 +66,7 @@ router.post('/', authStaff, async (req, res) => {
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
 
-router.put('/:id', authStaff, async (req, res) => {
+router.put('/:id', authStaff, blockViewer, async (req, res) => {
   try {
     const item = await prisma.menuItem.findFirst({ where:{ id:req.params.id, restaurantId:req.restaurantId } });
     if (!item) return res.status(404).json({ success:false, error:'Not found' });
@@ -89,7 +89,7 @@ router.put('/:id', authStaff, async (req, res) => {
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
 
-router.patch('/:id/toggle-available', authStaff, async (req, res) => {
+router.patch('/:id/toggle-available', authStaff, blockViewer, async (req, res) => {
   try {
     const item = await prisma.menuItem.findFirst({ where:{ id:req.params.id, restaurantId:req.restaurantId } });
     if (!item) return res.status(404).json({ success:false, error:'Not found' });
@@ -98,7 +98,7 @@ router.patch('/:id/toggle-available', authStaff, async (req, res) => {
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
 
-router.patch('/:id/toggle-featured', authStaff, async (req, res) => {
+router.patch('/:id/toggle-featured', authStaff, blockViewer, async (req, res) => {
   try {
     const item = await prisma.menuItem.findFirst({ where:{ id:req.params.id, restaurantId:req.restaurantId } });
     if (!item) return res.status(404).json({ success:false, error:'Not found' });
@@ -107,23 +107,26 @@ router.patch('/:id/toggle-featured', authStaff, async (req, res) => {
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
 
-router.delete('/:id', authStaff, async (req, res) => {
+router.delete('/:id', authStaff, blockViewer, async (req, res) => {
   try {
     const item = await prisma.menuItem.findFirst({ where:{ id:req.params.id, restaurantId:req.restaurantId } });
     if (!item) return res.status(404).json({ success:false, error:'Not found' });
     await prisma.menuItem.delete({ where:{ id:req.params.id } });
     res.json({ success:true, data:null });
-  } catch(e){ res.status(500).json({ success:false, error:e.message }); }
+  } catch(e){
+    if (e.code === 'P2003') return res.status(400).json({ success:false, error:'This item has existing orders and can\'t be deleted — mark it unavailable instead.' });
+    res.status(500).json({ success:false, error:e.message });
+  }
 });
 
-router.post('/categories', authStaff, async (req, res) => {
+router.post('/categories', authStaff, blockViewer, async (req, res) => {
   try {
     const cat = await prisma.menuCategory.create({ data:{ restaurantId:req.restaurantId, name:req.body.name.trim(), emoji:req.body.emoji||'🍴', sortOrder:parseInt(req.body.sortOrder)||0 } });
     res.json({ success:true, data:cat });
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
 
-router.put('/categories/:id', authStaff, async (req, res) => {
+router.put('/categories/:id', authStaff, blockViewer, async (req, res) => {
   try {
     const { name, emoji, sortOrder, isVisible } = req.body;
     await prisma.menuCategory.updateMany({ where:{ id:req.params.id, restaurantId:req.restaurantId }, data:{ name, emoji, sortOrder:parseInt(sortOrder), isVisible } });
@@ -131,7 +134,7 @@ router.put('/categories/:id', authStaff, async (req, res) => {
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
 
-router.delete('/categories/:id', authStaff, async (req, res) => {
+router.delete('/categories/:id', authStaff, blockViewer, async (req, res) => {
   try {
     await prisma.menuCategory.deleteMany({ where:{ id:req.params.id, restaurantId:req.restaurantId } });
     res.json({ success:true, data:null });

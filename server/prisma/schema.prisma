@@ -30,10 +30,15 @@ model Restaurant {
   floor         String?
   // Venue & fulfillment
   venueType      String   @default("CAFETERIA") // CAFETERIA | MARKETPLACE
+  storeMode      String   @default("ON_CAMPUS") // ON_CAMPUS | VIRTUAL — marketplace stores only; cafeteria is always ON_CAMPUS
   offersPickup   Boolean  @default(true)
   offersDelivery Boolean  @default(false)
   deliveryFee    Float    @default(0)
   deliveryNote   String?
+  offersCampusDelivery    Boolean @default(true)
+  offersOffCampusDelivery Boolean @default(false)
+  campusDeliveryFee       Float   @default(0)
+  offCampusDeliveryFee    Float   @default(0)
   // Status
   isApproved    Boolean  @default(true)   // super-admin can suspend
   isOpen        Boolean  @default(false)  // toggled by restaurant
@@ -191,6 +196,7 @@ model Order {
   totalPrice          Float
   // Fulfillment
   fulfillmentType     String      @default("pickup") // pickup | delivery
+  deliveryScope       String?     // campus | off_campus — only when fulfillmentType is delivery
   deliveryLocation    String?
   deliveryFee         Float       @default(0)
   // Meta
@@ -277,7 +283,7 @@ model Favorite {
 model Promotion {
   id           String     @id @default(uuid())
   restaurantId String
-  code         String     @unique
+  code         String
   title        String
   description  String?
   type         String     @default("percentage")
@@ -292,6 +298,8 @@ model Promotion {
   createdAt    DateTime   @default(now())
 
   restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@unique([restaurantId, code])
 }
 
 // ─── SUPER ADMIN ────────────────────────────────────────────────────────────

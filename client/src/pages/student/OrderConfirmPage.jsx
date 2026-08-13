@@ -71,7 +71,7 @@ export default function OrderConfirmPageImpl() {
           </div>
           <div className="card p-4 text-center">
             {isDelivery ? <Truck size={20} className="text-alu-red mx-auto mb-1" /> : <MapPin size={20} className="text-alu-red mx-auto mb-1" />}
-            <p className="text-xs text-alu-muted">{isDelivery ? 'Delivering to' : 'Pickup at'}</p>
+            <p className="text-xs text-alu-muted">{isDelivery ? `Delivering ${order.deliveryScope === 'off_campus' ? 'off campus' : 'on campus'} to` : 'Pickup at'}</p>
             <p className="font-bold text-sm text-alu-cream">{isDelivery ? order.deliveryLocation : order.restaurant?.location}</p>
           </div>
         </div>

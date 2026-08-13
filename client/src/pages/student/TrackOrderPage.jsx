@@ -60,8 +60,9 @@ export default function TrackOrderPage() {
   const isCancelled = order.status === 'cancelled'
   const isDone = order.status === 'picked_up'
   const isDelivery = order.fulfillmentType === 'delivery'
+  const deliveryLabel = order.deliveryScope === 'off_campus' ? 'off campus' : 'on campus'
   const steps = STEPS.map(s => s.key === 'ready'
-    ? { ...s, label: isDelivery ? 'Out for delivery' : 'Ready!', sub: isDelivery ? `On its way to ${order.deliveryLocation}` : 'Go pick up at the counter' }
+    ? { ...s, label: isDelivery ? 'Out for delivery' : 'Ready!', sub: isDelivery ? `On its way ${deliveryLabel} to ${order.deliveryLocation}` : 'Go pick up at the counter' }
     : s)
 
   return (
@@ -108,7 +109,7 @@ export default function TrackOrderPage() {
               {order.status === 'ready' && (
                 <div className="bg-alu-success/10 border border-alu-success/25 rounded-xl p-4 mb-4 text-center">
                   <p className="font-bold text-alu-success-fg text-lg">{isDelivery ? '🚚 On its way!' : '🎉 Ready for pickup!'}</p>
-                  <p className="text-alu-success-fg/70 text-sm">{isDelivery ? `Delivering to ${order.deliveryLocation}` : `Head to ${order.restaurant?.location} now`}</p>
+                  <p className="text-alu-success-fg/70 text-sm">{isDelivery ? `Delivering ${deliveryLabel} to ${order.deliveryLocation}` : `Head to ${order.restaurant?.location} now`}</p>
                 </div>
               )}
               <div className="space-y-2">

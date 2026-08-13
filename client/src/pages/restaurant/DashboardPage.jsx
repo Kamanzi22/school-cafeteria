@@ -11,14 +11,13 @@ const STATUS_NEXT = { pending: 'confirmed', confirmed: 'preparing', preparing: '
 const BTN_LABELS = { pending: 'Confirm Order', confirmed: 'Start Cooking', preparing: 'Mark Ready', ready: 'Picked Up ✓' }
 const BTN_ICONS = { pending: CheckCircle, confirmed: ChefHat, preparing: Bell, ready: CheckCircle }
 const TABS = [
-  { key: 'pending', label: 'New', color: 'text-amber-600 bg-amber-100' },
-  { key: 'confirmed', label: 'Confirmed', color: 'text-blue-600 bg-blue-100' },
-  { key: 'preparing', label: 'Cooking', color: 'text-orange-600 bg-orange-100' },
-  { key: 'ready', label: 'Ready', color: 'text-emerald-600 bg-emerald-100' },
-  { key: 'all', label: 'All Today', color: 'text-ink-600 bg-ink-100' },
+  { key: 'received', statuses: ['pending', 'confirmed'], label: 'Received', color: 'text-amber-600 bg-amber-100' },
+  { key: 'preparing', statuses: ['preparing'], label: 'Cooking', color: 'text-orange-600 bg-orange-100' },
+  { key: 'ready', statuses: ['ready'], label: 'Ready', color: 'text-emerald-600 bg-emerald-100' },
+  { key: 'all', statuses: null, label: 'All Today', color: 'text-ink-600 bg-ink-100' },
 ]
 
-function OrderCard({ order, onUpdate }) {
+function OrderCard({ order, onUpdate, isViewer }) {
   const [loading, setLoading] = useState(false)
   const nextStatus = STATUS_NEXT[order.status]
   const Icon = BTN_ICONS[order.status]
@@ -53,7 +52,7 @@ function OrderCard({ order, onUpdate }) {
             <span className="font-mono font-bold text-flame-500 text-sm">{order.orderNumber}</span>
             {isNew && <span className="badge bg-red-100 text-red-600 animate-pulse">🔴 NEW</span>}
             {order.fulfillmentType === 'delivery' && (
-              <span className="badge bg-indigo-100 text-indigo-600"><Truck size={10} className="mr-0.5" />Delivery</span>
+              <span className="badge bg-indigo-100 text-indigo-600"><Truck size={10} className="mr-0.5" />Delivery · {order.deliveryScope === 'off_campus' ? 'Off campus' : 'On campus'}</span>
             )}
           </div>
           <p className="font-bold text-ink-900 text-sm mt-0.5">{order.customer?.name}</p>
@@ -100,22 +99,24 @@ function OrderCard({ order, onUpdate }) {
         </p>
       )}
 
-      {/* Actions */}
-      <div className="flex gap-2">
-        {nextStatus && (
-          <button onClick={advance} disabled={loading}
-            className="btn btn-primary flex-1 text-sm py-2.5">
-            {loading ? <Loader size={14} className="animate-spin" /> : Icon ? <Icon size={14} /> : null}
-            {BTN_LABELS[order.status]}
-          </button>
-        )}
-        {['pending', 'confirmed'].includes(order.status) && (
-          <button onClick={cancel} disabled={loading}
-            className="btn btn-secondary text-red-500 border-red-200 hover:bg-red-50 p-2.5">
-            <X size={16} />
-          </button>
-        )}
-      </div>
+      {/* Actions — hidden for a read-only viewer, since the server rejects these anyway */}
+      {!isViewer && (
+        <div className="flex gap-2">
+          {nextStatus && (
+            <button onClick={advance} disabled={loading}
+              className="btn btn-primary flex-1 text-sm py-2.5">
+              {loading ? <Loader size={14} className="animate-spin" /> : Icon ? <Icon size={14} /> : null}
+              {BTN_LABELS[order.status]}
+            </button>
+          )}
+          {['pending', 'confirmed'].includes(order.status) && (
+            <button onClick={cancel} disabled={loading}
+              className="btn btn-secondary text-red-500 border-red-200 hover:bg-red-50 p-2.5">
+              <X size={16} />
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -123,9 +124,10 @@ function OrderCard({ order, onUpdate }) {
 export default function DashboardPage() {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('pending')
+  const [activeTab, setActiveTab] = useState('received')
   const [refreshing, setRefreshing] = useState(false)
-  const { restaurant } = useAdminStore()
+  const { restaurant, token, role } = useAdminStore()
+  const isViewer = role === 'viewer'
 
   const fetch = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
@@ -141,7 +143,7 @@ export default function DashboardPage() {
     'order:new': (order) => {
       if (order.restaurantId !== restaurant.id) return
       setOrders(prev => [order, ...prev.filter(o => o.id !== order.id)])
-      toast.success(`🔔 New order from ${order.student?.name}!`, { duration: 6000 })
+      toast.success(`🔔 New order from ${order.customer?.name}!`, { duration: 6000 })
       try { new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAA').play() } catch {}
     },
     'order:statusChanged': (updated) => {
@@ -156,7 +158,7 @@ export default function DashboardPage() {
   })
 
   useEffect(() => {
-    getSocket().emit('join:restaurant', restaurant.id)
+    getSocket().emit('join:restaurant', { id: restaurant.id, token })
     fetch()
     const iv = setInterval(() => fetch(true), 30000)
     return () => clearInterval(iv)
@@ -168,8 +170,12 @@ export default function DashboardPage() {
   const revenue = todayOrders.reduce((s, o) => s + o.totalPrice, 0)
   const newCount = orders.filter(o => o.status === 'pending').length
 
-  const filtered = activeTab === 'all' ? orders : orders.filter(o => o.status === activeTab)
-  const tabCount = (k) => k === 'all' ? orders.length : orders.filter(o => o.status === k).length
+  const filtered = activeTab === 'all' ? orders : orders.filter(o => TABS.find(t => t.key === activeTab).statuses.includes(o.status))
+  const tabCount = (k) => {
+    if (k === 'all') return orders.length
+    const statuses = TABS.find(t => t.key === k).statuses
+    return orders.filter(o => statuses.includes(o.status)).length
+  }
 
   return (
     <AdminLayout newOrderCount={newCount}>
@@ -187,12 +193,11 @@ export default function DashboardPage() {
         </div>
 
         {/* Stats row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
           {[
             { label: "Today's Orders", val: todayOrders.length, sub: 'not cancelled' },
             { label: "Today's Revenue", val: `${revenue.toLocaleString()} RWF`, sub: 'total' },
-            { label: 'Pending', val: newCount, sub: 'need action', alert: newCount > 0 },
-            { label: 'In Progress', val: orders.filter(o => ['confirmed', 'preparing'].includes(o.status)).length, sub: 'being prepared' },
+            { label: 'In Progress', val: orders.filter(o => !['ready', 'picked_up', 'cancelled'].includes(o.status)).length, sub: 'not yet ready', alert: newCount > 0 },
           ].map(s => (
             <div key={s.label} className={`card p-4 ${s.alert && s.val > 0 ? 'border-amber-300 bg-amber-50' : ''}`}>
               <p className="text-xs text-ink-400 mb-1">{s.label}</p>
@@ -224,13 +229,13 @@ export default function DashboardPage() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="py-24 text-center">
-            <p className="text-5xl mb-4">{activeTab === 'pending' ? '🎉' : '📋'}</p>
-            <p className="font-bold text-ink-400 text-lg">{activeTab === 'pending' ? 'No new orders right now' : `No ${activeTab} orders`}</p>
+            <p className="text-5xl mb-4">{activeTab === 'received' ? '🎉' : '📋'}</p>
+            <p className="font-bold text-ink-400 text-lg">{activeTab === 'received' ? 'No new orders right now' : `No ${activeTab} orders`}</p>
             <p className="text-ink-300 text-sm mt-1">New orders appear here instantly</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {filtered.map(order => <OrderCard key={order.id} order={order} onUpdate={updateOrder} />)}
+            {filtered.map(order => <OrderCard key={order.id} order={order} onUpdate={updateOrder} isViewer={isViewer} />)}
           </div>
         )}
       </div>

@@ -5,7 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 const { PrismaClient } = require('@prisma/client');
-const { authStaff, authSuperAdmin } = require('../middleware/auth');
+const { authStaff, authSuperAdmin, blockViewer } = require('../middleware/auth');
 const prisma = new PrismaClient();
 
 const uploadDir = path.join(__dirname, '../../uploads');
@@ -16,7 +16,9 @@ const logoUpload = multer({
     filename: (_, file, cb) => cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${path.extname(file.originalname)}`)
   }),
   limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (_, file, cb) => file.mimetype.startsWith('image/') ? cb(null, true) : cb(new Error('Images only'))
+  // SVGs deliberately excluded — they can carry embedded <script> and run it if the raw
+  // /uploads/... URL is ever opened directly, unlike raster formats.
+  fileFilter: (_, file, cb) => ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.mimetype) ? cb(null, true) : cb(new Error('Only JPG, PNG, WEBP or GIF images are allowed'))
 });
 
 const sign = (payload, expiresIn = process.env.JWT_EXPIRES_IN) =>
@@ -29,7 +31,7 @@ const slugify = (str) => str.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/
 // ══════════════════════════════════════════════════════
 router.post('/restaurant/register', logoUpload.single('logo'), async (req, res) => {
   try {
-    const { ownerName, ownerEmail, ownerPhone, password, restaurantName, description, phone, venueType } = req.body;
+    const { ownerName, ownerEmail, ownerPhone, password, restaurantName, description, phone, venueType, storeMode } = req.body;
     if (!ownerName || !ownerEmail || !password || !restaurantName)
       return res.status(400).json({ success: false, error: 'Name, email, password and restaurant name are required' });
     if (password.length < 6)
@@ -45,6 +47,7 @@ router.post('/restaurant/register', logoUpload.single('logo'), async (req, res) 
       slug = `${baseSlug}-${attempt++}`;
     }
 
+    const isVirtual = venueType === 'MARKETPLACE' && storeMode === 'VIRTUAL';
     const passwordHash = await bcrypt.hash(password, 12);
     const restaurant = await prisma.restaurant.create({
       data: {
@@ -57,6 +60,9 @@ router.post('/restaurant/register', logoUpload.single('logo'), async (req, res) 
         description: description?.trim() || '',
         phone: phone?.trim(),
         venueType: venueType === 'MARKETPLACE' ? 'MARKETPLACE' : 'CAFETERIA',
+        storeMode: isVirtual ? 'VIRTUAL' : 'ON_CAMPUS',
+        // A virtual store has no physical spot, so pickup doesn't apply — it's delivery-only from the start.
+        ...(isVirtual && { offersPickup: false, offersDelivery: true, offersCampusDelivery: true, offersOffCampusDelivery: true }),
         logo: req.file ? `/uploads/${req.file.filename}` : null,
       }
     });
@@ -201,7 +207,7 @@ router.post('/guest/session', async (req, res) => {
 // ══════════════════════════════════════════════════════
 // RESTAURANT — add staff (owner only)
 // ══════════════════════════════════════════════════════
-router.post('/restaurant/staff', authStaff, async (req, res) => {
+router.post('/restaurant/staff', authStaff, blockViewer, async (req, res) => {
   try {
     if (req.role !== 'owner') return res.status(403).json({ success: false, error: 'Only the owner can add staff' });
     const { name, username, password, role } = req.body;
@@ -220,7 +226,7 @@ router.post('/restaurant/staff', authStaff, async (req, res) => {
 // ══════════════════════════════════════════════════════
 // RESTAURANT — change own password
 // ══════════════════════════════════════════════════════
-router.put('/restaurant/password', authStaff, async (req, res) => {
+router.put('/restaurant/password', authStaff, blockViewer, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
     if (newPassword?.length < 6) return res.status(400).json({ success: false, error: 'Min 6 characters' });

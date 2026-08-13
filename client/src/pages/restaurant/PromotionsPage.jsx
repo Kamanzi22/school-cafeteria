@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Plus, Trash2, ToggleLeft, ToggleRight, Tag, Loader, X } from 'lucide-react'
 import { promoAPI } from '../../services/api'
+import { useAdminStore } from '../../store'
 import AdminLayout from '../../components/restaurant/AdminLayout'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
@@ -89,6 +90,8 @@ export default function PromotionsPage() {
   const [promos, setPromos] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
+  const { role } = useAdminStore()
+  const isViewer = role === 'viewer'
 
   useEffect(() => { promoAPI.list().then(r => { setPromos(r.data.data); setLoading(false) }) }, [])
 
@@ -112,7 +115,7 @@ export default function PromotionsPage() {
             <h1 className="text-2xl font-black text-ink-900">Promotions</h1>
             <p className="text-ink-400 text-sm">Create discount codes for your customers</p>
           </div>
-          <button onClick={() => setShowModal(true)} className="btn btn-primary btn-sm"><Plus size={14} />New Promo</button>
+          {!isViewer && <button onClick={() => setShowModal(true)} className="btn btn-primary btn-sm"><Plus size={14} />New Promo</button>}
         </div>
 
         {loading ? <div className="space-y-3">{Array(3).fill(0).map((_, i) => <div key={i} className="skeleton h-24 rounded-2xl" />)}</div>
@@ -120,7 +123,7 @@ export default function PromotionsPage() {
           <div className="text-center py-20">
             <Tag size={40} className="text-ink-200 mx-auto mb-3" />
             <p className="text-ink-400 font-semibold">No promotions yet</p>
-            <button onClick={() => setShowModal(true)} className="btn btn-primary mt-4"><Plus size={16} />Create First Promo</button>
+            {!isViewer && <button onClick={() => setShowModal(true)} className="btn btn-primary mt-4"><Plus size={16} />Create First Promo</button>}
           </div>
         ) : (
           <div className="space-y-3">
@@ -147,12 +150,14 @@ export default function PromotionsPage() {
                       {p.minOrder > 0 && ` · Min ${p.minOrder.toLocaleString()} RWF`}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button onClick={() => toggle(p.id)} className={`btn btn-ghost btn-icon ${p.isActive ? 'text-emerald-500' : 'text-ink-400'}`}>
-                      {p.isActive ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
-                    </button>
-                    <button onClick={() => del(p.id)} className="btn btn-ghost btn-icon text-ink-400 hover:text-red-500"><Trash2 size={16} /></button>
-                  </div>
+                  {!isViewer && (
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button onClick={() => toggle(p.id)} className={`btn btn-ghost btn-icon ${p.isActive ? 'text-emerald-500' : 'text-ink-400'}`}>
+                        {p.isActive ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
+                      </button>
+                      <button onClick={() => del(p.id)} className="btn btn-ghost btn-icon text-ink-400 hover:text-red-500"><Trash2 size={16} /></button>
+                    </div>
+                  )}
                 </div>
               )
             })}

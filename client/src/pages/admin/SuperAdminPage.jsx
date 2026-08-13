@@ -1,25 +1,36 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Shield, Store, Users, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn } from 'lucide-react'
+import { Shield, Store, Users, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye } from 'lucide-react'
 import { superAdminAPI, authAPI } from '../../services/api'
+import { useAdminStore } from '../../store'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 
+const getStoredSuperAdminToken = () => {
+  try { return JSON.parse(localStorage.getItem('cc-superadmin-v1') || '{}')?.state?.token || null } catch { return null }
+}
+
 export default function SuperAdminPage() {
-  const [authed, setAuthed] = useState(false)
-  const [token, setToken] = useState(null)
+  // Restore an existing session on mount — otherwise every navigation back to this page
+  // (e.g. exiting a "view store" session) drops back to the login screen even though the
+  // token in localStorage is still valid.
+  const [authed, setAuthed] = useState(() => !!getStoredSuperAdminToken())
+  const [token, setToken] = useState(getStoredSuperAdminToken)
   const [form, setForm] = useState({ username:'', password:'' })
   const [restaurants, setRestaurants] = useState([])
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(false)
   const [loginLoading, setLoginLoading] = useState(false)
   const [venueFilter, setVenueFilter] = useState('all')
+  const [viewingId, setViewingId] = useState(null)
+  const navigate = useNavigate()
+  const { loginViewer, logout: exitAdminSession } = useAdminStore()
 
   const handleLogin = async (e) => {
     e.preventDefault(); setLoginLoading(true)
     try {
       const res = await authAPI.superAdminLogin(form)
-      localStorage.setItem('cc-admin-v3', JSON.stringify({ state:{ token: res.data.data.token } }))
+      localStorage.setItem('cc-superadmin-v1', JSON.stringify({ state:{ token: res.data.data.token } }))
       setAuthed(true)
       setToken(res.data.data.token)
       toast.success('Super admin access granted')
@@ -32,7 +43,14 @@ export default function SuperAdminPage() {
     setLoading(true)
     Promise.all([superAdminAPI.getRestaurants(), superAdminAPI.getStats()]).then(([r, s]) => {
       setRestaurants(r.data.data); setStats(s.data.data); setLoading(false)
-    }).catch(() => setLoading(false))
+    }).catch((e) => {
+      setLoading(false)
+      // Stored token is invalid/expired — drop back to the login screen instead of a blank page.
+      if (e.response?.status === 401 || e.response?.status === 403) {
+        localStorage.removeItem('cc-superadmin-v1')
+        setAuthed(false)
+      }
+    })
   }, [authed])
 
   const toggleApprove = async (id) => {
@@ -46,6 +64,18 @@ export default function SuperAdminPage() {
     await superAdminAPI.deleteRestaurant(id)
     setRestaurants(prev => prev.filter(r => r.id!==id))
     toast.success('Restaurant deleted')
+  }
+
+  const viewStore = async (id) => {
+    setViewingId(id)
+    try {
+      // Exit any previous viewer/owner session first — same browser storage, don't mix sessions.
+      exitAdminSession()
+      const res = await superAdminAPI.getViewToken(id)
+      loginViewer(res.data.data.restaurant, res.data.data.token)
+      navigate('/admin')
+    } catch (e) { toast.error(e.response?.data?.error || 'Could not open store') }
+    finally { setViewingId(null) }
   }
 
   if (!authed) return (
@@ -69,7 +99,6 @@ export default function SuperAdminPage() {
               {loginLoading ? 'Signing in…' : 'Access Admin Panel'}
             </button>
           </form>
-          <p className="text-xs text-ink-600 text-center mt-3">Demo: superadmin / super123</p>
         </div>
       </div>
     </div>
@@ -154,9 +183,17 @@ export default function SuperAdminPage() {
                       <td className="px-4 py-3 text-ink-400 text-xs">{format(new Date(r.createdAt), 'dd MMM yyyy')}</td>
                       <td className="px-4 py-3">
                         {!r.isDeleted && (
-                          <button onClick={() => deleteRestaurant(r.id, r.name)} className="btn btn-ghost btn-icon text-red-400 hover:text-red-600">
-                            <Trash2 size={15}/>
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => viewStore(r.id)} disabled={viewingId === r.id}
+                              title="View store's admin portal (read-only)"
+                              className="btn btn-ghost btn-icon text-ink-400 hover:text-brand-600">
+                              {viewingId === r.id ? <Loader size={15} className="animate-spin"/> : <Eye size={15}/>}
+                            </button>
+                            <button onClick={() => deleteRestaurant(r.id, r.name)} title="Delete permanently"
+                              className="btn btn-ghost btn-icon text-red-400 hover:text-red-600">
+                              <Trash2 size={15}/>
+                            </button>
+                          </div>
                         )}
                       </td>
                     </tr>

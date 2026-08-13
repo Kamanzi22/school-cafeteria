@@ -6,8 +6,9 @@ const api = axios.create({ baseURL: `${BACKEND}/api`, timeout: 15000 })
 const getToken = () => {
   try {
     const admin = JSON.parse(localStorage.getItem('cc-admin-v3') || '{}')
-    const customer = JSON.parse(localStorage.getItem('cc-customer-v3') || '{}')
-    return admin?.state?.token || customer?.state?.token || null
+    const customer = JSON.parse(localStorage.getItem('cc-customer-v4') || '{}')
+    const superadmin = JSON.parse(localStorage.getItem('cc-superadmin-v1') || '{}')
+    return admin?.state?.token || customer?.state?.token || superadmin?.state?.token || null
   } catch { return null }
 }
 
@@ -22,7 +23,6 @@ export const authAPI = {
   restaurantRegister: (d) => api.post('/auth/restaurant/register', d),
   restaurantLogin: (d) => api.post('/auth/restaurant/login', d),
   restaurantStaffLogin: (d) => api.post('/auth/restaurant/staff/login', d),
-  addStaff: (d) => api.post('/auth/restaurant/staff', d),
   changePassword: (d) => api.put('/auth/restaurant/password', d),
   // Customer
   customerRegister: (d) => api.post('/auth/customer/register', d),
@@ -33,10 +33,9 @@ export const authAPI = {
 }
 
 export const restaurantAPI = {
-  list: (venueType) => api.get('/restaurants', { params: { venueType } }),
-  search: (q, venueType) => api.get('/restaurants/search', { params: { q, venueType } }),
+  list: (venueType, storeMode) => api.get('/restaurants', { params: { venueType, storeMode } }),
+  search: (q, venueType, storeMode) => api.get('/restaurants/search', { params: { q, venueType, storeMode } }),
   get: (id) => api.get(`/restaurants/${id}`),
-  adminGet: () => api.get('/restaurants/admin/me'),
   toggleOpen: () => api.patch('/restaurants/admin/toggle-open'),
   toggleAccepting: () => api.patch('/restaurants/admin/toggle-accepting'),
   updateSettings: (d) => api.put('/restaurants/admin/settings', d),
@@ -75,7 +74,7 @@ export const customerAPI = {
   favorite: (customerId, restaurantId) => api.post(`/customers/${customerId}/favorite/${restaurantId}`),
 }
 
-export const analyticsAPI = { get: () => api.get('/analytics') }
+export const analyticsAPI = { salesReport: (range) => api.get('/analytics/sales-report', { params: { range } }) }
 
 export const promoAPI = {
   list: () => api.get('/promotions/admin'),
@@ -96,6 +95,7 @@ export const superAdminAPI = {
   toggleApprove: (id) => api.patch(`/superadmin/restaurants/${id}/approve`),
   deleteRestaurant: (id) => api.delete(`/superadmin/restaurants/${id}`),
   getStats: () => api.get('/superadmin/stats'),
+  getViewToken: (id) => api.post(`/superadmin/restaurants/${id}/view-token`),
 }
 
 export default api

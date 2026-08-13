@@ -83,7 +83,12 @@ export default function RestaurantPage() {
     if (!variant && item.trackStock && item.stock <= 0) { toast.error('Out of stock'); return }
     addItem(
       { id: item.id, name: item.name, price: item.price, emoji: item.emoji },
-      { id: restaurant.id, name: restaurant.name, emoji: restaurant.emoji, offersPickup: restaurant.offersPickup, offersDelivery: restaurant.offersDelivery, deliveryFee: restaurant.deliveryFee },
+      {
+        id: restaurant.id, name: restaurant.name, emoji: restaurant.emoji,
+        offersPickup: restaurant.offersPickup, offersDelivery: restaurant.offersDelivery, deliveryFee: restaurant.deliveryFee,
+        offersCampusDelivery: restaurant.offersCampusDelivery, offersOffCampusDelivery: restaurant.offersOffCampusDelivery,
+        campusDeliveryFee: restaurant.campusDeliveryFee, offCampusDeliveryFee: restaurant.offCampusDeliveryFee,
+      },
       variant
     )
     toast.success(`${item.name} added!`)

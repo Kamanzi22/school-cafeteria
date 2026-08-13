@@ -19,7 +19,7 @@ export default function RestaurantAuthPage() {
   const logoInputRef = useRef(null)
 
   const [loginForm, setLoginForm] = useState({ email: '', password: '' })
-  const [regForm, setRegForm] = useState({ ownerName: '', ownerEmail: '', ownerPhone: '', password: '', restaurantName: '', description: '', phone: '', venueType: 'CAFETERIA' })
+  const [regForm, setRegForm] = useState({ ownerName: '', ownerEmail: '', ownerPhone: '', password: '', restaurantName: '', description: '', phone: '', venueType: 'CAFETERIA', storeMode: 'ON_CAMPUS' })
   const isMarketplace = regForm.venueType === 'MARKETPLACE'
   const [logoFile, setLogoFile] = useState(null)
   const [logoPreview, setLogoPreview] = useState('')
@@ -139,6 +139,28 @@ export default function RestaurantAuthPage() {
                   </button>
                 ))}
               </div>
+
+              {isMarketplace && (
+                <>
+                  <p className="text-xs font-bold text-ink-400 uppercase tracking-wider pt-1">Is your store on campus or online?</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { mode: 'ON_CAMPUS', emoji: '🏬', title: 'On Campus', sub: 'You have a physical spot on campus' },
+                      { mode: 'VIRTUAL', emoji: '🌐', title: 'Online (Digital)', sub: 'Fully digital — no physical spot' },
+                    ].map(v => (
+                      <button key={v.mode} type="button" onClick={() => setRegForm(p => ({ ...p, storeMode: v.mode }))}
+                        className={`text-left p-3.5 rounded-xl border-2 transition ${regForm.storeMode === v.mode ? 'border-brand-500 bg-brand-500/10' : 'border-ink-700 hover:border-ink-600'}`}>
+                        <span className="text-2xl">{v.emoji}</span>
+                        <p className="font-semibold text-sm text-white mt-1.5">{v.title}</p>
+                        <p className="text-[11px] text-ink-500 mt-0.5">{v.sub}</p>
+                      </button>
+                    ))}
+                  </div>
+                  {regForm.storeMode === 'VIRTUAL' && (
+                    <p className="text-[11px] text-ink-500 bg-ink-800/60 rounded-lg px-3 py-2">🌐 Your store will be delivery-only (no pickup location) and you'll get full stock & inventory tools — track quantities, SKUs, and options like size or color.</p>
+                  )}
+                </>
+              )}
 
               <p className="text-xs font-bold text-ink-400 uppercase tracking-wider pt-1">Owner Information</p>
               {[

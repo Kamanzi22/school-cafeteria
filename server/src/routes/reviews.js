@@ -1,11 +1,13 @@
 // reviews.js
 const router = require('express').Router();
 const { PrismaClient } = require('@prisma/client');
+const { optionalCustomer } = require('../middleware/auth');
 const prisma = new PrismaClient();
 
-router.post('/', async (req, res) => {
+router.post('/', optionalCustomer, async (req, res) => {
   try {
     const { orderId, customerId, foodRating, serviceRating, comment } = req.body;
+    if (!req.customer || req.customer.id !== customerId) return res.status(403).json({ success:false, error:'Forbidden' });
     const order = await prisma.order.findUnique({ where:{ id:orderId } });
     if (!order || order.status !== 'picked_up') return res.status(400).json({ success:false, error:'Can only review completed orders' });
     if (order.customerId !== customerId) return res.status(403).json({ success:false, error:'Forbidden' });

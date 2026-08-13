@@ -1,21 +1,38 @@
 const router = require('express').Router();
 const { PrismaClient } = require('@prisma/client');
-const { authStaff } = require('../middleware/auth');
+const { authStaff, optionalCustomer, blockViewer } = require('../middleware/auth');
 const prisma = new PrismaClient();
 
 const genNum = () => 'CC-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2,5).toUpperCase();
 
+// Thrown for expected, user-correctable order problems (out of stock, missing option) so the
+// route handler can respond 400 instead of masking them as server errors.
+class OrderValidationError extends Error {}
+
+// Give back stock that was decremented when the order was placed — variant stock if this
+// was a variant line, otherwise the simple-tracked stock on the menu item.
+async function restoreStock(tx, orderId) {
+  const items = await tx.orderItem.findMany({ where:{ orderId }, include:{ menuItem:{ select:{ trackStock:true } } } });
+  for (const oi of items) {
+    if (oi.variantId) {
+      await tx.itemVariant.update({ where:{ id:oi.variantId }, data:{ stock:{ increment:oi.quantity } } });
+    } else if (oi.menuItem?.trackStock) {
+      await tx.menuItem.update({ where:{ id:oi.menuItemId }, data:{ stock:{ increment:oi.quantity } } });
+    }
+  }
+}
+
 const ORDER_INCLUDE = {
   items: { include: { menuItem: { select:{ name:true, emoji:true, price:true } }, variant: { select:{ name:true } } } },
   customer: { select:{ id:true, name:true, email:true, studentId:true, accountType:true, phone:true } },
-  restaurant: { select:{ id:true, name:true, emoji:true, location:true, phone:true, coverColor:true, venueType:true, offersPickup:true, offersDelivery:true } },
+  restaurant: { select:{ id:true, name:true, emoji:true, location:true, phone:true, coverColor:true, venueType:true, storeMode:true, offersPickup:true, offersDelivery:true, offersCampusDelivery:true, offersOffCampusDelivery:true } },
   review: true, statusHistory: { orderBy:{ createdAt:'asc' } }
 };
 
 // ── Place order ──────────────────────────────────────────────────────────────
 router.post('/', async (req, res) => {
   try {
-    const { customerId, guestToken, guestName, guestPhone, restaurantId, items, specialInstructions, paymentMethod, promoCode, fulfillmentType, deliveryLocation } = req.body;
+    const { customerId, guestToken, guestName, guestPhone, restaurantId, items, specialInstructions, paymentMethod, promoCode, fulfillmentType, deliveryLocation, deliveryScope } = req.body;
     if (!items?.length) return res.status(400).json({ success:false, error:'No items in order' });
 
     const restaurant = await prisma.restaurant.findFirst({ where:{ id:restaurantId, isDeleted:false } });
@@ -27,6 +44,9 @@ router.post('/', async (req, res) => {
     if (wantsDelivery && !restaurant.offersDelivery) return res.status(400).json({ success:false, error:'This store does not offer delivery' });
     if (!wantsDelivery && !restaurant.offersPickup) return res.status(400).json({ success:false, error:'This store does not offer pickup' });
     if (wantsDelivery && !deliveryLocation?.trim()) return res.status(400).json({ success:false, error:'Delivery location is required' });
+    const scope = deliveryScope === 'off_campus' ? 'off_campus' : 'campus';
+    if (wantsDelivery && scope === 'campus' && !restaurant.offersCampusDelivery) return res.status(400).json({ success:false, error:'This store does not deliver on campus' });
+    if (wantsDelivery && scope === 'off_campus' && !restaurant.offersOffCampusDelivery) return res.status(400).json({ success:false, error:'This store does not deliver off campus' });
 
     // Resolve customer — works for registered, guest token, or anonymous
     let customer;
@@ -53,10 +73,10 @@ router.post('/', async (req, res) => {
       let variant = null;
       if (item.variantId) {
         variant = m.variants.find(v => v.id === item.variantId);
-        if (!variant || !variant.isAvailable) throw new Error(`${m.name}: selected option is unavailable`);
+        if (!variant || !variant.isAvailable) throw new OrderValidationError(`${m.name}: selected option is unavailable`);
         unitPrice += variant.priceDelta;
       } else if (m.hasVariants) {
-        throw new Error(`${m.name}: please select an option`);
+        throw new OrderValidationError(`${m.name}: please select an option`);
       }
       const sub = unitPrice * item.quantity;
       subtotal += sub;
@@ -75,7 +95,7 @@ router.post('/', async (req, res) => {
       }
     }
 
-    const deliveryFee = wantsDelivery ? restaurant.deliveryFee : 0;
+    const deliveryFee = wantsDelivery ? (scope === 'off_campus' ? restaurant.offCampusDeliveryFee : restaurant.campusDeliveryFee) : 0;
     const taxAmount = (subtotal - discountAmount) * (restaurant.taxRate/100);
     const totalPrice = subtotal - discountAmount + taxAmount + deliveryFee;
     const estimatedReadyAt = new Date(Date.now() + ((restaurant.prepTimeMin + restaurant.prepTimeMax)/2)*60000);
@@ -85,18 +105,18 @@ router.post('/', async (req, res) => {
       for (const oi of orderItems) {
         if (oi.variantId) {
           const result = await tx.itemVariant.updateMany({ where:{ id:oi.variantId, stock:{ gte:oi.quantity } }, data:{ stock:{ decrement:oi.quantity } } });
-          if (result.count === 0) throw new Error(`${oi.menuItemName} (${oi.variantName}) is out of stock`);
+          if (result.count === 0) throw new OrderValidationError(`${oi.menuItemName} (${oi.variantName}) is out of stock`);
         } else {
           const m = menuItems.find(mi => mi.id === oi.menuItemId);
           if (m.trackStock) {
             const result = await tx.menuItem.updateMany({ where:{ id:oi.menuItemId, stock:{ gte:oi.quantity } }, data:{ stock:{ decrement:oi.quantity } } });
-            if (result.count === 0) throw new Error(`${oi.menuItemName} is out of stock`);
+            if (result.count === 0) throw new OrderValidationError(`${oi.menuItemName} is out of stock`);
           }
         }
       }
 
       const created = await tx.order.create({
-        data: { orderNumber:genNum(), customerId:customer.id, restaurantId, subtotal, taxAmount, discountAmount, totalPrice, fulfillmentType:wantsDelivery?'delivery':'pickup', deliveryLocation:wantsDelivery?deliveryLocation.trim():null, deliveryFee, specialInstructions, guestName: customer.accountType==='guest'?(guestName||customer.name):null, guestPhone: guestPhone||null, paymentMethod:paymentMethod||'cash', estimatedReadyAt, items:{ create:orderItems }, statusHistory:{ create:[{ status:'pending', note:'Order placed' }] } },
+        data: { orderNumber:genNum(), customerId:customer.id, restaurantId, subtotal, taxAmount, discountAmount, totalPrice, fulfillmentType:wantsDelivery?'delivery':'pickup', deliveryScope:wantsDelivery?scope:null, deliveryLocation:wantsDelivery?deliveryLocation.trim():null, deliveryFee, specialInstructions, guestName: customer.accountType==='guest'?(guestName||customer.name):null, guestPhone: guestPhone||null, paymentMethod:paymentMethod||'cash', estimatedReadyAt, items:{ create:orderItems }, statusHistory:{ create:[{ status:'pending', note:'Order placed' }] } },
         include: ORDER_INCLUDE
       });
 
@@ -110,7 +130,10 @@ router.post('/', async (req, res) => {
 
     req.app.get('io').to(`restaurant:${restaurantId}`).emit('order:new', order);
     res.json({ success:true, data: order });
-  } catch(e){ res.status(500).json({ success:false, error:e.message }); }
+  } catch(e){
+    if (e instanceof OrderValidationError) return res.status(400).json({ success:false, error:e.message });
+    res.status(500).json({ success:false, error:e.message });
+  }
 });
 
 // ── Get single order ─────────────────────────────────────────────────────────
@@ -123,8 +146,9 @@ router.get('/:id', async (req, res) => {
 });
 
 // ── Customer order history ────────────────────────────────────────────────────
-router.get('/customer/:customerId/history', async (req, res) => {
+router.get('/customer/:customerId/history', optionalCustomer, async (req, res) => {
   try {
+    if (!req.customer || req.customer.id !== req.params.customerId) return res.status(403).json({ success:false, error:'Forbidden' });
     const orders = await prisma.order.findMany({
       where:{ customerId: req.params.customerId },
       include:{ items:{ include:{ menuItem:{ select:{ name:true, emoji:true } } } }, restaurant:{ select:{ id:true, name:true, emoji:true, coverColor:true } }, review:true },
@@ -166,7 +190,7 @@ router.get('/restaurant/:restaurantId/all', authStaff, async (req, res) => {
 // ── Update order status ───────────────────────────────────────────────────────
 const STATUS_TIMES = { confirmed:'confirmedAt', preparing:'preparingAt', ready:'readyAt', picked_up:'pickedUpAt', cancelled:'cancelledAt' };
 
-router.patch('/:id/status', authStaff, async (req, res) => {
+router.patch('/:id/status', authStaff, blockViewer, async (req, res) => {
   try {
     const { status, cancelReason, estimatedReadyAt } = req.body;
     const order = await prisma.order.findUnique({ where:{ id:req.params.id } });
@@ -175,7 +199,17 @@ router.patch('/:id/status', authStaff, async (req, res) => {
     if (STATUS_TIMES[status]) data[STATUS_TIMES[status]] = new Date();
     if (cancelReason) { data.cancelReason = cancelReason; data.cancelledBy = 'restaurant'; }
     if (estimatedReadyAt) data.estimatedReadyAt = new Date(estimatedReadyAt);
-    const updated = await prisma.order.update({ where:{ id:req.params.id }, data:{ ...data, statusHistory:{ create:[{ status, note:cancelReason||null }] } }, include:ORDER_INCLUDE });
+    const updated = await prisma.$transaction(async (tx) => {
+      if (status === 'cancelled') {
+        // Atomic guard: only the request that actually flips pending/etc. → cancelled restores stock,
+        // so a customer-cancel and a staff-cancel racing on the same order can't double-credit inventory.
+        const guard = await tx.order.updateMany({ where:{ id:req.params.id, status:{ not:'cancelled' } }, data });
+        if (guard.count > 0) await restoreStock(tx, order.id);
+      } else {
+        await tx.order.updateMany({ where:{ id:req.params.id }, data });
+      }
+      return tx.order.update({ where:{ id:req.params.id }, data:{ statusHistory:{ create:[{ status, note:cancelReason||null }] } }, include:ORDER_INCLUDE });
+    });
     req.app.get('io').to(`order:${req.params.id}`).emit('order:updated', updated);
     req.app.get('io').to(`restaurant:${order.restaurantId}`).emit('order:statusChanged', updated);
     res.json({ success:true, data:updated });
@@ -188,10 +222,18 @@ router.patch('/:id/cancel', async (req, res) => {
     const order = await prisma.order.findUnique({ where:{ id:req.params.id } });
     if (!order) return res.status(404).json({ success:false, error:'Order not found' });
     if (order.status !== 'pending') return res.status(400).json({ success:false, error:'Can only cancel pending orders' });
-    const updated = await prisma.order.update({ where:{ id:req.params.id }, data:{ status:'cancelled', cancelledAt:new Date(), cancelReason:req.body.reason||'Cancelled by customer', cancelledBy:'customer', statusHistory:{ create:[{ status:'cancelled', note:req.body.reason }] } }, include:ORDER_INCLUDE });
+    const updated = await prisma.$transaction(async (tx) => {
+      const guard = await tx.order.updateMany({ where:{ id:req.params.id, status:'pending' }, data:{ status:'cancelled', cancelledAt:new Date(), cancelReason:req.body.reason||'Cancelled by customer', cancelledBy:'customer' } });
+      if (guard.count === 0) throw new OrderValidationError('Can only cancel pending orders');
+      await restoreStock(tx, order.id);
+      return tx.order.update({ where:{ id:req.params.id }, data:{ statusHistory:{ create:[{ status:'cancelled', note:req.body.reason }] } }, include:ORDER_INCLUDE });
+    });
     req.app.get('io').to(`restaurant:${order.restaurantId}`).emit('order:cancelled', updated);
     res.json({ success:true, data:updated });
-  } catch(e){ res.status(500).json({ success:false, error:e.message }); }
+  } catch(e){
+    if (e instanceof OrderValidationError) return res.status(400).json({ success:false, error:e.message });
+    res.status(500).json({ success:false, error:e.message });
+  }
 });
 
 module.exports = router;

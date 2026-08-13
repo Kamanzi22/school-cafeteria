@@ -16,6 +16,8 @@ export const useCartStore = create(persist((set, get) => ({
       variantId: variant?.id || null, variantName: variant?.name || null,
       restaurantId: restaurant.id, restaurantName: restaurant.name, restaurantEmoji: restaurant.emoji || '🍽️',
       restaurantOffersPickup: restaurant.offersPickup !== false, restaurantOffersDelivery: !!restaurant.offersDelivery, restaurantDeliveryFee: restaurant.deliveryFee || 0,
+      restaurantOffersCampusDelivery: !!restaurant.offersCampusDelivery, restaurantOffersOffCampusDelivery: !!restaurant.offersOffCampusDelivery,
+      restaurantCampusDeliveryFee: restaurant.campusDeliveryFee || 0, restaurantOffCampusDeliveryFee: restaurant.offCampusDeliveryFee || 0,
     }] })
     return 'added'
   },
@@ -27,12 +29,18 @@ export const useCartStore = create(persist((set, get) => ({
   byRestaurant: () => {
     const groups = {}
     for (const item of get().items) {
-      if (!groups[item.restaurantId]) groups[item.restaurantId] = { id: item.restaurantId, name: item.restaurantName, emoji: item.restaurantEmoji, offersPickup: item.restaurantOffersPickup, offersDelivery: item.restaurantOffersDelivery, deliveryFee: item.restaurantDeliveryFee, items: [] }
+      if (!groups[item.restaurantId]) groups[item.restaurantId] = {
+        id: item.restaurantId, name: item.restaurantName, emoji: item.restaurantEmoji,
+        offersPickup: item.restaurantOffersPickup, offersDelivery: item.restaurantOffersDelivery, deliveryFee: item.restaurantDeliveryFee,
+        offersCampusDelivery: item.restaurantOffersCampusDelivery, offersOffCampusDelivery: item.restaurantOffersOffCampusDelivery,
+        campusDeliveryFee: item.restaurantCampusDeliveryFee, offCampusDeliveryFee: item.restaurantOffCampusDeliveryFee,
+        items: [],
+      }
       groups[item.restaurantId].items.push(item)
     }
     return Object.values(groups)
   },
-}), { name: 'cc-cart-v5' }))
+}), { name: 'cc-cart-v6' }))
 
 // Customer (registered or guest)
 export const useCustomerStore = create(persist((set) => ({
@@ -43,11 +51,12 @@ export const useCustomerStore = create(persist((set) => ({
   logout: () => set({ customer: null, token: null, guestToken: null }),
 }), { name: 'cc-customer-v4' }))
 
-// Restaurant Admin (owner or staff)
+// Restaurant Admin (owner or staff) — or a super-admin's read-only 'viewer' mirror session
 export const useAdminStore = create(persist((set) => ({
   admin: null, token: null, restaurant: null, role: null,
   loginOwner: (restaurant, token) => set({ restaurant, token, admin: { name: restaurant.ownerName, email: restaurant.ownerEmail }, role: 'owner' }),
   loginStaff: (staff, restaurant, token) => set({ admin: staff, restaurant, token, role: staff.role }),
+  loginViewer: (restaurant, token) => set({ restaurant, token, admin: { name: 'Super Admin' }, role: 'viewer' }),
   updateRestaurant: (r) => set(s => ({ restaurant: { ...s.restaurant, ...r } })),
   logout: () => set({ admin: null, token: null, restaurant: null, role: null }),
 }), { name: 'cc-admin-v3' }))
@@ -58,7 +67,11 @@ export const useUIStore = create((set) => ({
 }))
 
 // Which side of the app the customer is browsing: CAFETERIA | MARKETPLACE
+// storeMode only applies within MARKETPLACE: ON_CAMPUS | VIRTUAL
 export const useVenueStore = create(persist((set) => ({
   venueType: null,
+  storeMode: null,
   setVenueType: (venueType) => set({ venueType }),
-}), { name: 'cc-venue-v1' }))
+  setStoreMode: (storeMode) => set({ storeMode }),
+  reset: () => set({ venueType: null, storeMode: null }),
+}), { name: 'cc-venue-v2' }))

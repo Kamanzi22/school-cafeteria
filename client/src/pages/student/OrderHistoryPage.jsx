@@ -23,7 +23,11 @@ export default function OrderHistoryPage() {
 
   const handleReorder = (order) => {
     order.items.forEach(item => {
-      addItem({ id: item.menuItemId, name: item.menuItemName, price: item.unitPrice, emoji: item.menuItemEmoji }, { id: order.restaurantId, name: order.restaurant.name, emoji: order.restaurant.emoji })
+      // item.unitPrice already has any variant's priceDelta baked in, so pass a zero-delta
+      // variant stub — it only needs to carry the id/name through so the cart line (and the
+      // order placed from it) still references the right option instead of silently dropping it.
+      const variant = item.variantId ? { id: item.variantId, name: item.variantName, priceDelta: 0 } : null
+      addItem({ id: item.menuItemId, name: item.menuItemName, price: item.unitPrice, emoji: item.menuItemEmoji }, { id: order.restaurantId, name: order.restaurant.name, emoji: order.restaurant.emoji }, variant)
     })
     toast.success('Items added to cart!')
     navigate(`/restaurant/${order.restaurantId}`)

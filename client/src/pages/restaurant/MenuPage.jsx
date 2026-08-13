@@ -5,14 +5,14 @@ import { useAdminStore } from '../../store'
 import AdminLayout from '../../components/restaurant/AdminLayout'
 import toast from 'react-hot-toast'
 
-const EMPTY = { name: '', description: '', price: '', prepTime: '', image: '', soldOut: false, trackStock: false, stock: '', hasVariants: false, variants: [] }
+const EMPTY = { name: '', description: '', price: '', prepTime: '', image: '', soldOut: false, trackStock: false, stock: '', sku: '', hasVariants: false, variants: [] }
 const EMPTY_VARIANT = { name: '', priceDelta: '0', stock: '0', sku: '' }
 
 function ItemModal({ item, isMarketplace, onSave, onClose }) {
   const [form, setForm] = useState(
     item ? {
       name: item.name, description: item.description || '', price: item.price, prepTime: item.prepTime || '', image: item.image || '', soldOut: !item.isAvailable,
-      trackStock: item.trackStock || false, stock: item.stock ?? '', hasVariants: item.hasVariants || false,
+      trackStock: item.trackStock || false, stock: item.stock ?? '', sku: item.sku || '', hasVariants: item.hasVariants || false,
       variants: (item.variants || []).map(v => ({ name: v.name, priceDelta: v.priceDelta, stock: v.stock, sku: v.sku || '' })),
     } : EMPTY
   )
@@ -38,6 +38,7 @@ function ItemModal({ item, isMarketplace, onSave, onClose }) {
   const save = async (e) => {
     e.preventDefault()
     if (!form.name || !form.price) { toast.error('Name and price are required'); return }
+    if (form.hasVariants && form.variants.length === 0) { toast.error('Add at least one option, or turn off "Has options"'); return }
     if (form.hasVariants && form.variants.some(v => !v.name.trim())) { toast.error('Every option needs a name'); return }
     setSaving(true)
     try {
@@ -51,6 +52,7 @@ function ItemModal({ item, isMarketplace, onSave, onClose }) {
         ...(isMarketplace && {
           trackStock: form.trackStock,
           stock: form.trackStock && !form.hasVariants ? form.stock : '',
+          sku: !form.hasVariants ? form.sku : '',
           hasVariants: form.hasVariants,
           variants: form.hasVariants ? form.variants : [],
         }),
@@ -145,24 +147,31 @@ function ItemModal({ item, isMarketplace, onSave, onClose }) {
                   {form.variants.map((v, i) => (
                     <div key={i} className="flex items-center gap-2">
                       <input value={v.name} onChange={e => setVariant(i, 'name', e.target.value)} placeholder="e.g. Medium / Blue" className="input text-sm flex-1" />
-                      <input type="number" value={v.priceDelta} onChange={e => setVariant(i, 'priceDelta', e.target.value)} placeholder="+RWF" className="input text-sm w-20" title="Price adjustment" />
-                      <input type="number" value={v.stock} onChange={e => setVariant(i, 'stock', e.target.value)} placeholder="Stock" min="0" className="input text-sm w-20" />
+                      <input type="number" value={v.priceDelta} onChange={e => setVariant(i, 'priceDelta', e.target.value)} placeholder="+RWF" className="input text-sm w-16" title="Price adjustment" />
+                      <input type="number" value={v.stock} onChange={e => setVariant(i, 'stock', e.target.value)} placeholder="Stock" min="0" className="input text-sm w-16" />
+                      <input value={v.sku} onChange={e => setVariant(i, 'sku', e.target.value)} placeholder="SKU" className="input text-sm w-20" title="Stock keeping unit" />
                       <button type="button" onClick={() => removeVariant(i)} className="btn btn-ghost btn-icon text-ink-400 hover:text-red-500 shrink-0"><X size={14} /></button>
                     </div>
                   ))}
                   <button type="button" onClick={addVariant} className="btn btn-secondary btn-sm text-xs"><Plus size={12} /> Add option</button>
                 </div>
               ) : (
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input type="checkbox" checked={form.trackStock} onChange={e => setForm(p => ({ ...p, trackStock: e.target.checked }))} className="w-4 h-4 rounded accent-brand-500" />
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-ink-800">Track stock</p>
-                    <p className="text-xs text-ink-400">Auto-marks out of stock at zero</p>
+                <>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" checked={form.trackStock} onChange={e => setForm(p => ({ ...p, trackStock: e.target.checked }))} className="w-4 h-4 rounded accent-brand-500" />
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-ink-800">Track stock</p>
+                      <p className="text-xs text-ink-400">Auto-marks out of stock at zero</p>
+                    </div>
+                    {form.trackStock && (
+                      <input type="number" value={form.stock} onChange={f('stock')} placeholder="Qty" min="0" className="input text-sm w-20" />
+                    )}
+                  </label>
+                  <div className="pl-7">
+                    <label className="label">SKU (optional)</label>
+                    <input value={form.sku} onChange={f('sku')} placeholder="e.g. BRC-001" className="input text-sm" />
                   </div>
-                  {form.trackStock && (
-                    <input type="number" value={form.stock} onChange={f('stock')} placeholder="Qty" min="0" className="input text-sm w-20" />
-                  )}
-                </label>
+                </>
               )}
             </div>
           )}
@@ -186,8 +195,9 @@ export default function MenuPage() {
   const [editItem, setEditItem] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [search, setSearch] = useState('')
-  const { restaurant } = useAdminStore()
+  const { restaurant, role } = useAdminStore()
   const isMarketplace = restaurant?.venueType === 'MARKETPLACE'
+  const isViewer = role === 'viewer'
 
   useEffect(() => {
     menuAPI.list()
@@ -232,9 +242,11 @@ export default function MenuPage() {
               {soldOut > 0 && <span className="text-red-400"> · {soldOut} sold out</span>}
             </p>
           </div>
-          <button onClick={() => { setEditItem(null); setShowModal(true) }} className="btn btn-primary btn-sm">
-            <Plus size={14} /> Add Item
-          </button>
+          {!isViewer && (
+            <button onClick={() => { setEditItem(null); setShowModal(true) }} className="btn btn-primary btn-sm">
+              <Plus size={14} /> Add Item
+            </button>
+          )}
         </div>
 
         {/* Search */}
@@ -249,9 +261,11 @@ export default function MenuPage() {
           <div className="text-center py-20">
             <ShoppingBag size={40} className="mx-auto text-ink-200 mb-3" />
             <p className="text-ink-400 font-semibold">No items yet</p>
-            <button onClick={() => { setShowModal(true); setEditItem(null) }} className="btn btn-primary mt-4">
-              <Plus size={16} /> Add First Item
-            </button>
+            {!isViewer && (
+              <button onClick={() => { setShowModal(true); setEditItem(null) }} className="btn btn-primary mt-4">
+                <Plus size={16} /> Add First Item
+              </button>
+            )}
           </div>
         ) : (
           <div className="card overflow-hidden">
@@ -287,22 +301,24 @@ export default function MenuPage() {
                   </div>
                 </div>
 
-                {/* Actions */}
-                <div className="flex items-center gap-1 shrink-0">
-                  <button onClick={() => toggleSoldOut(item)}
-                    title={item.isAvailable ? 'Mark sold out' : 'Mark available'}
-                    className={`btn btn-ghost btn-sm text-xs font-semibold px-2.5 ${!item.isAvailable ? 'text-emerald-600 hover:bg-emerald-50' : 'text-red-400 hover:bg-red-50'}`}>
-                    {item.isAvailable ? 'Sold Out' : 'Available'}
-                  </button>
-                  <button onClick={() => { setEditItem(item); setShowModal(true) }}
-                    className="btn btn-ghost btn-icon text-ink-400 hover:text-blue-500">
-                    <Edit2 size={15} />
-                  </button>
-                  <button onClick={() => deleteItem(item.id)}
-                    className="btn btn-ghost btn-icon text-ink-400 hover:text-red-500">
-                    <Trash2 size={15} />
-                  </button>
-                </div>
+                {/* Actions — hidden for a read-only viewer, since the server rejects these anyway */}
+                {!isViewer && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button onClick={() => toggleSoldOut(item)}
+                      title={item.isAvailable ? 'Mark sold out' : 'Mark available'}
+                      className={`btn btn-ghost btn-sm text-xs font-semibold px-2.5 ${!item.isAvailable ? 'text-emerald-600 hover:bg-emerald-50' : 'text-red-400 hover:bg-red-50'}`}>
+                      {item.isAvailable ? 'Sold Out' : 'Available'}
+                    </button>
+                    <button onClick={() => { setEditItem(item); setShowModal(true) }}
+                      className="btn btn-ghost btn-icon text-ink-400 hover:text-blue-500">
+                      <Edit2 size={15} />
+                    </button>
+                    <button onClick={() => deleteItem(item.id)}
+                      className="btn btn-ghost btn-icon text-ink-400 hover:text-red-500">
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

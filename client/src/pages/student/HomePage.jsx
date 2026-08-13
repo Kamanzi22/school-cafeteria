@@ -15,10 +15,18 @@ const VENUE_COPY = {
     empty: 'No restaurants available', emptyEmoji: '🍽️', searchPlaceholder: 'Search restaurants or meals…',
   },
   MARKETPLACE: {
-    label: 'Marketplace', emoji: '🛍️',
-    heading: <>Shop stores run<br /><span className="text-gradient">by students.</span> 🛍️</>,
-    sub: 'Discover what your classmates are selling, order, and pick up on campus.',
-    empty: 'No stores available yet', emptyEmoji: '🛍️', searchPlaceholder: 'Search stores or products…',
+    ON_CAMPUS: {
+      label: 'Marketplace · On Campus', emoji: '🏬',
+      heading: <>Shop stores<br /><span className="text-gradient">right on campus.</span> 🏬</>,
+      sub: 'Student-run stores with a physical spot on campus — order and pick up in person.',
+      empty: 'No on-campus stores yet', emptyEmoji: '🏬', searchPlaceholder: 'Search on-campus stores or products…',
+    },
+    VIRTUAL: {
+      label: 'Marketplace · Virtual', emoji: '🌐',
+      heading: <>Shop stores<br /><span className="text-gradient">from anywhere.</span> 🌐</>,
+      sub: 'Fully digital student stores — shop and get it delivered, on campus or off.',
+      empty: 'No virtual stores yet', emptyEmoji: '🌐', searchPlaceholder: 'Search virtual stores or products…',
+    },
   },
 }
 
@@ -92,10 +100,10 @@ export default function HomePage() {
   const { customer: student } = useCustomerStore()
   const { count } = useCartStore()
   const { cartOpen, openCart, closeCart } = useUIStore()
-  const { venueType, setVenueType } = useVenueStore()
+  const { venueType, storeMode, setVenueType, setStoreMode } = useVenueStore()
   const cartCount = count()
   const navigate = useNavigate()
-  const copy = VENUE_COPY[venueType] || VENUE_COPY.CAFETERIA
+  const copy = venueType === 'MARKETPLACE' ? (VENUE_COPY.MARKETPLACE[storeMode] || VENUE_COPY.MARKETPLACE.ON_CAMPUS) : VENUE_COPY.CAFETERIA
 
   useSocket({
     'restaurant:status': ({ restaurantId, isOpen }) =>
@@ -104,12 +112,13 @@ export default function HomePage() {
 
   useEffect(() => {
     setLoading(true)
-    restaurantAPI.list(venueType)
+    restaurantAPI.list(venueType, storeMode)
       .then(r => { setRestaurants(r.data.data); setLoading(false) })
       .catch(() => setLoading(false))
-  }, [venueType])
+  }, [venueType, storeMode])
 
-  const switchVenue = () => { setVenueType(null); navigate('/choose') }
+  const switchVenue = () => { setVenueType(null); setStoreMode(null); navigate('/choose') }
+  const switchStoreMode = (mode) => setStoreMode(mode)
 
   const displayed = restaurants
 
@@ -130,6 +139,17 @@ export default function HomePage() {
             className="hidden sm:flex items-center gap-1 text-xs font-semibold text-ink-400 hover:text-ink-700 bg-ink-50 hover:bg-ink-100 rounded-lg px-2.5 py-1.5 transition-colors mr-1">
             Switch <ChevronDown size={12} />
           </button>
+
+          {venueType === 'MARKETPLACE' && (
+            <div className="hidden md:flex items-center bg-ink-50 rounded-lg p-0.5 mr-1 shrink-0">
+              {[['ON_CAMPUS', '🏬 On Campus'], ['VIRTUAL', '🌐 Virtual']].map(([m, label]) => (
+                <button key={m} onClick={() => switchStoreMode(m)}
+                  className={`px-2.5 py-1.5 rounded-md text-xs font-semibold transition-colors whitespace-nowrap ${storeMode === m ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-400 hover:text-ink-700'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Search — navigates to dedicated search page */}
           <button

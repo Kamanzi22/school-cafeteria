@@ -3,41 +3,69 @@ const { PrismaClient } = require('@prisma/client');
 const { authStaff } = require('../middleware/auth');
 const prisma = new PrismaClient();
 
-router.get('/', authStaff, async (req, res) => {
+const RANGE_MS = { day: 86400000, week: 7 * 86400000, month: 30 * 86400000 };
+
+router.get('/sales-report', authStaff, async (req, res) => {
   try {
     const rId = req.restaurantId;
-    const todayStart = new Date(); todayStart.setHours(0,0,0,0);
-    const weekAgo = new Date(Date.now() - 7*86400000);
+    const range = ['day', 'week', 'month'].includes(req.query.range) ? req.query.range : 'day';
 
-    const [todayOrders, weekOrders, topItems, hourly, reviews] = await Promise.all([
-      prisma.order.findMany({ where:{ restaurantId:rId, createdAt:{ gte:todayStart }, status:{ not:'cancelled' } }, include:{ items:true } }),
-      prisma.order.findMany({ where:{ restaurantId:rId, createdAt:{ gte:weekAgo }, status:{ not:'cancelled' } } }),
-      prisma.menuItem.findMany({ where:{ restaurantId:rId }, orderBy:{ totalOrdered:'desc' }, take:8 }),
-      prisma.order.findMany({ where:{ restaurantId:rId, createdAt:{ gte:todayStart }, status:{ not:'cancelled' } }, select:{ createdAt:true, totalPrice:true } }),
-      prisma.review.findMany({ where:{ restaurantId:rId }, include:{ customer:{ select:{ name:true } } }, orderBy:{ createdAt:'desc' }, take:10 })
-    ]);
+    const start = new Date();
+    if (range === 'day') start.setHours(0, 0, 0, 0);
+    else start.setTime(Date.now() - RANGE_MS[range]);
 
-    const sum = arr => arr.reduce((s,o) => s+o.totalPrice, 0);
-    const dailyStats = [];
-    for (let i=6; i>=0; i--) {
-      const d = new Date(Date.now()-i*86400000);
-      const ds = new Date(d); ds.setHours(0,0,0,0);
-      const de = new Date(d); de.setHours(23,59,59,999);
-      const day = weekOrders.filter(o => new Date(o.createdAt)>=ds && new Date(o.createdAt)<=de);
-      dailyStats.push({ date:ds.toISOString().split('T')[0], label:d.toLocaleDateString('en',{ weekday:'short' }), orders:day.length, revenue:sum(day) });
-    }
-    const byHour = Array.from({ length:14 }, (_,i) => { const h=i+6; const hr=hourly.filter(o=>new Date(o.createdAt).getHours()===h); return { hour:h, label:`${h}:00`, count:hr.length, revenue:hr.reduce((s,o)=>s+o.totalPrice,0) }; });
-    const allToday = await prisma.order.findMany({ where:{ restaurantId:rId, createdAt:{ gte:todayStart } }, select:{ status:true } });
-    const statusBreakdown = {};
-    allToday.forEach(o => { statusBreakdown[o.status] = (statusBreakdown[o.status]||0)+1; });
+    const orders = await prisma.order.findMany({
+      where: { restaurantId: rId, createdAt: { gte: start }, status: { not: 'cancelled' } },
+      include: { items: true },
+      orderBy: { createdAt: 'desc' }
+    });
 
-    res.json({ success:true, data:{
-      today:{ orders:todayOrders.length, revenue:sum(todayOrders), avgOrder:todayOrders.length?sum(todayOrders)/todayOrders.length:0 },
-      week:{ orders:weekOrders.length, revenue:sum(weekOrders) },
-      topItems, dailyStats, byHour, statusBreakdown, recentReviews:reviews,
-      avgRating:reviews.length?reviews.reduce((s,r)=>s+r.overallRating,0)/reviews.length:0
-    }});
-  } catch(e){ res.status(500).json({ success:false, error:e.message }); }
+    const rows = [];
+    const productTotals = {};
+    const hourTotals = Array.from({ length: 24 }, (_, h) => ({ hour: h, revenue: 0, orders: 0 }));
+    let revenue = 0;
+
+    orders.forEach(o => {
+      revenue += o.totalPrice;
+      const hour = new Date(o.createdAt).getHours();
+      hourTotals[hour].revenue += o.totalPrice;
+      hourTotals[hour].orders += 1;
+
+      o.items.forEach(it => {
+        rows.push({
+          id: it.id,
+          orderNumber: o.orderNumber,
+          name: it.menuItemName,
+          emoji: it.menuItemEmoji,
+          variantName: it.variantName,
+          quantity: it.quantity,
+          unitPrice: it.unitPrice,
+          subtotal: it.subtotal,
+          time: o.createdAt
+        });
+        const key = it.menuItemName;
+        productTotals[key] = productTotals[key] || { name: it.menuItemName, emoji: it.menuItemEmoji, quantity: 0, revenue: 0 };
+        productTotals[key].quantity += it.quantity;
+        productTotals[key].revenue += it.subtotal;
+      });
+    });
+
+    const topSeller = Object.values(productTotals).sort((a, b) => b.quantity - a.quantity)[0] || null;
+    const peakHour = hourTotals.reduce((best, h) => (!best || h.revenue > best.revenue ? h : best), null);
+
+    const fmtHour = h => { const d = new Date(); d.setHours(h, 0, 0, 0); return d.toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' }); };
+
+    res.json({
+      success: true,
+      data: {
+        range,
+        rows,
+        totals: { revenue, orders: orders.length },
+        topSeller,
+        peakHour: peakHour && peakHour.orders > 0 ? { hour: peakHour.hour, label: `${fmtHour(peakHour.hour)} – ${fmtHour((peakHour.hour + 1) % 24)}`, revenue: peakHour.revenue, orders: peakHour.orders } : null
+      }
+    });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
 module.exports = router;
