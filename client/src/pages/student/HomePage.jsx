@@ -87,7 +87,7 @@ export default function HomePage() {
   useEffect(() => {
     setLoading(true)
     restaurantAPI.list()
-      .then(r => { setRestaurants(r.data.data); setLoading(false) })
+      .then(r => { setRestaurants(r.data.data || []); setLoading(false) })
       .catch(() => setLoading(false))
   }, [])
 

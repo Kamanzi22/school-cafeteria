@@ -172,11 +172,11 @@ export default function SearchPage() {
     const q = query.trim()
 
     const fetchMerchants = (filter === 'all' || filter === 'merchants')
-      ? restaurantAPI.search(q).then(r => r.data.data)
+      ? restaurantAPI.search(q).then(r => r.data.data || [])
       : Promise.resolve([])
 
     const fetchProducts = (filter === 'all' || filter === 'products')
-      ? menuAPI.search(q).then(r => r.data.data)
+      ? menuAPI.search(q).then(r => r.data.data || [])
       : Promise.resolve([])
 
     debounceRef.current = setTimeout(() => {
