@@ -25,14 +25,13 @@ router.get('/search', async (req, res) => {
   try {
     const q = (req.query.q || '').trim();
     if (!q) return res.json({ success: true, data: [] });
-    const venueType = req.query.venueType === 'MARKETPLACE' ? 'MARKETPLACE' : 'CAFETERIA';
     const items = await prisma.menuItem.findMany({
-      where: { isAvailable: true, restaurant: { venueType }, OR: [{ name: { contains: q } }, { description: { contains: q } }] },
+      where: { isAvailable: true, OR: [{ name: { contains: q } }, { description: { contains: q } }] },
       select: {
         id: true, name: true, description: true, price: true, emoji: true, image: true,
         prepTime: true, isFeatured: true, isVeg: true, isSpicy: true,
         trackStock: true, stock: true, hasVariants: true,
-        restaurant: { select: { id: true, name: true, venueType: true, rating: true, ratingCount: true, location: true, floor: true, prepTimeMin: true, prepTimeMax: true, isOpen: true, coverColor: true } }
+        restaurant: { select: { id: true, name: true, rating: true, ratingCount: true, location: true, floor: true, prepTimeMin: true, prepTimeMax: true, isOpen: true, coverColor: true } }
       },
       orderBy: [{ isFeatured: 'desc' }, { totalOrdered: 'desc' }],
       take: 30

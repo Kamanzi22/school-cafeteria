@@ -5,7 +5,7 @@ import {
   Store, Package, ShoppingCart, ChevronRight
 } from 'lucide-react'
 import { restaurantAPI, menuAPI } from '../../services/api'
-import { useCartStore, useUIStore, useVenueStore } from '../../store'
+import { useCartStore, useUIStore } from '../../store'
 
 const HISTORY_KEY = 'cc-search-history'
 const MAX_HISTORY = 8
@@ -161,8 +161,6 @@ export default function SearchPage() {
   const [history, setHistory] = useState(getHistory)
   const debounceRef = useRef(null)
   const inputRef = useRef(null)
-  const { venueType } = useVenueStore()
-  const isMarketplace = venueType === 'MARKETPLACE'
 
   useEffect(() => { inputRef.current?.focus() }, [])
 
@@ -174,11 +172,11 @@ export default function SearchPage() {
     const q = query.trim()
 
     const fetchMerchants = (filter === 'all' || filter === 'merchants')
-      ? restaurantAPI.search(q, venueType).then(r => r.data.data)
+      ? restaurantAPI.search(q).then(r => r.data.data)
       : Promise.resolve([])
 
     const fetchProducts = (filter === 'all' || filter === 'products')
-      ? menuAPI.search(q, venueType).then(r => r.data.data)
+      ? menuAPI.search(q).then(r => r.data.data)
       : Promise.resolve([])
 
     debounceRef.current = setTimeout(() => {
@@ -194,7 +192,7 @@ export default function SearchPage() {
     }, 350)
 
     return () => clearTimeout(debounceRef.current)
-  }, [query, filter, venueType])
+  }, [query, filter])
 
   const handleHistoryClick = (term) => {
     setQuery(term)
@@ -220,7 +218,7 @@ export default function SearchPage() {
 
         {/* Filter tabs */}
         <div className="flex gap-2 mb-3 overflow-x-auto scrollbar-hide pb-0.5">
-          {[['all', 'All'], ['merchants', isMarketplace ? 'Stores' : 'Restaurants'], ['products', isMarketplace ? 'Products' : 'Meals']].map(([val, label]) => (
+          {[['all', 'All'], ['merchants', 'Restaurants'], ['products', 'Meals']].map(([val, label]) => (
             <FilterTab key={val} label={label} active={filter === val} onClick={() => setFilter(val)} />
           ))}
         </div>
@@ -232,7 +230,7 @@ export default function SearchPage() {
             ref={inputRef}
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder={isMarketplace ? 'Search for a product' : 'Search for a meal'}
+            placeholder="Search for a meal"
             className="input pl-10 pr-9"
           />
           {query && (
@@ -308,7 +306,7 @@ export default function SearchPage() {
             {shownRestaurants.length > 0 && (
               <div>
                 <p className="font-bold text-alu-cream text-sm mb-1">
-                  {isMarketplace ? 'Stores' : 'Restaurants'} ({shownRestaurants.length})
+                  Restaurants ({shownRestaurants.length})
                 </p>
                 <div className="divide-y divide-alu-border">
                   {shownRestaurants.map(r => <MerchantCard key={r.id} r={r} />)}
@@ -319,7 +317,7 @@ export default function SearchPage() {
             {shownProducts.length > 0 && (
               <div className={shownRestaurants.length > 0 ? 'mt-4' : ''}>
                 <p className="font-bold text-alu-cream text-sm mb-1">
-                  {isMarketplace ? 'Products' : 'Meals'} ({shownProducts.length})
+                  Meals ({shownProducts.length})
                 </p>
                 <div className="divide-y divide-alu-border">
                   {shownProducts.map(item => <ProductCard key={item.id} item={item} />)}

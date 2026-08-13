@@ -8,7 +8,7 @@ import toast from 'react-hot-toast'
 const EMPTY = { name: '', description: '', price: '', prepTime: '', image: '', soldOut: false, trackStock: false, stock: '', sku: '', hasVariants: false, variants: [] }
 const EMPTY_VARIANT = { name: '', priceDelta: '0', stock: '0', sku: '' }
 
-function ItemModal({ item, isMarketplace, onSave, onClose }) {
+function ItemModal({ item, onSave, onClose }) {
   const [form, setForm] = useState(
     item ? {
       name: item.name, description: item.description || '', price: item.price, prepTime: item.prepTime || '', image: item.image || '', soldOut: !item.isAvailable,
@@ -49,13 +49,11 @@ function ItemModal({ item, isMarketplace, onSave, onClose }) {
         prepTime: form.prepTime,
         image: form.image || null,
         isAvailable: !form.soldOut,
-        ...(isMarketplace && {
-          trackStock: form.trackStock,
-          stock: form.trackStock && !form.hasVariants ? form.stock : '',
-          sku: !form.hasVariants ? form.sku : '',
-          hasVariants: form.hasVariants,
-          variants: form.hasVariants ? form.variants : [],
-        }),
+        trackStock: form.trackStock,
+        stock: form.trackStock && !form.hasVariants ? form.stock : '',
+        sku: !form.hasVariants ? form.sku : '',
+        hasVariants: form.hasVariants,
+        variants: form.hasVariants ? form.variants : [],
       }
       const res = item?.id ? await menuAPI.update(item.id, payload) : await menuAPI.create(payload)
       onSave(res.data.data, !!item?.id)
@@ -131,50 +129,48 @@ function ItemModal({ item, isMarketplace, onSave, onClose }) {
             </div>
           </label>
 
-          {/* Stock & variants — marketplace only */}
-          {isMarketplace && (
-            <div className="space-y-3 border border-ink-100 rounded-xl p-3.5">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" checked={form.hasVariants} onChange={e => setForm(p => ({ ...p, hasVariants: e.target.checked }))} className="w-4 h-4 rounded accent-brand-500" />
-                <div>
-                  <p className="text-sm font-semibold text-ink-800">Has options (size, color…)</p>
-                  <p className="text-xs text-ink-400">Each option tracks its own stock</p>
-                </div>
-              </label>
+          {/* Stock & variants */}
+          <div className="space-y-3 border border-ink-100 rounded-xl p-3.5">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" checked={form.hasVariants} onChange={e => setForm(p => ({ ...p, hasVariants: e.target.checked }))} className="w-4 h-4 rounded accent-brand-500" />
+              <div>
+                <p className="text-sm font-semibold text-ink-800">Has options (size, color…)</p>
+                <p className="text-xs text-ink-400">Each option tracks its own stock</p>
+              </div>
+            </label>
 
-              {form.hasVariants ? (
-                <div className="space-y-2 pl-1">
-                  {form.variants.map((v, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <input value={v.name} onChange={e => setVariant(i, 'name', e.target.value)} placeholder="e.g. Medium / Blue" className="input text-sm flex-1" />
-                      <input type="number" value={v.priceDelta} onChange={e => setVariant(i, 'priceDelta', e.target.value)} placeholder="+RWF" className="input text-sm w-16" title="Price adjustment" />
-                      <input type="number" value={v.stock} onChange={e => setVariant(i, 'stock', e.target.value)} placeholder="Stock" min="0" className="input text-sm w-16" />
-                      <input value={v.sku} onChange={e => setVariant(i, 'sku', e.target.value)} placeholder="SKU" className="input text-sm w-20" title="Stock keeping unit" />
-                      <button type="button" onClick={() => removeVariant(i)} className="btn btn-ghost btn-icon text-ink-400 hover:text-red-500 shrink-0"><X size={14} /></button>
-                    </div>
-                  ))}
-                  <button type="button" onClick={addVariant} className="btn btn-secondary btn-sm text-xs"><Plus size={12} /> Add option</button>
-                </div>
-              ) : (
-                <>
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input type="checkbox" checked={form.trackStock} onChange={e => setForm(p => ({ ...p, trackStock: e.target.checked }))} className="w-4 h-4 rounded accent-brand-500" />
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-ink-800">Track stock</p>
-                      <p className="text-xs text-ink-400">Auto-marks out of stock at zero</p>
-                    </div>
-                    {form.trackStock && (
-                      <input type="number" value={form.stock} onChange={f('stock')} placeholder="Qty" min="0" className="input text-sm w-20" />
-                    )}
-                  </label>
-                  <div className="pl-7">
-                    <label className="label">SKU (optional)</label>
-                    <input value={form.sku} onChange={f('sku')} placeholder="e.g. BRC-001" className="input text-sm" />
+            {form.hasVariants ? (
+              <div className="space-y-2 pl-1">
+                {form.variants.map((v, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input value={v.name} onChange={e => setVariant(i, 'name', e.target.value)} placeholder="e.g. Medium / Blue" className="input text-sm flex-1" />
+                    <input type="number" value={v.priceDelta} onChange={e => setVariant(i, 'priceDelta', e.target.value)} placeholder="+RWF" className="input text-sm w-16" title="Price adjustment" />
+                    <input type="number" value={v.stock} onChange={e => setVariant(i, 'stock', e.target.value)} placeholder="Stock" min="0" className="input text-sm w-16" />
+                    <input value={v.sku} onChange={e => setVariant(i, 'sku', e.target.value)} placeholder="SKU" className="input text-sm w-20" title="Stock keeping unit" />
+                    <button type="button" onClick={() => removeVariant(i)} className="btn btn-ghost btn-icon text-ink-400 hover:text-red-500 shrink-0"><X size={14} /></button>
                   </div>
-                </>
-              )}
-            </div>
-          )}
+                ))}
+                <button type="button" onClick={addVariant} className="btn btn-secondary btn-sm text-xs"><Plus size={12} /> Add option</button>
+              </div>
+            ) : (
+              <>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" checked={form.trackStock} onChange={e => setForm(p => ({ ...p, trackStock: e.target.checked }))} className="w-4 h-4 rounded accent-brand-500" />
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-ink-800">Track stock</p>
+                    <p className="text-xs text-ink-400">Auto-marks out of stock at zero</p>
+                  </div>
+                  {form.trackStock && (
+                    <input type="number" value={form.stock} onChange={f('stock')} placeholder="Qty" min="0" className="input text-sm w-20" />
+                  )}
+                </label>
+                <div className="pl-7">
+                  <label className="label">SKU (optional)</label>
+                  <input value={form.sku} onChange={f('sku')} placeholder="e.g. BRC-001" className="input text-sm" />
+                </div>
+              </>
+            )}
+          </div>
 
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={onClose} className="btn btn-secondary flex-1">Cancel</button>
@@ -195,8 +191,7 @@ export default function MenuPage() {
   const [editItem, setEditItem] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [search, setSearch] = useState('')
-  const { restaurant, role } = useAdminStore()
-  const isMarketplace = restaurant?.venueType === 'MARKETPLACE'
+  const { role } = useAdminStore()
   const isViewer = role === 'viewer'
 
   useEffect(() => {
@@ -236,7 +231,7 @@ export default function MenuPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h1 className="text-2xl font-black text-ink-900">{isMarketplace ? 'Products' : 'Menu'}</h1>
+            <h1 className="text-2xl font-black text-ink-900">Menu</h1>
             <p className="text-ink-400 text-sm">
               {items.length} items · {available} available
               {soldOut > 0 && <span className="text-red-400"> · {soldOut} sold out</span>}
@@ -328,7 +323,6 @@ export default function MenuPage() {
       {showModal && (
         <ItemModal
           item={editItem}
-          isMarketplace={isMarketplace}
           onSave={saveItem}
           onClose={() => { setShowModal(false); setEditItem(null) }}
         />

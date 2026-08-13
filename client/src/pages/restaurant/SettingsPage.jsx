@@ -10,7 +10,7 @@ export default function SettingsPage() {
   const { restaurant, role, updateRestaurant, logout } = useAdminStore()
   const isViewer = role === 'viewer'
   const navigate = useNavigate()
-  const [form, setForm] = useState({ name:'', description:'', phone:'', prepTimeMin:10, prepTimeMax:20, openTime:'07:00', closeTime:'18:00', minOrder:0, notice:'', coverColor:'#f97316', ownerPhone:'', storeMode:'ON_CAMPUS', offersPickup:true, offersDelivery:false, deliveryNote:'', offersCampusDelivery:true, offersOffCampusDelivery:false, campusDeliveryFee:0, offCampusDeliveryFee:0 })
+  const [form, setForm] = useState({ name:'', description:'', phone:'', prepTimeMin:10, prepTimeMax:20, openTime:'07:00', closeTime:'18:00', minOrder:0, notice:'', coverColor:'#f97316', ownerPhone:'', offersPickup:true, offersDelivery:false, deliveryNote:'', offersCampusDelivery:true, offersOffCampusDelivery:false, campusDeliveryFee:0, offCampusDeliveryFee:0 })
   const [logoPreview, setLogoPreview] = useState('')
   const [logoUploading, setLogoUploading] = useState(false)
   const logoInputRef = useRef(null)
@@ -22,11 +22,10 @@ export default function SettingsPage() {
   const [deleteForm, setDeleteForm] = useState({ password:'', reason:'' })
   const [deleting, setDeleting] = useState(false)
   const f = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
-  const isVirtual = restaurant?.venueType === 'MARKETPLACE' && form.storeMode === 'VIRTUAL'
 
   useEffect(() => {
     if (restaurant) {
-      setForm({ name:restaurant.name||'', description:restaurant.description||'', phone:restaurant.phone||'', prepTimeMin:restaurant.prepTimeMin||10, prepTimeMax:restaurant.prepTimeMax||20, openTime:restaurant.openTime||'07:00', closeTime:restaurant.closeTime||'18:00', minOrder:restaurant.minOrder||0, notice:restaurant.notice||'', coverColor:restaurant.coverColor||'#f97316', ownerPhone:restaurant.ownerPhone||'', storeMode:restaurant.storeMode||'ON_CAMPUS', offersPickup:restaurant.offersPickup!==false, offersDelivery:!!restaurant.offersDelivery, deliveryNote:restaurant.deliveryNote||'', offersCampusDelivery:restaurant.offersCampusDelivery!==false, offersOffCampusDelivery:!!restaurant.offersOffCampusDelivery, campusDeliveryFee:restaurant.campusDeliveryFee||0, offCampusDeliveryFee:restaurant.offCampusDeliveryFee||0 })
+      setForm({ name:restaurant.name||'', description:restaurant.description||'', phone:restaurant.phone||'', prepTimeMin:restaurant.prepTimeMin||10, prepTimeMax:restaurant.prepTimeMax||20, openTime:restaurant.openTime||'07:00', closeTime:restaurant.closeTime||'18:00', minOrder:restaurant.minOrder||0, notice:restaurant.notice||'', coverColor:restaurant.coverColor||'#f97316', ownerPhone:restaurant.ownerPhone||'', offersPickup:restaurant.offersPickup!==false, offersDelivery:!!restaurant.offersDelivery, deliveryNote:restaurant.deliveryNote||'', offersCampusDelivery:restaurant.offersCampusDelivery!==false, offersOffCampusDelivery:!!restaurant.offersOffCampusDelivery, campusDeliveryFee:restaurant.campusDeliveryFee||0, offCampusDeliveryFee:restaurant.offCampusDeliveryFee||0 })
       setLogoPreview(restaurant.logo || '')
     }
   }, [restaurant])
@@ -115,7 +114,7 @@ export default function SettingsPage() {
 
         {/* Profile */}
         <div className="card p-5">
-          <h2 className="font-bold text-ink-900 mb-4">{restaurant?.venueType === 'MARKETPLACE' ? 'Store Profile' : 'Restaurant Profile'}</h2>
+          <h2 className="font-bold text-ink-900 mb-4">Restaurant Profile</h2>
           <form onSubmit={save} className="space-y-4">
           <fieldset disabled={isViewer} className="space-y-4 border-0 p-0 m-0 disabled:opacity-60">
             {/* Logo */}
@@ -159,43 +158,17 @@ export default function SettingsPage() {
               <div><label className="label">Closes At</label><input type="time" value={form.closeTime} onChange={f('closeTime')} className="input" /></div>
               <div><label className="label">Min Order (RWF)</label><input type="number" value={form.minOrder} onChange={f('minOrder')} className="input" min="0" /></div>
 
-              {/* Store mode — marketplace only */}
-              {restaurant?.venueType === 'MARKETPLACE' && (
-                <div className="col-span-2 border border-ink-100 rounded-xl p-3.5 space-y-3">
-                  <p className="label mb-0">Store Type</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    {[
-                      { mode: 'ON_CAMPUS', emoji: '🏬', title: 'On Campus' },
-                      { mode: 'VIRTUAL', emoji: '🌐', title: 'Virtual' },
-                    ].map(v => (
-                      <button key={v.mode} type="button"
-                        onClick={() => setForm(p => ({ ...p, storeMode: v.mode, ...(v.mode === 'VIRTUAL' ? { offersPickup: false, offersDelivery: true } : { offersPickup: true }) }))}
-                        className={`flex items-center gap-2 p-2.5 rounded-xl border-2 transition text-sm font-semibold ${form.storeMode === v.mode ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-ink-200 text-ink-500 hover:border-ink-300'}`}>
-                        <span className="text-lg">{v.emoji}</span>{v.title}
-                      </button>
-                    ))}
-                  </div>
-                  {isVirtual && (
-                    <p className="text-xs text-ink-400">🌐 Virtual stores have no physical spot, so they're delivery-only — pickup isn't offered.</p>
-                  )}
-                </div>
-              )}
-
               {/* Fulfillment */}
               <div className="col-span-2 border border-ink-100 rounded-xl p-3.5 space-y-3">
                 <p className="label mb-0">Fulfillment</p>
-                {!isVirtual && (
-                  <>
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input type="checkbox" checked={form.offersPickup} onChange={e => setForm(p => ({ ...p, offersPickup: e.target.checked }))} className="w-4 h-4 rounded accent-brand-500" />
-                      <span className="text-sm font-medium text-ink-700">Offer pickup</span>
-                    </label>
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input type="checkbox" checked={form.offersDelivery} onChange={e => setForm(p => ({ ...p, offersDelivery: e.target.checked }))} className="w-4 h-4 rounded accent-brand-500" />
-                      <span className="text-sm font-medium text-ink-700">Offer delivery</span>
-                    </label>
-                  </>
-                )}
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" checked={form.offersPickup} onChange={e => setForm(p => ({ ...p, offersPickup: e.target.checked }))} className="w-4 h-4 rounded accent-brand-500" />
+                  <span className="text-sm font-medium text-ink-700">Offer pickup</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" checked={form.offersDelivery} onChange={e => setForm(p => ({ ...p, offersDelivery: e.target.checked }))} className="w-4 h-4 rounded accent-brand-500" />
+                  <span className="text-sm font-medium text-ink-700">Offer delivery</span>
+                </label>
                 {form.offersDelivery && (
                   <div className="pl-7 space-y-3">
                     <label className="flex items-center gap-3 cursor-pointer">

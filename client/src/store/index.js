@@ -65,13 +65,3 @@ export const useAdminStore = create(persist((set) => ({
 export const useUIStore = create((set) => ({
   cartOpen: false, openCart: () => set({ cartOpen: true }), closeCart: () => set({ cartOpen: false }),
 }))
-
-// Which side of the app the customer is browsing: CAFETERIA | MARKETPLACE
-// storeMode only applies within MARKETPLACE: ON_CAMPUS | VIRTUAL
-export const useVenueStore = create(persist((set) => ({
-  venueType: null,
-  storeMode: null,
-  setVenueType: (venueType) => set({ venueType }),
-  setStoreMode: (storeMode) => set({ storeMode }),
-  reset: () => set({ venueType: null, storeMode: null }),
-}), { name: 'cc-venue-v2' }))

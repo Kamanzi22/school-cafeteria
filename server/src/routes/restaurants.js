@@ -6,14 +6,10 @@ const prisma = new PrismaClient();
 
 router.get('/', optionalCustomer, async (req, res) => {
   try {
-    const venueType = req.query.venueType === 'MARKETPLACE' ? 'MARKETPLACE' : 'CAFETERIA';
-    const where = { isDeleted: false, isApproved: true, venueType };
-    if (venueType === 'MARKETPLACE' && (req.query.storeMode === 'ON_CAMPUS' || req.query.storeMode === 'VIRTUAL')) {
-      where.storeMode = req.query.storeMode;
-    }
+    const where = { isDeleted: false, isApproved: true };
     const restaurants = await prisma.restaurant.findMany({
       where,
-      select: { id:true, name:true, slug:true, emoji:true, coverColor:true, category:true, description:true, tags:true, location:true, floor:true, phone:true, venueType:true, storeMode:true, offersPickup:true, offersDelivery:true, deliveryFee:true, offersCampusDelivery:true, offersOffCampusDelivery:true, campusDeliveryFee:true, offCampusDeliveryFee:true, isOpen:true, isAccepting:true, rating:true, ratingCount:true, prepTimeMin:true, prepTimeMax:true, openTime:true, closeTime:true, totalOrders:true, minOrder:true, notice:true, createdAt:true, _count:{ select:{ items:{ where:{ isAvailable:true } } } } },
+      select: { id:true, name:true, slug:true, emoji:true, coverColor:true, category:true, description:true, tags:true, location:true, floor:true, phone:true, offersPickup:true, offersDelivery:true, deliveryFee:true, offersCampusDelivery:true, offersOffCampusDelivery:true, campusDeliveryFee:true, offCampusDeliveryFee:true, isOpen:true, isAccepting:true, rating:true, ratingCount:true, prepTimeMin:true, prepTimeMax:true, openTime:true, closeTime:true, totalOrders:true, minOrder:true, notice:true, createdAt:true, _count:{ select:{ items:{ where:{ isAvailable:true } } } } },
       orderBy: [{ isOpen:'desc' }, { rating:'desc' }, { name:'asc' }]
     });
     res.json({ success: true, data: restaurants });
@@ -24,12 +20,9 @@ router.get('/search', async (req, res) => {
   try {
     const q = (req.query.q || '').trim();
     if (!q) return res.json({ success: true, data: [] });
-    const venueType = req.query.venueType === 'MARKETPLACE' ? 'MARKETPLACE' : 'CAFETERIA';
-    const storeModeFilter = venueType === 'MARKETPLACE' && (req.query.storeMode === 'ON_CAMPUS' || req.query.storeMode === 'VIRTUAL') ? { storeMode: req.query.storeMode } : {};
-
     const restaurants = await prisma.restaurant.findMany({
       where: {
-        isDeleted: false, isApproved: true, venueType, ...storeModeFilter,
+        isDeleted: false, isApproved: true,
         OR: [
           { name: { contains: q } },
           { description: { contains: q } },
@@ -103,20 +96,14 @@ router.patch('/admin/toggle-accepting', authStaff, blockViewer, async (req, res)
 
 router.put('/admin/settings', authStaff, blockViewer, async (req, res) => {
   try {
-    const { name, description, phone, prepTimeMin, prepTimeMax, openTime, closeTime, minOrder, notice, coverColor, ownerPhone, logo, storeMode, offersPickup, offersDelivery, deliveryFee, deliveryNote, offersCampusDelivery, offersOffCampusDelivery, campusDeliveryFee, offCampusDeliveryFee } = req.body;
+    const { name, description, phone, prepTimeMin, prepTimeMax, openTime, closeTime, minOrder, notice, coverColor, ownerPhone, logo, offersPickup, offersDelivery, deliveryFee, deliveryNote, offersCampusDelivery, offersOffCampusDelivery, campusDeliveryFee, offCampusDeliveryFee } = req.body;
     const current = await prisma.restaurant.findUnique({ where: { id: req.restaurantId } });
     const bool = (v) => v === true || v === 'true';
-    const resultingStoreMode = current.venueType === 'MARKETPLACE' && storeMode !== undefined
-      ? (storeMode === 'VIRTUAL' ? 'VIRTUAL' : 'ON_CAMPUS')
-      : current.storeMode;
-    const isVirtual = current.venueType === 'MARKETPLACE' && resultingStoreMode === 'VIRTUAL';
     const updated = await prisma.restaurant.update({ where: { id: req.restaurantId }, data: {
       name, description, phone, prepTimeMin:parseInt(prepTimeMin)||10, prepTimeMax:parseInt(prepTimeMax)||20, openTime, closeTime, minOrder:parseFloat(minOrder)||0, notice, coverColor, ownerPhone,
       ...(logo !== undefined && { logo }),
-      ...(current.venueType === 'MARKETPLACE' && storeMode !== undefined && { storeMode: resultingStoreMode }),
-      // A virtual store has no physical spot, so pickup can never be enabled for it — delivery only.
-      ...(isVirtual ? { offersPickup: false, offersDelivery: true } : offersPickup !== undefined && { offersPickup: bool(offersPickup) }),
-      ...(!isVirtual && offersDelivery !== undefined && { offersDelivery: bool(offersDelivery) }),
+      ...(offersPickup !== undefined && { offersPickup: bool(offersPickup) }),
+      ...(offersDelivery !== undefined && { offersDelivery: bool(offersDelivery) }),
       ...(deliveryFee !== undefined && { deliveryFee: parseFloat(deliveryFee) || 0 }),
       ...(deliveryNote !== undefined && { deliveryNote }),
       ...(offersCampusDelivery !== undefined && { offersCampusDelivery: bool(offersCampusDelivery) }),

@@ -19,8 +19,7 @@ export default function RestaurantAuthPage() {
   const logoInputRef = useRef(null)
 
   const [loginForm, setLoginForm] = useState({ email: '', password: '' })
-  const [regForm, setRegForm] = useState({ ownerName: '', ownerEmail: '', ownerPhone: '', password: '', restaurantName: '', description: '', phone: '', venueType: 'CAFETERIA', storeMode: 'ON_CAMPUS' })
-  const isMarketplace = regForm.venueType === 'MARKETPLACE'
+  const [regForm, setRegForm] = useState({ ownerName: '', ownerEmail: '', ownerPhone: '', password: '', restaurantName: '', description: '', phone: '' })
   const [logoFile, setLogoFile] = useState(null)
   const [logoPreview, setLogoPreview] = useState('')
   const rf = k => e => setRegForm(p => ({ ...p, [k]: e.target.value }))
@@ -67,7 +66,7 @@ export default function RestaurantAuthPage() {
         <div className="text-center mb-6">
           <div className="text-5xl mb-3">🏪</div>
           <h1 className="text-2xl font-black text-white">Seller Portal</h1>
-          <p className="text-ink-500 text-sm mt-1">Manage your cafeteria stall or marketplace store</p>
+          <p className="text-ink-500 text-sm mt-1">Manage your cafeteria stall</p>
         </div>
 
         {/* Tabs */}
@@ -122,47 +121,10 @@ export default function RestaurantAuthPage() {
           {tab === 'register' && (
             <form onSubmit={handleRegister} className="space-y-4">
               <div className="bg-brand-500/10 border border-brand-500/20 rounded-xl p-3 text-xs text-brand-300">
-                ✨ Register your store and it goes live instantly on the student app.
+                ✨ Register your restaurant and it goes live instantly on the student app.
               </div>
 
-              <p className="text-xs font-bold text-ink-400 uppercase tracking-wider">What are you setting up?</p>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { type: 'CAFETERIA', emoji: '🏫', title: 'Cafeteria Stall', sub: 'A food stall in the school cafeteria' },
-                  { type: 'MARKETPLACE', emoji: '🛍️', title: 'Marketplace Store', sub: 'Your own student-run online store' },
-                ].map(v => (
-                  <button key={v.type} type="button" onClick={() => setRegForm(p => ({ ...p, venueType: v.type }))}
-                    className={`text-left p-3.5 rounded-xl border-2 transition ${regForm.venueType === v.type ? 'border-brand-500 bg-brand-500/10' : 'border-ink-700 hover:border-ink-600'}`}>
-                    <span className="text-2xl">{v.emoji}</span>
-                    <p className="font-semibold text-sm text-white mt-1.5">{v.title}</p>
-                    <p className="text-[11px] text-ink-500 mt-0.5">{v.sub}</p>
-                  </button>
-                ))}
-              </div>
-
-              {isMarketplace && (
-                <>
-                  <p className="text-xs font-bold text-ink-400 uppercase tracking-wider pt-1">Is your store on campus or online?</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    {[
-                      { mode: 'ON_CAMPUS', emoji: '🏬', title: 'On Campus', sub: 'You have a physical spot on campus' },
-                      { mode: 'VIRTUAL', emoji: '🌐', title: 'Online (Digital)', sub: 'Fully digital — no physical spot' },
-                    ].map(v => (
-                      <button key={v.mode} type="button" onClick={() => setRegForm(p => ({ ...p, storeMode: v.mode }))}
-                        className={`text-left p-3.5 rounded-xl border-2 transition ${regForm.storeMode === v.mode ? 'border-brand-500 bg-brand-500/10' : 'border-ink-700 hover:border-ink-600'}`}>
-                        <span className="text-2xl">{v.emoji}</span>
-                        <p className="font-semibold text-sm text-white mt-1.5">{v.title}</p>
-                        <p className="text-[11px] text-ink-500 mt-0.5">{v.sub}</p>
-                      </button>
-                    ))}
-                  </div>
-                  {regForm.storeMode === 'VIRTUAL' && (
-                    <p className="text-[11px] text-ink-500 bg-ink-800/60 rounded-lg px-3 py-2">🌐 Your store will be delivery-only (no pickup location) and you'll get full stock & inventory tools — track quantities, SKUs, and options like size or color.</p>
-                  )}
-                </>
-              )}
-
-              <p className="text-xs font-bold text-ink-400 uppercase tracking-wider pt-1">Owner Information</p>
+              <p className="text-xs font-bold text-ink-400 uppercase tracking-wider">Owner Information</p>
               {[
                 { label: 'Your Full Name *', key: 'ownerName', placeholder: 'Amina Uwase', Icon: User },
                 { label: 'Your Email * (used to log in)', key: 'ownerEmail', placeholder: 'amina@restaurant.com', Icon: Mail, type: 'email' },
@@ -185,11 +147,11 @@ export default function RestaurantAuthPage() {
                 </div>
               ))}
 
-              <p className="text-xs font-bold text-ink-400 uppercase tracking-wider pt-2">{isMarketplace ? 'Store Details' : 'Restaurant Details'}</p>
+              <p className="text-xs font-bold text-ink-400 uppercase tracking-wider pt-2">Restaurant Details</p>
 
               {/* Logo upload */}
               <div>
-                <label className="label text-ink-500">{isMarketplace ? 'Store Logo' : 'Restaurant Logo'}</label>
+                <label className="label text-ink-500">Restaurant Logo</label>
                 <div className="flex items-center gap-4">
                   <div
                     onClick={() => logoInputRef.current?.click()}
@@ -211,7 +173,7 @@ export default function RestaurantAuthPage() {
               </div>
 
               {[
-                { label: isMarketplace ? 'Store Name *' : 'Restaurant Name *', key: 'restaurantName', placeholder: isMarketplace ? 'e.g. Amina\'s Crafts' : 'e.g. Mama Africa Kitchen', Icon: Store },
+                { label: 'Restaurant Name *', key: 'restaurantName', placeholder: 'e.g. Mama Africa Kitchen', Icon: Store },
                 { label: 'Contact Phone', key: 'phone', placeholder: '+250 78…', Icon: Phone },
               ].map(({ label, key, placeholder, Icon }) => (
                 <div key={key}>
@@ -229,12 +191,12 @@ export default function RestaurantAuthPage() {
                 <label className="label text-ink-500">Short Description</label>
                 <textarea value={regForm.description} onChange={rf('description')} rows={3}
                   className="w-full bg-ink-800 border border-ink-700 rounded-xl px-3.5 py-2.5 text-white placeholder-ink-600 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition resize-none"
-                  placeholder={isMarketplace ? 'Tell shoppers what makes your store special…' : 'Tell customers what makes your restaurant special…'} />
+                  placeholder="Tell customers what makes your restaurant special…" />
               </div>
 
               <button type="submit" disabled={loading} className="btn btn-primary w-full btn-lg mt-2">
                 {loading ? <Loader size={16} className="animate-spin" /> : <Store size={16} />}
-                {loading ? 'Creating your store…' : isMarketplace ? 'Register My Store' : 'Register My Restaurant'}
+                {loading ? 'Creating your restaurant…' : 'Register My Restaurant'}
               </button>
             </form>
           )}

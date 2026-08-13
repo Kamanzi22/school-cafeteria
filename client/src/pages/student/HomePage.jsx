@@ -1,35 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Search, ShoppingBag, User, Star, Clock, MapPin, TrendingUp, ChevronDown } from 'lucide-react'
+import { Search, ShoppingBag, User, Star, Clock, MapPin, TrendingUp } from 'lucide-react'
 import { restaurantAPI } from '../../services/api'
-import { useCartStore, useCustomerStore, useUIStore, useVenueStore } from '../../store'
+import { useCartStore, useCustomerStore, useUIStore } from '../../store'
 import { useSocket } from '../../hooks/useSocket'
 import CartDrawer from '../../components/student/CartDrawer'
 import toast from 'react-hot-toast'
-
-const VENUE_COPY = {
-  CAFETERIA: {
-    label: 'School Cafeteria', emoji: '🍽️',
-    heading: <>Skip the line,<br /><span className="text-gradient">order ahead.</span> 🍽️</>,
-    sub: 'Fresh campus food, real-time tracking, ready for pickup in minutes.',
-    empty: 'No restaurants available', emptyEmoji: '🍽️', searchPlaceholder: 'Search restaurants or meals…',
-  },
-  MARKETPLACE: {
-    ON_CAMPUS: {
-      label: 'Marketplace · On Campus', emoji: '🏬',
-      heading: <>Shop stores<br /><span className="text-gradient">right on campus.</span> 🏬</>,
-      sub: 'Student-run stores with a physical spot on campus — order and pick up in person.',
-      empty: 'No on-campus stores yet', emptyEmoji: '🏬', searchPlaceholder: 'Search on-campus stores or products…',
-    },
-    VIRTUAL: {
-      label: 'Marketplace · Virtual', emoji: '🌐',
-      heading: <>Shop stores<br /><span className="text-gradient">from anywhere.</span> 🌐</>,
-      sub: 'Fully digital student stores — shop and get it delivered, on campus or off.',
-      empty: 'No virtual stores yet', emptyEmoji: '🌐', searchPlaceholder: 'Search virtual stores or products…',
-    },
-  },
-}
-
 
 function RestaurantCard({ r, index, matchedItems }) {
   return (
@@ -100,10 +76,8 @@ export default function HomePage() {
   const { customer: student } = useCustomerStore()
   const { count } = useCartStore()
   const { cartOpen, openCart, closeCart } = useUIStore()
-  const { venueType, storeMode, setVenueType, setStoreMode } = useVenueStore()
   const cartCount = count()
   const navigate = useNavigate()
-  const copy = venueType === 'MARKETPLACE' ? (VENUE_COPY.MARKETPLACE[storeMode] || VENUE_COPY.MARKETPLACE.ON_CAMPUS) : VENUE_COPY.CAFETERIA
 
   useSocket({
     'restaurant:status': ({ restaurantId, isOpen }) =>
@@ -112,13 +86,10 @@ export default function HomePage() {
 
   useEffect(() => {
     setLoading(true)
-    restaurantAPI.list(venueType, storeMode)
+    restaurantAPI.list()
       .then(r => { setRestaurants(r.data.data); setLoading(false) })
       .catch(() => setLoading(false))
-  }, [venueType, storeMode])
-
-  const switchVenue = () => { setVenueType(null); setStoreMode(null); navigate('/choose') }
-  const switchStoreMode = (mode) => setStoreMode(mode)
+  }, [])
 
   const displayed = restaurants
 
@@ -128,28 +99,12 @@ export default function HomePage() {
       <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-xl border-b border-ink-100">
         <div className="page-container py-3 flex items-center gap-3">
           <Link to="/" className="flex items-center gap-2 mr-1">
-            <span className="text-2xl">{copy.emoji}</span>
+            <span className="text-2xl">🍽️</span>
             <div>
               <p className="font-bold text-ink-900 leading-none text-base">CaféCampus</p>
-              <p className="text-[10px] text-ink-400 leading-none">{copy.label}</p>
+              <p className="text-[10px] text-ink-400 leading-none">School Cafeteria</p>
             </div>
           </Link>
-
-          <button onClick={switchVenue}
-            className="hidden sm:flex items-center gap-1 text-xs font-semibold text-ink-400 hover:text-ink-700 bg-ink-50 hover:bg-ink-100 rounded-lg px-2.5 py-1.5 transition-colors mr-1">
-            Switch <ChevronDown size={12} />
-          </button>
-
-          {venueType === 'MARKETPLACE' && (
-            <div className="hidden md:flex items-center bg-ink-50 rounded-lg p-0.5 mr-1 shrink-0">
-              {[['ON_CAMPUS', '🏬 On Campus'], ['VIRTUAL', '🌐 Virtual']].map(([m, label]) => (
-                <button key={m} onClick={() => switchStoreMode(m)}
-                  className={`px-2.5 py-1.5 rounded-md text-xs font-semibold transition-colors whitespace-nowrap ${storeMode === m ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-400 hover:text-ink-700'}`}>
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
 
           {/* Search — navigates to dedicated search page */}
           <button
@@ -157,7 +112,7 @@ export default function HomePage() {
             className="flex-1 flex items-center gap-2 bg-ink-50 border border-transparent rounded-xl px-3.5 py-2 text-sm text-ink-400 hover:bg-ink-100 transition-colors"
           >
             <Search size={15} className="shrink-0" />
-            {copy.searchPlaceholder}
+            Search restaurants or meals…
           </button>
 
           <div className="flex items-center gap-2">
@@ -185,10 +140,10 @@ export default function HomePage() {
         <div className="absolute inset-0 dot-pattern opacity-20" />
         <div className="page-container py-10 relative z-10">
           <h1 className="text-4xl md:text-5xl font-black leading-tight mb-2">
-            {copy.heading}
+            Skip the line,<br /><span className="text-gradient">order ahead.</span> 🍽️
           </h1>
           <p className="text-ink-400 text-sm max-w-md">
-            {copy.sub}
+            Fresh campus food, real-time tracking, ready for pickup in minutes.
           </p>
           {cartCount > 0 && (
             <button onClick={openCart} className="mt-5 btn btn-primary">
@@ -219,14 +174,14 @@ export default function HomePage() {
           </div>
         ) : displayed.length === 0 ? (
           <div className="py-24 text-center">
-            <p className="text-5xl mb-4">{copy.emptyEmoji}</p>
-            <p className="font-bold text-ink-700 text-lg">{copy.empty}</p>
+            <p className="text-5xl mb-4">🍽️</p>
+            <p className="font-bold text-ink-700 text-lg">No restaurants available</p>
             <p className="text-ink-400 text-sm mt-1">Check back soon</p>
           </div>
         ) : (
           <>
             <p className="text-sm text-ink-400 mb-4">
-              {displayed.length} {venueType === 'MARKETPLACE' ? 'store' : 'restaurant'}{displayed.length !== 1 ? 's' : ''}
+              {displayed.length} restaurant{displayed.length !== 1 ? 's' : ''}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {displayed.map((r, i) => (

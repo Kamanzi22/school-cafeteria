@@ -33,8 +33,8 @@ export const authAPI = {
 }
 
 export const restaurantAPI = {
-  list: (venueType, storeMode) => api.get('/restaurants', { params: { venueType, storeMode } }),
-  search: (q, venueType, storeMode) => api.get('/restaurants/search', { params: { q, venueType, storeMode } }),
+  list: () => api.get('/restaurants'),
+  search: (q) => api.get('/restaurants/search', { params: { q } }),
   get: (id) => api.get(`/restaurants/${id}`),
   toggleOpen: () => api.patch('/restaurants/admin/toggle-open'),
   toggleAccepting: () => api.patch('/restaurants/admin/toggle-accepting'),
@@ -45,7 +45,7 @@ export const restaurantAPI = {
 }
 
 export const menuAPI = {
-  search: (q, venueType) => api.get('/menu/search', { params: { q, venueType } }),
+  search: (q) => api.get('/menu/search', { params: { q } }),
   list: () => api.get('/menu/admin'),
   create: (d) => api.post('/menu', d),
   update: (id, d) => api.put(`/menu/${id}`, d),

@@ -5,9 +5,9 @@ import { restaurantAPI } from '../../services/api'
 import { useState } from 'react'
 import toast from 'react-hot-toast'
 
-const navFor = (venueType) => [
+const NAV = [
   { path: '/admin', icon: LayoutDashboard, label: 'Live Orders' },
-  { path: '/admin/menu', icon: UtensilsCrossed, label: venueType === 'MARKETPLACE' ? 'Products' : 'Menu' },
+  { path: '/admin/menu', icon: UtensilsCrossed, label: 'Menu' },
   { path: '/admin/sales-report', icon: Receipt, label: 'Sales Report' },
   { path: '/admin/promotions', icon: Tag, label: 'Promotions' },
   { path: '/admin/reviews', icon: Star, label: 'Reviews' },
@@ -21,7 +21,6 @@ export default function AdminLayout({ children, newOrderCount = 0 }) {
   const [toggling, setToggling] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const isViewer = role === 'viewer'
-  const NAV = navFor(restaurant?.venueType)
 
   const handleToggle = async () => {
     setToggling(true)

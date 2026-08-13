@@ -21,7 +21,6 @@ export default function SuperAdminPage() {
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(false)
   const [loginLoading, setLoginLoading] = useState(false)
-  const [venueFilter, setVenueFilter] = useState('all')
   const [viewingId, setViewingId] = useState(null)
   const navigate = useNavigate()
   const { loginViewer, logout: exitAdminSession } = useAdminStore()
@@ -135,36 +134,23 @@ export default function SuperAdminPage() {
         {/* Restaurants table */}
         <div className="card overflow-hidden">
           <div className="px-5 py-4 border-b border-ink-100 flex items-center justify-between flex-wrap gap-3">
-            <h2 className="font-bold text-ink-900">All Stores</h2>
-            <div className="flex gap-1 bg-ink-100 rounded-lg p-1">
-              {[['all', 'All'], ['CAFETERIA', '🍽️ Cafeteria'], ['MARKETPLACE', '🛍️ Marketplace']].map(([val, label]) => (
-                <button key={val} onClick={() => setVenueFilter(val)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition ${venueFilter === val ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-700'}`}>
-                  {label}
-                </button>
-              ))}
-            </div>
+            <h2 className="font-bold text-ink-900">All Restaurants</h2>
           </div>
           {loading ? <div className="p-8 text-center"><Loader className="animate-spin text-brand-500 mx-auto" /></div>
           : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead><tr className="border-b border-ink-100 text-xs text-ink-400 uppercase tracking-wider">
-                  {['Store','Venue','Owner','Status','Approved','Orders','Joined','Actions'].map(h => <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>)}
+                  {['Restaurant','Owner','Status','Approved','Orders','Joined','Actions'].map(h => <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>)}
                 </tr></thead>
                 <tbody>
-                  {restaurants.filter(r => venueFilter === 'all' || r.venueType === venueFilter).map(r => (
+                  {restaurants.map(r => (
                     <tr key={r.id} className={`border-b border-ink-50 hover:bg-ink-50 ${r.isDeleted ? 'opacity-40' : ''}`}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <span className="text-xl">{r.emoji}</span>
                           <div><p className="font-semibold text-ink-900">{r.name}</p><p className="text-xs text-ink-400">{r.category}</p></div>
                         </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`badge ${r.venueType === 'MARKETPLACE' ? 'bg-indigo-100 text-indigo-600' : 'bg-orange-100 text-orange-600'}`}>
-                          {r.venueType === 'MARKETPLACE' ? '🛍️ Marketplace' : '🍽️ Cafeteria'}
-                        </span>
                       </td>
                       <td className="px-4 py-3"><p className="text-ink-700">{r.ownerName}</p><p className="text-xs text-ink-400">{r.ownerEmail}</p></td>
                       <td className="px-4 py-3">

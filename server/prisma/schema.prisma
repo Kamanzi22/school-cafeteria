@@ -28,9 +28,7 @@ model Restaurant {
   phone         String?
   location      String?
   floor         String?
-  // Venue & fulfillment
-  venueType      String   @default("CAFETERIA") // CAFETERIA | MARKETPLACE
-  storeMode      String   @default("ON_CAMPUS") // ON_CAMPUS | VIRTUAL — marketplace stores only; cafeteria is always ON_CAMPUS
+  // Fulfillment
   offersPickup   Boolean  @default(true)
   offersDelivery Boolean  @default(false)
   deliveryFee    Float    @default(0)
@@ -121,7 +119,7 @@ model MenuItem {
   prepTime      Int           @default(10)
   sortOrder     Int           @default(0)
   totalOrdered  Int           @default(0)
-  // Stock (marketplace)
+  // Stock & variants
   trackStock    Boolean       @default(false)
   stock         Int?
   hasVariants   Boolean       @default(false)

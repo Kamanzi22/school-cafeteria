@@ -31,7 +31,7 @@ const slugify = (str) => str.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/
 // ══════════════════════════════════════════════════════
 router.post('/restaurant/register', logoUpload.single('logo'), async (req, res) => {
   try {
-    const { ownerName, ownerEmail, ownerPhone, password, restaurantName, description, phone, venueType, storeMode } = req.body;
+    const { ownerName, ownerEmail, ownerPhone, password, restaurantName, description, phone } = req.body;
     if (!ownerName || !ownerEmail || !password || !restaurantName)
       return res.status(400).json({ success: false, error: 'Name, email, password and restaurant name are required' });
     if (password.length < 6)
@@ -47,7 +47,6 @@ router.post('/restaurant/register', logoUpload.single('logo'), async (req, res) 
       slug = `${baseSlug}-${attempt++}`;
     }
 
-    const isVirtual = venueType === 'MARKETPLACE' && storeMode === 'VIRTUAL';
     const passwordHash = await bcrypt.hash(password, 12);
     const restaurant = await prisma.restaurant.create({
       data: {
@@ -59,10 +58,6 @@ router.post('/restaurant/register', logoUpload.single('logo'), async (req, res) 
         slug,
         description: description?.trim() || '',
         phone: phone?.trim(),
-        venueType: venueType === 'MARKETPLACE' ? 'MARKETPLACE' : 'CAFETERIA',
-        storeMode: isVirtual ? 'VIRTUAL' : 'ON_CAMPUS',
-        // A virtual store has no physical spot, so pickup doesn't apply — it's delivery-only from the start.
-        ...(isVirtual && { offersPickup: false, offersDelivery: true, offersCampusDelivery: true, offersOffCampusDelivery: true }),
         logo: req.file ? `/uploads/${req.file.filename}` : null,
       }
     });

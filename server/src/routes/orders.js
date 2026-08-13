@@ -25,7 +25,7 @@ async function restoreStock(tx, orderId) {
 const ORDER_INCLUDE = {
   items: { include: { menuItem: { select:{ name:true, emoji:true, price:true } }, variant: { select:{ name:true } } } },
   customer: { select:{ id:true, name:true, email:true, studentId:true, accountType:true, phone:true } },
-  restaurant: { select:{ id:true, name:true, emoji:true, location:true, phone:true, coverColor:true, venueType:true, storeMode:true, offersPickup:true, offersDelivery:true, offersCampusDelivery:true, offersOffCampusDelivery:true } },
+  restaurant: { select:{ id:true, name:true, emoji:true, location:true, phone:true, coverColor:true, offersPickup:true, offersDelivery:true, offersCampusDelivery:true, offersOffCampusDelivery:true } },
   review: true, statusHistory: { orderBy:{ createdAt:'asc' } }
 };
 

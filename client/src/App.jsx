@@ -1,8 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { useAdminStore, useCustomerStore, useVenueStore } from './store'
-
-// Venue chooser
-import VenueChoicePage from './pages/VenueChoicePage'
+import { useAdminStore } from './store'
 
 // Customer-facing
 import HomePage from './pages/student/HomePage'
@@ -31,18 +28,11 @@ function AdminGuard({ children }) {
   return restaurant ? children : <Navigate to="/restaurant/auth" replace />
 }
 
-function HomeGate() {
-  const { venueType, storeMode } = useVenueStore()
-  const needsChoice = !venueType || (venueType === 'MARKETPLACE' && !storeMode)
-  return needsChoice ? <VenueChoicePage /> : <HomePage />
-}
-
 export default function App() {
   return (
     <Routes>
       {/* ── Customer side ──────────────────────────────── */}
-      <Route path="/" element={<HomeGate />} />
-      <Route path="/choose" element={<VenueChoicePage />} />
+      <Route path="/" element={<HomePage />} />
       <Route path="/search" element={<SearchPage />} />
       <Route path="/auth" element={<CustomerAuthPage />} />
       <Route path="/profile" element={<CustomerProfilePage />} />
