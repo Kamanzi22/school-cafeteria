@@ -26,8 +26,9 @@ services:
       - key: CLIENT_URL
         sync: false
 
-  - type: static
+  - type: web
     name: cafecampus-client
+    runtime: static
     rootDir: client
     buildCommand: npm install && npm run build
     staticPublishPath: dist
