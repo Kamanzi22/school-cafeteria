@@ -38,4 +38,4 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_BACKEND_URL
-        value: https://cafecampus-api.onrender.com
+        value: https://cafecampus-api-feu3.onrender.com
