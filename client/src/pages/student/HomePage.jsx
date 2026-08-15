@@ -142,9 +142,6 @@ export default function HomePage() {
           <h1 className="text-4xl md:text-5xl font-black leading-tight mb-2">
             Skip the line,<br /><span className="text-gradient">order ahead.</span> 🍽️
           </h1>
-          <p className="text-ink-400 text-sm max-w-md">
-            Fresh campus food, real-time tracking, ready for pickup in minutes.
-          </p>
           {cartCount > 0 && (
             <button onClick={openCart} className="mt-5 btn btn-primary">
               <ShoppingBag size={16} />

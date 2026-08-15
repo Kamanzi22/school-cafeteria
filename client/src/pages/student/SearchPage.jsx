@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   Search, X, Clock, Star, MapPin, Timer, CheckCircle,
-  Store, Package, ShoppingCart, ChevronRight
+  ChevronRight, User, ShoppingBag, Store, Package, ShoppingCart
 } from 'lucide-react'
 import { restaurantAPI, menuAPI } from '../../services/api'
-import { useCartStore, useUIStore } from '../../store'
+import { useCartStore, useCustomerStore, useUIStore } from '../../store'
+import CartDrawer from '../../components/student/CartDrawer'
 
 const HISTORY_KEY = 'cc-search-history'
 const MAX_HISTORY = 8
@@ -161,6 +162,10 @@ export default function SearchPage() {
   const [history, setHistory] = useState(getHistory)
   const debounceRef = useRef(null)
   const inputRef = useRef(null)
+  const { customer: student } = useCustomerStore()
+  const { count } = useCartStore()
+  const { openCart } = useUIStore()
+  const cartCount = count()
 
   useEffect(() => { inputRef.current?.focus() }, [])
 
@@ -211,41 +216,66 @@ export default function SearchPage() {
   const totalCount = shownRestaurants.length + shownProducts.length
 
   return (
-    <div className="min-h-screen bg-alu-bg flex flex-col">
-      {/* Header */}
-      <div className="sticky top-0 z-30 bg-alu-surface border-b border-alu-border px-4 pt-4 pb-3">
-        <h1 className="text-xl font-black text-alu-cream mb-3">Search</h1>
+    <div className="min-h-screen bg-alu-bg">
+      {/* Top nav — matches HomePage */}
+      <header className="sticky top-0 z-30 bg-alu-bg/90 backdrop-blur-xl border-b border-alu-border">
+        <div className="page-container py-3 flex items-center gap-3">
+          <Link to="/" className="flex items-center gap-2 mr-1">
+            <span className="text-2xl">🍽️</span>
+            <div>
+              <p className="font-bold text-alu-cream leading-none text-base">CaféCampus</p>
+              <p className="text-[10px] text-alu-muted leading-none">School Cafeteria</p>
+            </div>
+          </Link>
+
+          <div className="flex-1 relative">
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-alu-muted pointer-events-none shrink-0" />
+            <input
+              ref={inputRef}
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Search restaurants or meals…"
+              className="w-full bg-alu-surface border border-alu-border rounded-xl pl-10 pr-9 py-2 text-sm text-alu-cream placeholder-alu-muted focus:outline-none focus:ring-2 focus:ring-alu-red/30 focus:border-alu-red transition-colors"
+            />
+            {query && (
+              <button
+                onClick={() => setQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-alu-muted hover:text-alu-cream transition-colors"
+              >
+                <X size={15} />
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {student ? (
+              <Link to="/profile" className="btn btn-ghost btn-icon">
+                <User size={18} />
+              </Link>
+            ) : (
+              <Link to="/auth" className="btn btn-secondary btn-sm">Sign in</Link>
+            )}
+            <button onClick={openCart} className="relative btn btn-primary btn-icon">
+              <ShoppingBag size={18} />
+              {cartCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-4.5 h-4.5 min-w-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {cartCount}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
 
         {/* Filter tabs */}
-        <div className="flex gap-2 mb-3 overflow-x-auto scrollbar-hide pb-0.5">
+        <div className="page-container flex gap-2 pb-3 overflow-x-auto scrollbar-hide">
           {[['all', 'All'], ['merchants', 'Restaurants'], ['products', 'Meals']].map(([val, label]) => (
             <FilterTab key={val} label={label} active={filter === val} onClick={() => setFilter(val)} />
           ))}
         </div>
-
-        {/* Search input */}
-        <div className="relative">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-alu-muted pointer-events-none" />
-          <input
-            ref={inputRef}
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="Search for a meal"
-            className="input pl-10 pr-9"
-          />
-          {query && (
-            <button
-              onClick={() => setQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-alu-muted hover:text-alu-cream transition-colors"
-            >
-              <X size={15} />
-            </button>
-          )}
-        </div>
-      </div>
+      </header>
 
       {/* Body */}
-      <div className="flex-1 overflow-y-auto px-4 pb-24">
+      <main className="page-container py-6 pb-24">
 
         {/* Empty state: search history */}
         {!isSearching && (
@@ -326,8 +356,9 @@ export default function SearchPage() {
             )}
           </>
         )}
-      </div>
+      </main>
 
+      <CartDrawer />
       <BottomNav />
     </div>
   )
