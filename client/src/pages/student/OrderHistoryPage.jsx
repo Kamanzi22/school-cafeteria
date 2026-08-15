@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Clock, ChevronRight, RotateCcw, Package } from 'lucide-react'
 import { orderAPI } from '../../services/api'
 import { useCustomerStore, useCartStore } from '../../store'
+import { useBackNavigate } from '../../hooks/useBackNavigate'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 
@@ -15,6 +16,7 @@ export default function OrderHistoryPage() {
   const { customer: student } = useCustomerStore()
   const { addItem } = useCartStore()
   const navigate = useNavigate()
+  const goBack = useBackNavigate()
 
   useEffect(() => {
     if (!student) { navigate('/auth'); return }
@@ -39,7 +41,7 @@ export default function OrderHistoryPage() {
     <div className="min-h-screen bg-alu-bg">
       <div className="bg-alu-surface border-b border-alu-border sticky top-0 z-10">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="btn btn-ghost btn-icon"><ArrowLeft size={18} /></button>
+          <button onClick={goBack} className="btn btn-ghost btn-icon"><ArrowLeft size={18} /></button>
           <h1 className="font-bold text-alu-cream">Order History</h1>
         </div>
       </div>

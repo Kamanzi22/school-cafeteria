@@ -4,6 +4,7 @@ import { ArrowLeft, Mail, Lock, User, Loader, UserCheck, Ghost, Eye, EyeOff } fr
 import { authAPI } from '../../services/api'
 import { useCustomerStore } from '../../store'
 import { getGuestToken } from '../../hooks/useGuestToken'
+import { useBackNavigate } from '../../hooks/useBackNavigate'
 import toast from 'react-hot-toast'
 
 export default function CustomerAuthPage() {
@@ -14,6 +15,7 @@ export default function CustomerAuthPage() {
   const [guestName, setGuestName] = useState('')
   const { login, setGuest } = useCustomerStore()
   const navigate = useNavigate()
+  const goBack = useBackNavigate()
   const f = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
 
   const handleLogin = async (e) => {
@@ -54,7 +56,7 @@ export default function CustomerAuthPage() {
   return (
     <div className="min-h-screen bg-ink-50 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
-        <button onClick={() => navigate(-1)} className="btn btn-ghost btn-sm mb-6 -ml-2 text-ink-500">
+        <button onClick={goBack} className="btn btn-ghost btn-sm mb-6 -ml-2 text-ink-500">
           <ArrowLeft size={15} /> Back
         </button>
 

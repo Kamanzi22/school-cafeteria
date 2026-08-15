@@ -3,11 +3,13 @@ import { Link, useNavigate, Navigate } from 'react-router-dom'
 import { ArrowLeft, LogOut, ShoppingBag, Star, User, Mail, Phone, Hash, UserPlus } from 'lucide-react'
 import { useCustomerStore } from '../../store'
 import { authAPI, customerAPI } from '../../services/api'
+import { useBackNavigate } from '../../hooks/useBackNavigate'
 import toast from 'react-hot-toast'
 
 export default function CustomerProfilePage() {
   const { customer, logout, login } = useCustomerStore()
   const navigate = useNavigate()
+  const goBack = useBackNavigate()
   const [showUpgrade, setShowUpgrade] = useState(false)
   const [upgradeForm, setUpgradeForm] = useState({ name:'', email:'', password:'' })
   const [upgrading, setUpgrading] = useState(false)
@@ -39,7 +41,7 @@ export default function CustomerProfilePage() {
     <div className="min-h-screen bg-alu-bg">
       <div className="bg-alu-surface border-b border-alu-border sticky top-0 z-10">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="btn btn-ghost btn-icon"><ArrowLeft size={18}/></button>
+          <button onClick={goBack} className="btn btn-ghost btn-icon"><ArrowLeft size={18}/></button>
           <h1 className="font-bold text-alu-cream">My Profile</h1>
         </div>
       </div>

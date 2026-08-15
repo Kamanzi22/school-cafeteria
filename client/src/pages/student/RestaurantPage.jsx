@@ -4,6 +4,7 @@ import { ArrowLeft, Star, Clock, MapPin, Phone, Plus, Minus, ShoppingBag, Flame,
 import { restaurantAPI } from '../../services/api'
 import { useCartStore, useCustomerStore, useUIStore } from '../../store'
 import CartDrawer from '../../components/student/CartDrawer'
+import { useBackNavigate } from '../../hooks/useBackNavigate'
 import toast from 'react-hot-toast'
 
 function VariantPickerModal({ item, onPick, onClose }) {
@@ -53,6 +54,7 @@ function VariantPickerModal({ item, onPick, onClose }) {
 export default function RestaurantPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const goBack = useBackNavigate()
   const [restaurant, setRestaurant] = useState(null)
   const [loading, setLoading] = useState(true)
   const [activeCategory, setActiveCategory] = useState(null)
@@ -118,7 +120,7 @@ export default function RestaurantPage() {
         <div className="absolute inset-0 stripe-pattern opacity-30" />
         <div className="page-container relative z-10 pt-4 pb-6">
           <div className="flex items-center justify-between mb-6">
-            <button onClick={() => navigate(-1)} className="w-9 h-9 bg-black/20 hover:bg-black/30 rounded-xl flex items-center justify-center transition backdrop-blur-sm">
+            <button onClick={goBack} className="w-9 h-9 bg-black/20 hover:bg-black/30 rounded-xl flex items-center justify-center transition backdrop-blur-sm">
               <ArrowLeft size={18} />
             </button>
             <button onClick={openCart} className="relative w-9 h-9 bg-black/20 hover:bg-black/30 rounded-xl flex items-center justify-center transition backdrop-blur-sm">

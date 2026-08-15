@@ -4,6 +4,7 @@ import { ArrowLeft, CheckCircle, Clock, X, Star, Loader, Truck } from 'lucide-re
 import { orderAPI, reviewAPI } from '../../services/api'
 import { useSocket } from '../../hooks/useSocket'
 import { useCustomerStore } from '../../store'
+import { useBackNavigate } from '../../hooks/useBackNavigate'
 import { format, formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 
@@ -18,6 +19,7 @@ const STATUS_IDX = { pending: 0, confirmed: 1, preparing: 2, ready: 3, picked_up
 export default function TrackOrderPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const goBack = useBackNavigate()
   const [order, setOrder] = useState(null)
   const [showReview, setShowReview] = useState(false)
   const [review, setReview] = useState({ foodRating: 5, serviceRating: 5, comment: '' })
@@ -71,7 +73,7 @@ export default function TrackOrderPage() {
       <div className="gradient-dark text-white px-4 pt-4 pb-8">
         <div className="max-w-lg mx-auto">
           <div className="flex items-center gap-3 mb-6">
-            <button onClick={() => navigate(-1)} className="w-9 h-9 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center transition">
+            <button onClick={goBack} className="w-9 h-9 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center transition">
               <ArrowLeft size={18} />
             </button>
             <h1 className="font-bold text-lg">Track Order</h1>
