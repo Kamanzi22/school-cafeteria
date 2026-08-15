@@ -24,7 +24,7 @@ function RestaurantCard({ r, index, matchedItems }) {
           </span>
         </div>
         {r._count?.orders > 50 && (
-          <div className="absolute top-3 left-3 badge bg-flame-100 text-flame-600">
+          <div className="absolute top-3 left-3 badge bg-flame-500/20 text-flame-300">
             <TrendingUp size={10} /> Popular
           </div>
         )}
@@ -42,20 +42,20 @@ function RestaurantCard({ r, index, matchedItems }) {
             </div>
           )}
         </div>
-        <p className="text-xs text-ink-400 line-clamp-1 mb-3 flex-1">{r.description}</p>
+        <p className="text-xs text-alu-muted line-clamp-1 mb-3 flex-1">{r.description}</p>
 
         {/* Matched menu items */}
         {matchedItems?.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-3">
             {matchedItems.map(item => (
-              <span key={item.id} className="inline-flex items-center gap-1 bg-brand-50 text-brand-700 text-[11px] font-medium px-2 py-0.5 rounded-full border border-brand-100">
+              <span key={item.id} className="inline-flex items-center gap-1 bg-brand-500/15 text-brand-300 text-[11px] font-medium px-2 py-0.5 rounded-full border border-brand-500/20">
                 {item.emoji} {item.name}
               </span>
             ))}
           </div>
         )}
 
-        <div className="flex items-center justify-between text-xs text-ink-400">
+        <div className="flex items-center justify-between text-xs text-alu-muted">
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1">
               <Clock size={11} /> {r.prepTimeMin}–{r.prepTimeMax} min
@@ -94,22 +94,22 @@ export default function HomePage() {
   const displayed = restaurants
 
   return (
-    <div className="min-h-screen bg-ink-50">
+    <div className="min-h-screen bg-alu-bg">
       {/* Top nav */}
-      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-xl border-b border-ink-100">
+      <header className="sticky top-0 z-30 bg-alu-bg/90 backdrop-blur-xl border-b border-alu-border">
         <div className="page-container py-3 flex items-center gap-3">
           <Link to="/" className="flex items-center gap-2 mr-1">
             <span className="text-2xl">🍽️</span>
             <div>
-              <p className="font-bold text-ink-900 leading-none text-base">CaféCampus</p>
-              <p className="text-[10px] text-ink-400 leading-none">School Cafeteria</p>
+              <p className="font-bold text-alu-cream leading-none text-base">CaféCampus</p>
+              <p className="text-[10px] text-alu-muted leading-none">School Cafeteria</p>
             </div>
           </Link>
 
           {/* Search — navigates to dedicated search page */}
           <button
             onClick={() => navigate('/search')}
-            className="flex-1 flex items-center gap-2 bg-ink-50 border border-transparent rounded-xl px-3.5 py-2 text-sm text-ink-400 hover:bg-ink-100 transition-colors"
+            className="flex-1 flex items-center gap-2 bg-alu-surface border border-alu-border rounded-xl px-3.5 py-2 text-sm text-alu-muted hover:bg-alu-card transition-colors"
           >
             <Search size={15} className="shrink-0" />
             Search restaurants or meals…
@@ -162,7 +162,7 @@ export default function HomePage() {
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {Array(6).fill(0).map((_, i) => (
-              <div key={i} className="rounded-2xl overflow-hidden border border-ink-100">
+              <div key={i} className="rounded-2xl overflow-hidden border border-alu-border">
                 <div className="skeleton h-36" />
                 <div className="p-4 space-y-2">
                   <div className="skeleton h-4 w-3/4" />
@@ -175,12 +175,12 @@ export default function HomePage() {
         ) : displayed.length === 0 ? (
           <div className="py-24 text-center">
             <p className="text-5xl mb-4">🍽️</p>
-            <p className="font-bold text-ink-700 text-lg">No restaurants available</p>
-            <p className="text-ink-400 text-sm mt-1">Check back soon</p>
+            <p className="font-bold text-alu-cream text-lg">No restaurants available</p>
+            <p className="text-alu-muted text-sm mt-1">Check back soon</p>
           </div>
         ) : (
           <>
-            <p className="text-sm text-ink-400 mb-4">
+            <p className="text-sm text-alu-muted mb-4">
               {displayed.length} restaurant{displayed.length !== 1 ? 's' : ''}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
