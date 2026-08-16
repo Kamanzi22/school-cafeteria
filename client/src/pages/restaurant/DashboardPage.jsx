@@ -201,7 +201,7 @@ export default function DashboardPage() {
           ].map(s => (
             <div key={s.label} className={`card p-4 ${s.alert && s.val > 0 ? 'border-amber-300 bg-amber-50' : ''}`}>
               <p className="text-xs text-ink-400 mb-1">{s.label}</p>
-              <p className={`font-black text-xl ${s.alert && s.val > 0 ? 'text-amber-600' : 'text-ink-900'}`}>{s.val}</p>
+              <p className={`font-black text-xl ${s.alert && s.val > 0 ? 'text-amber-600' : 'text-white'}`}>{s.val}</p>
               <p className="text-xs text-ink-300 mt-0.5">{s.sub}</p>
             </div>
           ))}

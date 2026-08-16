@@ -277,7 +277,7 @@ export default function MenuPage() {
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-sm text-ink-900 truncate">{item.name}</span>
+                    <span className="font-semibold text-sm text-white truncate">{item.name}</span>
                     {!item.isAvailable && (
                       <span className="badge bg-red-100 text-red-500 text-[10px] shrink-0">Sold Out</span>
                     )}

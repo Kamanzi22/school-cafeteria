@@ -143,7 +143,7 @@ export default function PromotionsPage() {
                       {expired && <span className="badge bg-red-100 text-red-500">Expired</span>}
                       {!p.isActive && !expired && <span className="badge bg-ink-100 text-ink-400">Paused</span>}
                     </div>
-                    <p className="font-semibold text-sm text-ink-900 mt-0.5">{p.title}</p>
+                    <p className="font-semibold text-sm text-white mt-0.5">{p.title}</p>
                     <p className="text-xs text-ink-400">
                       Used {p.usageCount}{p.usageLimit ? `/${p.usageLimit}` : ''} times ·
                       Until {format(new Date(p.validUntil), 'dd MMM yyyy')}

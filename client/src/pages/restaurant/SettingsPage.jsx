@@ -102,7 +102,7 @@ export default function SettingsPage() {
 
         {/* Quick controls */}
         <div className="card p-5">
-          <h2 className="font-bold text-ink-900 mb-4">Quick Controls</h2>
+          <h2 className="font-bold text-white mb-4">Quick Controls</h2>
           <div className="flex items-center justify-between">
             <div><p className="font-semibold text-sm">Accept Orders</p><p className="text-xs text-ink-400">Pause ordering without closing</p></div>
             <button onClick={handleToggleAccepting} disabled={toggling || isViewer} className={`btn btn-sm ${restaurant?.isAccepting ? 'btn-secondary text-emerald-600 border-emerald-200' : 'btn-secondary text-red-500 border-red-200'}`}>
@@ -114,7 +114,7 @@ export default function SettingsPage() {
 
         {/* Profile */}
         <div className="card p-5">
-          <h2 className="font-bold text-ink-900 mb-4">Restaurant Profile</h2>
+          <h2 className="font-bold text-white mb-4">Restaurant Profile</h2>
           <form onSubmit={save} className="space-y-4">
           <fieldset disabled={isViewer} className="space-y-4 border-0 p-0 m-0 disabled:opacity-60">
             {/* Logo */}
@@ -163,24 +163,24 @@ export default function SettingsPage() {
                 <p className="label mb-0">Fulfillment</p>
                 <label className="flex items-center gap-3 cursor-pointer">
                   <input type="checkbox" checked={form.offersPickup} onChange={e => setForm(p => ({ ...p, offersPickup: e.target.checked }))} className="w-4 h-4 rounded accent-brand-500" />
-                  <span className="text-sm font-medium text-ink-700">Offer pickup</span>
+                  <span className="text-sm font-medium text-alu-cream">Offer pickup</span>
                 </label>
                 <label className="flex items-center gap-3 cursor-pointer">
                   <input type="checkbox" checked={form.offersDelivery} onChange={e => setForm(p => ({ ...p, offersDelivery: e.target.checked }))} className="w-4 h-4 rounded accent-brand-500" />
-                  <span className="text-sm font-medium text-ink-700">Offer delivery</span>
+                  <span className="text-sm font-medium text-alu-cream">Offer delivery</span>
                 </label>
                 {form.offersDelivery && (
                   <div className="pl-7 space-y-3">
                     <label className="flex items-center gap-3 cursor-pointer">
                       <input type="checkbox" checked={form.offersCampusDelivery} onChange={e => setForm(p => ({ ...p, offersCampusDelivery: e.target.checked }))} className="w-4 h-4 rounded accent-brand-500" />
-                      <span className="text-sm text-ink-700">Deliver on campus</span>
+                      <span className="text-sm text-alu-cream">Deliver on campus</span>
                     </label>
                     {form.offersCampusDelivery && (
                       <div className="pl-7"><label className="label">On-Campus Delivery Fee (RWF)</label><input type="number" value={form.campusDeliveryFee} onChange={f('campusDeliveryFee')} className="input" min="0" /></div>
                     )}
                     <label className="flex items-center gap-3 cursor-pointer">
                       <input type="checkbox" checked={form.offersOffCampusDelivery} onChange={e => setForm(p => ({ ...p, offersOffCampusDelivery: e.target.checked }))} className="w-4 h-4 rounded accent-brand-500" />
-                      <span className="text-sm text-ink-700">Deliver off campus</span>
+                      <span className="text-sm text-alu-cream">Deliver off campus</span>
                     </label>
                     {form.offersOffCampusDelivery && (
                       <div className="pl-7"><label className="label">Off-Campus Delivery Fee (RWF)</label><input type="number" value={form.offCampusDeliveryFee} onChange={f('offCampusDeliveryFee')} className="input" min="0" /></div>
@@ -204,7 +204,7 @@ export default function SettingsPage() {
         {/* Change password — not applicable to a read-only viewer session */}
         {!isViewer && (
         <div className="card p-5">
-          <h2 className="font-bold text-ink-900 mb-4 flex items-center gap-2"><Lock size={16}/>Change Password</h2>
+          <h2 className="font-bold text-white mb-4 flex items-center gap-2"><Lock size={16}/>Change Password</h2>
           <form onSubmit={changePassword} className="space-y-3">
             {[['Current Password','currentPassword'],['New Password','newPassword'],['Confirm New Password','confirm']].map(([label,key]) => (
               <div key={key}><label className="label">{label}</label><input type="password" value={pwForm[key]} onChange={e => setPwForm(p => ({ ...p, [key]:e.target.value }))} className="input" required /></div>

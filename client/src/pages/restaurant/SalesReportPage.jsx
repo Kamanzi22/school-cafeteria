@@ -84,12 +84,12 @@ export default function SalesReportPage() {
                       <tr key={row.id} className="border-b border-ink-50 last:border-0 hover:bg-ink-50/50">
                         <td className="px-4 py-3">
                           <span className="text-base mr-1.5">{row.emoji}</span>
-                          <span className="font-medium text-ink-900">{row.name}</span>
+                          <span className="font-medium text-white">{row.name}</span>
                           {row.variantName && <span className="text-ink-400"> ({row.variantName})</span>}
                         </td>
-                        <td className="px-4 py-3 text-right font-semibold text-ink-700">{row.quantity}</td>
-                        <td className="px-4 py-3 text-right text-ink-500">{row.unitPrice.toLocaleString()} RWF</td>
-                        <td className="px-4 py-3 text-right font-semibold text-ink-900">{row.subtotal.toLocaleString()} RWF</td>
+                        <td className="px-4 py-3 text-right font-semibold text-alu-cream">{row.quantity}</td>
+                        <td className="px-4 py-3 text-right text-alu-cream">{row.unitPrice.toLocaleString()} RWF</td>
+                        <td className="px-4 py-3 text-right font-semibold text-white">{row.subtotal.toLocaleString()} RWF</td>
                         <td className="px-4 py-3 text-right text-ink-400">{format(new Date(row.time), 'd MMM, HH:mm')}</td>
                         <td className="px-4 py-3 text-right">
                           <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${row.fulfillmentType === 'delivery' ? 'bg-indigo-50 text-indigo-600' : 'bg-emerald-50 text-emerald-600'}`}>
@@ -121,7 +121,7 @@ export default function SalesReportPage() {
                 </div>
                 {data.topSeller ? (
                   <>
-                    <p className="font-black text-lg text-ink-900 leading-tight">{data.topSeller.emoji} {data.topSeller.name}</p>
+                    <p className="font-black text-lg text-white leading-tight">{data.topSeller.emoji} {data.topSeller.name}</p>
                     <p className="text-xs text-ink-400 mt-1">{data.topSeller.quantity} sold</p>
                   </>
                 ) : <p className="text-ink-300">—</p>}
@@ -133,7 +133,7 @@ export default function SalesReportPage() {
                 </div>
                 {data.peakHour ? (
                   <>
-                    <p className="font-black text-lg text-ink-900 leading-tight">{data.peakHour.label}</p>
+                    <p className="font-black text-lg text-white leading-tight">{data.peakHour.label}</p>
                     <p className="text-xs text-ink-400 mt-1">{data.peakHour.orders} orders</p>
                   </>
                 ) : <p className="text-ink-300">—</p>}
@@ -143,14 +143,14 @@ export default function SalesReportPage() {
                   <p className="text-xs font-semibold text-ink-400 uppercase tracking-wide">Total Revenue</p>
                   <DollarSign size={16} className="text-emerald-500" />
                 </div>
-                <p className="font-black text-2xl text-ink-900 leading-tight">{data.totals.revenue.toLocaleString()} RWF</p>
+                <p className="font-black text-2xl text-white leading-tight">{data.totals.revenue.toLocaleString()} RWF</p>
               </div>
               <div className="card p-5">
                 <div className="flex items-start justify-between mb-2">
                   <p className="text-xs font-semibold text-ink-400 uppercase tracking-wide">Total Orders</p>
                   <ShoppingBag size={16} className="text-indigo-500" />
                 </div>
-                <p className="font-black text-2xl text-ink-900 leading-tight">{data.totals.orders}</p>
+                <p className="font-black text-2xl text-white leading-tight">{data.totals.orders}</p>
               </div>
             </div>
           </>

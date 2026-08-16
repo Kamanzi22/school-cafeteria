@@ -51,14 +51,14 @@ export default function ReviewsPage() {
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-ink-900 text-sm">{r.customer?.name}</span>
+                      <span className="font-bold text-white text-sm">{r.customer?.name}</span>
                       <span className="text-xs text-ink-400">{format(new Date(r.createdAt), 'dd MMM yyyy')}</span>
                     </div>
-                    <div className="flex items-center gap-3 text-xs text-ink-500 mt-0.5">
+                    <div className="flex items-center gap-3 text-xs text-alu-cream mt-0.5">
                       <span>Food: {'⭐'.repeat(r.foodRating)}</span>
                       <span>Service: {'⭐'.repeat(r.serviceRating)}</span>
                     </div>
-                    {r.comment && <p className="text-sm text-ink-700 mt-2 leading-relaxed">{r.comment}</p>}
+                    {r.comment && <p className="text-sm text-alu-cream mt-2 leading-relaxed">{r.comment}</p>}
                   </div>
                 </div>
 
