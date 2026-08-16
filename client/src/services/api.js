@@ -3,12 +3,19 @@ import axios from 'axios'
 const BACKEND = import.meta.env.VITE_BACKEND_URL || ''
 const api = axios.create({ baseURL: `${BACKEND}/api`, timeout: 15000 })
 
+// A browser can hold three separate logged-in sessions at once (customer, restaurant
+// owner/staff, super admin), each in its own localStorage key. Which token a request should
+// use depends on which section of the app is making it, not a fixed priority — otherwise a
+// leftover session from testing a different role silently hijacks every request.
 const getToken = () => {
   try {
-    const admin = JSON.parse(localStorage.getItem('cc-admin-v3') || '{}')
-    const customer = JSON.parse(localStorage.getItem('cc-customer-v4') || '{}')
-    const superadmin = JSON.parse(localStorage.getItem('cc-superadmin-v1') || '{}')
-    return admin?.state?.token || customer?.state?.token || superadmin?.state?.token || null
+    const admin = JSON.parse(localStorage.getItem('cc-admin-v3') || '{}')?.state?.token || null
+    const customer = JSON.parse(localStorage.getItem('cc-customer-v4') || '{}')?.state?.token || null
+    const superadmin = JSON.parse(localStorage.getItem('cc-superadmin-v1') || '{}')?.state?.token || null
+    const path = window.location.pathname
+    if (path.startsWith('/superadmin')) return superadmin || admin || customer
+    if (path.startsWith('/admin') || path.startsWith('/restaurant')) return admin || customer || superadmin
+    return customer || admin || superadmin
   } catch { return null }
 }
 
