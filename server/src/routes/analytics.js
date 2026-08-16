@@ -41,7 +41,8 @@ router.get('/sales-report', authStaff, async (req, res) => {
           quantity: it.quantity,
           unitPrice: it.unitPrice,
           subtotal: it.subtotal,
-          time: o.createdAt
+          time: o.createdAt,
+          fulfillmentType: o.fulfillmentType
         });
         const key = it.menuItemName;
         productTotals[key] = productTotals[key] || { name: it.menuItemName, emoji: it.menuItemEmoji, quantity: 0, revenue: 0 };

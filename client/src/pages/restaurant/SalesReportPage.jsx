@@ -53,6 +53,7 @@ export default function SalesReportPage() {
                       <th className="px-4 py-3 font-semibold text-right">Unit Price</th>
                       <th className="px-4 py-3 font-semibold text-right">Subtotal</th>
                       <th className="px-4 py-3 font-semibold text-right">Time Sold</th>
+                      <th className="px-4 py-3 font-semibold text-right">Mode</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -67,6 +68,11 @@ export default function SalesReportPage() {
                         <td className="px-4 py-3 text-right text-ink-500">{row.unitPrice.toLocaleString()} RWF</td>
                         <td className="px-4 py-3 text-right font-semibold text-ink-900">{row.subtotal.toLocaleString()} RWF</td>
                         <td className="px-4 py-3 text-right text-ink-400">{format(new Date(row.time), 'd MMM, HH:mm')}</td>
+                        <td className="px-4 py-3 text-right">
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${row.fulfillmentType === 'delivery' ? 'bg-indigo-50 text-indigo-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                            {row.fulfillmentType === 'delivery' ? 'Delivery' : 'Pick up'}
+                          </span>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
