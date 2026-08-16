@@ -3,19 +3,34 @@ const { PrismaClient } = require('@prisma/client');
 const { authStaff } = require('../middleware/auth');
 const prisma = new PrismaClient();
 
-const RANGE_MS = { day: 86400000, week: 7 * 86400000, month: 30 * 86400000 };
+const RANGE_MS = { day: 86400000, week: 7 * 86400000 };
+const MIN_YEAR = 2026;
+const MAX_YEAR = 2030;
 
 router.get('/sales-report', authStaff, async (req, res) => {
   try {
     const rId = req.restaurantId;
     const range = ['day', 'week', 'month'].includes(req.query.range) ? req.query.range : 'day';
 
-    const start = new Date();
-    if (range === 'day') start.setHours(0, 0, 0, 0);
-    else start.setTime(Date.now() - RANGE_MS[range]);
+    const now = new Date();
+    let start, end;
+
+    if (range === 'month') {
+      const yearParam = parseInt(req.query.year, 10);
+      const monthParam = parseInt(req.query.month, 10);
+      const year = Number.isInteger(yearParam) && yearParam >= MIN_YEAR && yearParam <= MAX_YEAR ? yearParam : now.getFullYear();
+      const month = Number.isInteger(monthParam) && monthParam >= 0 && monthParam <= 11 ? monthParam : now.getMonth();
+      start = new Date(year, month, 1, 0, 0, 0, 0);
+      end = new Date(year, month + 1, 1, 0, 0, 0, 0);
+    } else {
+      start = new Date();
+      if (range === 'day') start.setHours(0, 0, 0, 0);
+      else start.setTime(Date.now() - RANGE_MS[range]);
+      end = now;
+    }
 
     const orders = await prisma.order.findMany({
-      where: { restaurantId: rId, createdAt: { gte: start }, status: { not: 'cancelled' } },
+      where: { restaurantId: rId, createdAt: { gte: start, lt: end }, status: { not: 'cancelled' } },
       include: { items: true },
       orderBy: { createdAt: 'desc' }
     });
@@ -64,9 +79,17 @@ router.get('/sales-report', authStaff, async (req, res) => {
     if (range === 'day') {
       placeholderDays.push(periodStart.toISOString());
     } else {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      for (const cursor = new Date(periodStart); cursor <= today; cursor.setDate(cursor.getDate() + 1)) {
+      // Week is a rolling window capped at today; month is a specific
+      // calendar month shown in full, including days not yet reached.
+      const cap = new Date(end);
+      cap.setDate(cap.getDate() - 1);
+      cap.setHours(0, 0, 0, 0);
+      if (range === 'week') {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (today < cap) cap.setTime(today.getTime());
+      }
+      for (const cursor = new Date(periodStart); cursor <= cap; cursor.setDate(cursor.getDate() + 1)) {
         placeholderDays.push(new Date(cursor).toISOString());
       }
     }

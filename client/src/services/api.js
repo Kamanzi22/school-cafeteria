@@ -74,7 +74,7 @@ export const customerAPI = {
   favorite: (customerId, restaurantId) => api.post(`/customers/${customerId}/favorite/${restaurantId}`),
 }
 
-export const analyticsAPI = { salesReport: (range) => api.get('/analytics/sales-report', { params: { range } }) }
+export const analyticsAPI = { salesReport: (range, params = {}) => api.get('/analytics/sales-report', { params: { range, ...params } }) }
 
 export const promoAPI = {
   list: () => api.get('/promotions/admin'),

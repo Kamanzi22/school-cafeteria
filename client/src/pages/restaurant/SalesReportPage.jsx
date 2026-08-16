@@ -10,15 +10,26 @@ const RANGES = [
   { key: 'month', label: 'Month' },
 ]
 
+const MONTHS = [
+  { value: 0, label: 'Jan' }, { value: 1, label: 'Feb' }, { value: 2, label: 'Mar' },
+  { value: 3, label: 'Apr' }, { value: 4, label: 'May' }, { value: 5, label: 'Jun' },
+  { value: 6, label: 'Jul' }, { value: 7, label: 'Aug' }, { value: 8, label: 'Sep' },
+  { value: 9, label: 'Oct' }, { value: 10, label: 'Nov' }, { value: 11, label: 'Dec' },
+]
+const YEARS = [2026, 2027, 2028, 2029, 2030]
+
 export default function SalesReportPage() {
+  const now = new Date()
   const [range, setRange] = useState('day')
+  const [month, setMonth] = useState(now.getMonth())
+  const [year, setYear] = useState(Math.min(Math.max(now.getFullYear(), YEARS[0]), YEARS[YEARS.length - 1]))
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     setLoading(true)
-    analyticsAPI.salesReport(range).then(r => { setData(r.data.data); setLoading(false) }).catch(() => setLoading(false))
-  }, [range])
+    analyticsAPI.salesReport(range, range === 'month' ? { month, year } : {}).then(r => { setData(r.data.data); setLoading(false) }).catch(() => setLoading(false))
+  }, [range, month, year])
 
   return (
     <AdminLayout>
@@ -28,9 +39,21 @@ export default function SalesReportPage() {
             <h1 className="text-2xl font-black text-ink-900">Sales Report</h1>
             <p className="text-ink-400 text-sm">What sold, how much, and when</p>
           </div>
-          <select value={range} onChange={e => setRange(e.target.value)} className="input w-auto">
-            {RANGES.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
-          </select>
+          <div className="flex items-center gap-2 flex-wrap">
+            <select value={range} onChange={e => setRange(e.target.value)} className="input w-auto">
+              {RANGES.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
+            </select>
+            {range === 'month' && (
+              <>
+                <select value={month} onChange={e => setMonth(Number(e.target.value))} className="input w-auto">
+                  {MONTHS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                </select>
+                <select value={year} onChange={e => setYear(Number(e.target.value))} className="input w-auto">
+                  {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </>
+            )}
+          </div>
         </div>
 
         {loading ? (
