@@ -31,6 +31,7 @@ app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/promotions', require('./routes/promotions'));
 app.use('/api/reviews', require('./routes/reviews'));
 app.use('/api/superadmin', require('./routes/superadmin'));
+app.use('/api/visits', require('./routes/visits'));
 app.use('/api/upload', require('./routes/upload'));
 
 app.get('/api/health', (_, res) => res.json({ ok: true, ts: Date.now() }));

@@ -51,4 +51,34 @@ router.get('/stats', authSuperAdmin, async (req, res) => {
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
 
+// Visitor tracking — "live" is anyone active in the last 90s (heartbeats fire every ~20s from
+// the client, so a gap that size reliably means the tab was closed/backgrounded without a
+// clean sendBeacon firing).
+router.get('/visits/live', authSuperAdmin, async (req, res) => {
+  try {
+    const cutoff = new Date(Date.now() - 90 * 1000);
+    const visits = await prisma.restaurantVisit.findMany({
+      where: { leftAt: null, lastSeenAt: { gte: cutoff } },
+      include: { restaurant: { select: { name: true, emoji: true } } },
+      orderBy: { enteredAt: 'desc' },
+    });
+    res.json({ success: true, data: visits });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+router.get('/visits/history', authSuperAdmin, async (req, res) => {
+  try {
+    const { date } = req.query; // YYYY-MM-DD
+    if (!date) return res.status(400).json({ success: false, error: 'date required' });
+    const start = new Date(`${date}T00:00:00`);
+    const end = new Date(`${date}T23:59:59.999`);
+    const visits = await prisma.restaurantVisit.findMany({
+      where: { enteredAt: { gte: start, lte: end } },
+      include: { restaurant: { select: { name: true, emoji: true } } },
+      orderBy: { enteredAt: 'desc' },
+    });
+    res.json({ success: true, data: visits });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
 module.exports = router;

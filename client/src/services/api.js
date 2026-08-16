@@ -96,6 +96,13 @@ export const superAdminAPI = {
   deleteRestaurant: (id) => api.delete(`/superadmin/restaurants/${id}`),
   getStats: () => api.get('/superadmin/stats'),
   getViewToken: (id) => api.post(`/superadmin/restaurants/${id}/view-token`),
+  getLiveVisits: () => api.get('/superadmin/visits/live'),
+  getVisitHistory: (date) => api.get('/superadmin/visits/history', { params: { date } }),
+}
+
+export const visitAPI = {
+  start: (d) => api.post('/visits/start', d),
+  heartbeat: (id) => api.post(`/visits/${id}/heartbeat`),
 }
 
 export default api

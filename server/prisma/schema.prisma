@@ -66,6 +66,7 @@ model Restaurant {
   orders        Order[]
   reviews       Review[]
   promotions    Promotion[]
+  visits        RestaurantVisit[]
 }
 
 model RestaurantStaff {
@@ -307,4 +308,23 @@ model SuperAdmin {
   username     String   @unique
   passwordHash String
   createdAt    DateTime @default(now())
+}
+
+// ─── VISITOR TRACKING ───────────────────────────────────────────────────────
+
+model RestaurantVisit {
+  id           String    @id @default(uuid())
+  restaurantId String
+  visitorType  String    // account | guest | anonymous
+  visitorId    String    // Customer id for account/guest, device-generated id for anonymous
+  visitorName  String?   // snapshot at visit time, so it survives name changes/deletion
+  enteredAt    DateTime  @default(now())
+  lastSeenAt   DateTime  @default(now())
+  leftAt       DateTime?
+  durationSec  Int       @default(0)
+
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId])
+  @@index([enteredAt])
 }

@@ -26,6 +26,13 @@ module.exports = (io) => {
     // secret, matching how GET /api/orders/:id already works for guest/anonymous tracking.
     socket.on('join:order', (id) => socket.join(`order:${id}`));
     socket.on('leave:order', (id) => socket.leave(`order:${id}`));
+    // Live visitor feed — only a verified super-admin token can join this room.
+    socket.on('join:superadmin', ({ token } = {}) => {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (decoded.type === 'superadmin') socket.join('superadmin');
+      } catch {}
+    });
     socket.on('disconnect', () => {});
   });
 };

@@ -1,10 +1,62 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Shield, Store, Users, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye } from 'lucide-react'
+import { Shield, Store, Users, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, Radio, History, MapPin } from 'lucide-react'
 import { superAdminAPI, authAPI } from '../../services/api'
 import { useAdminStore } from '../../store'
+import { useSocket, getSocket } from '../../hooks/useSocket'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
+
+const fmtDuration = (sec) => {
+  if (sec == null) return '—'
+  const m = Math.floor(sec / 60), s = sec % 60
+  return m > 0 ? `${m}m ${s}s` : `${s}s`
+}
+
+const VISITOR_LABEL = {
+  account: { label: 'Account', cls: 'bg-emerald-100 text-emerald-700' },
+  guest: { label: 'Guest', cls: 'bg-amber-100 text-amber-700' },
+  anonymous: { label: 'Anonymous', cls: 'bg-ink-100 text-ink-500' },
+}
+
+function VisitorBadge({ type }) {
+  const v = VISITOR_LABEL[type] || VISITOR_LABEL.anonymous
+  return <span className={`badge ${v.cls}`}>{v.label}</span>
+}
+
+function VisitRow({ v, live }) {
+  const [now, setNow] = useState(Date.now())
+  useEffect(() => {
+    if (!live) return
+    const iv = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(iv)
+  }, [live])
+  const durationSec = live ? Math.round((now - new Date(v.enteredAt).getTime()) / 1000) : v.durationSec
+
+  return (
+    <tr className="border-b border-ink-50 hover:bg-ink-50">
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-2">
+          <VisitorBadge type={v.visitorType} />
+          <span className="text-ink-700">{v.visitorName || `${v.visitorType} visitor`}</span>
+        </div>
+      </td>
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">{v.restaurant?.emoji}</span>
+          <span className="text-ink-900 font-medium">{v.restaurant?.name || 'Unknown'}</span>
+        </div>
+      </td>
+      <td className="px-4 py-3 text-ink-500 text-xs">{format(new Date(v.enteredAt), 'dd/MM/yyyy HH:mm')}</td>
+      <td className="px-4 py-3 font-semibold text-ink-900">{fmtDuration(durationSec)}</td>
+      <td className="px-4 py-3">
+        {live
+          ? <span className="badge bg-emerald-100 text-emerald-700"><Radio size={10} /> Live</span>
+          : <span className="text-ink-400 text-xs">{v.leftAt ? format(new Date(v.leftAt), 'HH:mm') : '—'}</span>}
+      </td>
+    </tr>
+  )
+}
 
 const getStoredSuperAdminToken = () => {
   try { return JSON.parse(localStorage.getItem('cc-superadmin-v1') || '{}')?.state?.token || null } catch { return null }
@@ -22,6 +74,11 @@ export default function SuperAdminPage() {
   const [loading, setLoading] = useState(false)
   const [loginLoading, setLoginLoading] = useState(false)
   const [viewingId, setViewingId] = useState(null)
+  const [visitTab, setVisitTab] = useState('live')
+  const [liveVisits, setLiveVisits] = useState([])
+  const [historyDate, setHistoryDate] = useState(() => format(new Date(), 'yyyy-MM-dd'))
+  const [historyVisits, setHistoryVisits] = useState([])
+  const [historyLoading, setHistoryLoading] = useState(false)
   const navigate = useNavigate()
   const { loginViewer, logout: exitAdminSession } = useAdminStore()
 
@@ -51,6 +108,30 @@ export default function SuperAdminPage() {
       }
     })
   }, [authed])
+
+  // Live visitor feed — seed with a snapshot, then keep it current via socket updates.
+  useEffect(() => {
+    if (!authed || !token) return
+    getSocket().emit('join:superadmin', { token })
+    superAdminAPI.getLiveVisits().then(r => setLiveVisits(r.data.data)).catch(() => {})
+  }, [authed, token])
+
+  useSocket({
+    'visit:update': (visit) => {
+      setLiveVisits(prev => {
+        const withoutIt = prev.filter(v => v.id !== visit.id)
+        return visit.leftAt ? withoutIt : [visit, ...withoutIt]
+      })
+    }
+  })
+
+  useEffect(() => {
+    if (!authed || visitTab !== 'history') return
+    setHistoryLoading(true)
+    superAdminAPI.getVisitHistory(historyDate).then(r => {
+      setHistoryVisits(r.data.data); setHistoryLoading(false)
+    }).catch(() => setHistoryLoading(false))
+  }, [authed, visitTab, historyDate])
 
   const toggleApprove = async (id) => {
     const res = await superAdminAPI.toggleApprove(id)
@@ -188,6 +269,48 @@ export default function SuperAdminPage() {
               </table>
             </div>
           )}
+        </div>
+
+        {/* Visitor tracking */}
+        <div className="card overflow-hidden">
+          <div className="px-5 py-4 border-b border-ink-100 flex items-center justify-between flex-wrap gap-3">
+            <h2 className="font-bold text-ink-900 flex items-center gap-2"><MapPin size={16} className="text-brand-400" /> Visitors</h2>
+            <div className="flex bg-ink-100 rounded-xl p-1">
+              {[['live','Live'],['history','History']].map(([v,label]) => (
+                <button key={v} onClick={() => setVisitTab(v)}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${visitTab===v ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-700'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {visitTab === 'history' && (
+            <div className="px-5 py-3 border-b border-ink-100 bg-ink-50/50 flex items-center gap-2">
+              <label className="text-xs font-semibold text-ink-500 uppercase tracking-wider">Date</label>
+              <input type="date" value={historyDate} onChange={e => setHistoryDate(e.target.value)}
+                className="input py-1.5 text-sm w-auto" max={format(new Date(), 'yyyy-MM-dd')} />
+            </div>
+          )}
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr className="border-b border-ink-100 text-xs text-ink-400 uppercase tracking-wider">
+                {['Visitor','Restaurant','Entered','Time Spent', visitTab==='live' ? 'Status' : 'Left'].map(h => <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>)}
+              </tr></thead>
+              <tbody>
+                {visitTab === 'live' ? (
+                  liveVisits.length === 0 ? (
+                    <tr><td colSpan={5} className="px-4 py-8 text-center text-ink-400">No one is browsing right now</td></tr>
+                  ) : liveVisits.map(v => <VisitRow key={v.id} v={v} live />)
+                ) : historyLoading ? (
+                  <tr><td colSpan={5} className="px-4 py-8 text-center"><Loader className="animate-spin text-brand-500 mx-auto" /></td></tr>
+                ) : historyVisits.length === 0 ? (
+                  <tr><td colSpan={5} className="px-4 py-8 text-center text-ink-400">No visits on this date</td></tr>
+                ) : historyVisits.map(v => <VisitRow key={v.id} v={v} live={false} />)}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

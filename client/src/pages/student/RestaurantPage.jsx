@@ -5,6 +5,7 @@ import { restaurantAPI } from '../../services/api'
 import { useCartStore, useCustomerStore, useUIStore } from '../../store'
 import CartDrawer from '../../components/student/CartDrawer'
 import { useBackNavigate } from '../../hooks/useBackNavigate'
+import { useVisitTracking } from '../../hooks/useVisitTracking'
 import toast from 'react-hot-toast'
 
 function VariantPickerModal({ item, onPick, onClose }) {
@@ -65,6 +66,8 @@ export default function RestaurantPage() {
   const { customer: student } = useCustomerStore()
   const { openCart } = useUIStore()
   const cartCount = items.reduce((s, i) => s + i.qty, 0)
+
+  useVisitTracking(id)
 
   useEffect(() => {
     restaurantAPI.get(id).then(r => {
