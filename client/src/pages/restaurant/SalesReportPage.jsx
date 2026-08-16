@@ -80,9 +80,7 @@ export default function SalesReportPage() {
                         <td className="px-4 py-3 text-right">0</td>
                         <td className="px-4 py-3 text-right">0 RWF</td>
                         <td className="px-4 py-3 text-right">0 RWF</td>
-                        <td className="px-4 py-3 text-right">
-                          {range === 'day' ? '00:00' : `${format(new Date(day), 'd MMM')}, 00:00`}
-                        </td>
+                        <td className="px-4 py-3 text-right">----</td>
                         <td className="px-4 py-3 text-right">—</td>
                       </tr>
                     ))}
