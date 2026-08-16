@@ -33,7 +33,6 @@ function OrderCard({ order, onUpdate, isViewer }) {
   }
 
   const cancel = async () => {
-    if (!window.confirm('Cancel this order?')) return
     setLoading(true)
     try {
       const res = await orderAPI.updateStatus(order.id, { status: 'cancelled', cancelReason: 'Cancelled by restaurant' })
