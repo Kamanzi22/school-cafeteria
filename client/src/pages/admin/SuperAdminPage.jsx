@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Shield, Store, Users, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, Radio, History, MapPin } from 'lucide-react'
+import { Shield, Store, Users, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, EyeOff, Radio, History, MapPin } from 'lucide-react'
 import { superAdminAPI, authAPI } from '../../services/api'
 import { useAdminStore } from '../../store'
 import { useSocket, getSocket } from '../../hooks/useSocket'
@@ -69,6 +69,7 @@ export default function SuperAdminPage() {
   const [authed, setAuthed] = useState(() => !!getStoredSuperAdminToken())
   const [token, setToken] = useState(getStoredSuperAdminToken)
   const [form, setForm] = useState({ username:'', password:'' })
+  const [showPw, setShowPw] = useState(false)
   const [restaurants, setRestaurants] = useState([])
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -171,7 +172,20 @@ export default function SuperAdminPage() {
             {[['Username','username'],['Password','password']].map(([l,k]) => (
               <div key={k}>
                 <label className="label text-ink-500">{l}</label>
-                <input type={k==='password'?'password':'text'} value={form[k]} onChange={e => setForm(p => ({ ...p, [k]:e.target.value }))} className="w-full bg-ink-800 border border-ink-700 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500" required />
+                <div className="relative">
+                  <input
+                    type={k==='password' && !showPw ? 'password' : 'text'}
+                    value={form[k]}
+                    onChange={e => setForm(p => ({ ...p, [k]:e.target.value }))}
+                    className="w-full bg-ink-800 border border-ink-700 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 pr-10"
+                    required
+                  />
+                  {k==='password' && (
+                    <button type="button" onClick={() => setShowPw(s => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-500 hover:text-ink-300">
+                      {showPw ? <EyeOff size={15}/> : <Eye size={15}/>}
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
             <button type="submit" disabled={loginLoading} className="btn btn-primary w-full btn-lg">
