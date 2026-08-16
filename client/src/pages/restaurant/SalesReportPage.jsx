@@ -35,10 +35,10 @@ export default function SalesReportPage() {
 
         {loading ? (
           <div className="flex items-center justify-center h-64"><Loader size={24} className="animate-spin text-flame-500" /></div>
-        ) : !data?.rows?.length ? (
+        ) : !data ? (
           <div className="card py-20 text-center">
-            <p className="text-5xl mb-4">📋</p>
-            <p className="font-bold text-ink-400 text-lg">No sales in this period</p>
+            <p className="text-5xl mb-4">⚠️</p>
+            <p className="font-bold text-ink-400 text-lg">Couldn't load the sales report</p>
           </div>
         ) : (
           <>
@@ -57,7 +57,7 @@ export default function SalesReportPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.rows.map(row => (
+                    {data.rows.length ? data.rows.map(row => (
                       <tr key={row.id} className="border-b border-ink-50 last:border-0 hover:bg-ink-50/50">
                         <td className="px-4 py-3">
                           <span className="text-base mr-1.5">{row.emoji}</span>
@@ -73,6 +73,17 @@ export default function SalesReportPage() {
                             {row.fulfillmentType === 'delivery' ? 'Delivery' : 'Pick up'}
                           </span>
                         </td>
+                      </tr>
+                    )) : data.placeholderDays.map(day => (
+                      <tr key={day} className="border-b border-ink-50 last:border-0 text-ink-300">
+                        <td className="px-4 py-3">—</td>
+                        <td className="px-4 py-3 text-right">0</td>
+                        <td className="px-4 py-3 text-right">0 RWF</td>
+                        <td className="px-4 py-3 text-right">0 RWF</td>
+                        <td className="px-4 py-3 text-right">
+                          {range === 'day' ? '00:00' : `${format(new Date(day), 'd MMM')}, 00:00`}
+                        </td>
+                        <td className="px-4 py-3 text-right">—</td>
                       </tr>
                     ))}
                   </tbody>

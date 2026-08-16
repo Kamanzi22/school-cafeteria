@@ -56,11 +56,27 @@ router.get('/sales-report', authStaff, async (req, res) => {
 
     const fmtHour = h => { const d = new Date(); d.setHours(h, 0, 0, 0); return d.toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' }); };
 
+    // Calendar days covered by this range, used by the client to render a
+    // zero-value placeholder row per day when there's no data to show.
+    const placeholderDays = [];
+    const periodStart = new Date(start);
+    periodStart.setHours(0, 0, 0, 0);
+    if (range === 'day') {
+      placeholderDays.push(periodStart.toISOString());
+    } else {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      for (const cursor = new Date(periodStart); cursor <= today; cursor.setDate(cursor.getDate() + 1)) {
+        placeholderDays.push(new Date(cursor).toISOString());
+      }
+    }
+
     res.json({
       success: true,
       data: {
         range,
         rows,
+        placeholderDays,
         totals: { revenue, orders: orders.length },
         topSeller,
         peakHour: peakHour && peakHour.orders > 0 ? { hour: peakHour.hour, label: `${fmtHour(peakHour.hour)} – ${fmtHour((peakHour.hour + 1) % 24)}`, revenue: peakHour.revenue, orders: peakHour.orders } : null
