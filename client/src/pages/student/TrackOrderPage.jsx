@@ -19,7 +19,7 @@ const STATUS_IDX = { pending: 0, confirmed: 1, preparing: 2, ready: 3, picked_up
 export default function TrackOrderPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const goBack = useBackNavigate()
+  const goBack = useBackNavigate('/orders')
   const [order, setOrder] = useState(null)
   const [showReview, setShowReview] = useState(false)
   const [review, setReview] = useState({ foodRating: 5, serviceRating: 5, comment: '' })
