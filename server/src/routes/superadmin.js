@@ -116,16 +116,24 @@ async function enrichVisits(visits) {
       })
     : [];
 
-  const usedOrderIds = new Set();
+  // Match each order to the visit it most plausibly happened during — nearest by proximity to
+  // when that visit ended, not just "first eligible visit" — so back-to-back visits to the
+  // same restaurant (whose eligibility windows can overlap) each still claim the right order.
+  const usedVisitIds = new Set();
   const orderMatch = new Map(); // visit.id -> order
-  const byEntered = [...namedVisits].sort((a, b) => new Date(a.enteredAt) - new Date(b.enteredAt));
-  for (const v of byEntered) {
-    const windowEnd = new Date((v.leftAt ? new Date(v.leftAt) : new Date(v.lastSeenAt)).getTime() + 2 * 60 * 1000);
-    const match = candidateOrders.find(o =>
-      !usedOrderIds.has(o.id) && o.customerId === v.visitorId && o.restaurantId === v.restaurantId &&
-      new Date(o.createdAt) >= new Date(v.enteredAt) && new Date(o.createdAt) <= windowEnd
-    );
-    if (match) { usedOrderIds.add(match.id); orderMatch.set(v.id, match); }
+  for (const o of candidateOrders) {
+    const created = new Date(o.createdAt).getTime();
+    let best = null, bestDelta = Infinity;
+    for (const v of namedVisits) {
+      if (usedVisitIds.has(v.id) || v.visitorId !== o.customerId || v.restaurantId !== o.restaurantId) continue;
+      const entered = new Date(v.enteredAt).getTime();
+      const leftOrLastSeen = new Date(v.leftAt || v.lastSeenAt).getTime();
+      const windowEnd = leftOrLastSeen + 2 * 60 * 1000;
+      if (created < entered || created > windowEnd) continue;
+      const delta = Math.abs(created - leftOrLastSeen);
+      if (delta < bestDelta) { bestDelta = delta; best = v; }
+    }
+    if (best) { usedVisitIds.add(best.id); orderMatch.set(best.id, o); }
   }
 
   const websiteTimeByVisitor = {};
