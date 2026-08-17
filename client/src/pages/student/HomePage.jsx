@@ -140,7 +140,7 @@ export default function HomePage() {
         <div className="absolute inset-0 dot-pattern opacity-20" />
         <div className="page-container py-10 relative z-10">
           <h1 className="text-4xl md:text-5xl font-black leading-tight mb-2">
-            Skip the line,<br /><span className="text-gradient">order ahead</span> — pickup or delivery. 🍽️🚚
+            Skip the line,<br /><span className="text-gradient">order ahead</span> — <span className="text-gradient">pickup or delivery.</span>
           </h1>
           {cartCount > 0 && (
             <button onClick={openCart} className="mt-5 btn btn-primary">
