@@ -96,7 +96,7 @@ router.patch('/admin/toggle-accepting', authStaff, blockViewer, async (req, res)
 
 router.put('/admin/settings', authStaff, blockViewer, async (req, res) => {
   try {
-    const { name, description, phone, prepTimeMin, prepTimeMax, openTime, closeTime, minOrder, notice, coverColor, ownerPhone, logo, offersPickup, offersDelivery, deliveryFee, deliveryNote, offersCampusDelivery, offersOffCampusDelivery, campusDeliveryFee, offCampusDeliveryFee } = req.body;
+    const { name, description, phone, prepTimeMin, prepTimeMax, openTime, closeTime, minOrder, notice, coverColor, ownerPhone, logo, offersPickup, offersDelivery, deliveryFee, deliveryNote, offersCampusDelivery, offersOffCampusDelivery, offCampusDeliveryFee } = req.body;
     const current = await prisma.restaurant.findUnique({ where: { id: req.restaurantId } });
     const bool = (v) => v === true || v === 'true';
     const updated = await prisma.restaurant.update({ where: { id: req.restaurantId }, data: {
@@ -108,7 +108,8 @@ router.put('/admin/settings', authStaff, blockViewer, async (req, res) => {
       ...(deliveryNote !== undefined && { deliveryNote }),
       ...(offersCampusDelivery !== undefined && { offersCampusDelivery: bool(offersCampusDelivery) }),
       ...(offersOffCampusDelivery !== undefined && { offersOffCampusDelivery: bool(offersOffCampusDelivery) }),
-      ...(campusDeliveryFee !== undefined && { campusDeliveryFee: parseFloat(campusDeliveryFee) || 0 }),
+      // campusDeliveryFee is intentionally not settable here — it's controlled platform-wide
+      // by the super admin (see /api/superadmin/restaurants/:id/campus-delivery), not per-store.
       ...(offCampusDeliveryFee !== undefined && { offCampusDeliveryFee: parseFloat(offCampusDeliveryFee) || 0 }),
     } });
     const { passwordHash, ...safe } = updated;

@@ -176,7 +176,10 @@ export default function SettingsPage() {
                       <span className="text-sm text-alu-cream">Deliver on campus</span>
                     </label>
                     {form.offersCampusDelivery && (
-                      <div className="pl-7"><label className="label">On-Campus Delivery Fee (RWF)</label><input type="number" value={form.campusDeliveryFee} onChange={f('campusDeliveryFee')} className="input" min="0" /></div>
+                      <div className="pl-7">
+                        <label className="label">On-Campus Delivery Fee</label>
+                        <p className="text-sm text-alu-cream">{form.campusDeliveryFee.toLocaleString()} RWF — set platform-wide by CaféCampus admin</p>
+                      </div>
                     )}
                     <label className="flex items-center gap-3 cursor-pointer">
                       <input type="checkbox" checked={form.offersOffCampusDelivery} onChange={e => setForm(p => ({ ...p, offersOffCampusDelivery: e.target.checked }))} className="w-4 h-4 rounded accent-brand-500" />
