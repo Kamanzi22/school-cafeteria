@@ -107,6 +107,7 @@ export const superAdminAPI = {
   getViewToken: (id) => api.post(`/superadmin/restaurants/${id}/view-token`),
   getLiveVisits: () => api.get('/superadmin/visits/live'),
   getVisitHistory: (date, type) => api.get('/superadmin/visits/history', { params: { date, type } }),
+  clearVisits: () => api.delete('/superadmin/visits'),
 }
 
 export const visitAPI = {

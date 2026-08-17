@@ -186,6 +186,15 @@ export default function SuperAdminPage() {
     fetchHistory()
   }, [authed, visitTab, periodType, historyDate, historyMonth, historyYear])
 
+  const clearVisitData = async () => {
+    if (!window.confirm('Delete ALL recorded visits and order correlations? This is meant for wiping out test data before going live — it cannot be undone.')) return
+    await superAdminAPI.clearVisits()
+    setLiveVisits([])
+    setHistoryVisits([])
+    setHistoryStats(null)
+    toast.success('Visit history cleared')
+  }
+
   const toggleApprove = async (id) => {
     const res = await superAdminAPI.toggleApprove(id)
     setRestaurants(prev => prev.map(r => r.id===id ? { ...r, isApproved: res.data.data.isApproved } : r))
@@ -341,13 +350,19 @@ export default function SuperAdminPage() {
         <div className="bg-white rounded-2xl border border-ink-100 overflow-hidden">
           <div className="px-5 py-4 border-b border-ink-100 flex items-center justify-between flex-wrap gap-3">
             <h2 className="font-bold text-ink-900 flex items-center gap-2"><MapPin size={16} className="text-brand-400" /> Visitors</h2>
-            <div className="flex bg-ink-100 rounded-xl p-1">
-              {[['live','Live'],['history','History']].map(([v,label]) => (
-                <button key={v} onClick={() => setVisitTab(v)}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${visitTab===v ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-700'}`}>
-                  {label}
-                </button>
-              ))}
+            <div className="flex items-center gap-2">
+              <div className="flex bg-ink-100 rounded-xl p-1">
+                {[['live','Live'],['history','History']].map(([v,label]) => (
+                  <button key={v} onClick={() => setVisitTab(v)}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${visitTab===v ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-700'}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <button onClick={clearVisitData} title="Delete all recorded visit data"
+                className="btn btn-sm bg-white border border-red-200 text-red-500 hover:bg-red-50">
+                <Trash2 size={13} /> Clear Data
+              </button>
             </div>
           </div>
 

@@ -51,6 +51,15 @@ router.get('/stats', authSuperAdmin, async (req, res) => {
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
 
+// Wipes all recorded visits — for clearing out test data before going live, so real traffic
+// isn't mixed in with whatever was generated while testing this feature.
+router.delete('/visits', authSuperAdmin, async (req, res) => {
+  try {
+    const { count } = await prisma.restaurantVisit.deleteMany();
+    res.json({ success: true, data: { deleted: count } });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
 // Visitor tracking — "live" is anyone active in the last 90s (heartbeats fire every ~20s from
 // the client, so a gap that size reliably means the tab was closed/backgrounded without a
 // clean sendBeacon firing).
