@@ -7,6 +7,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
+const { PrismaClient } = require('@prisma/client');
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -42,6 +43,13 @@ app.use((err, req, res, next) => {
 });
 
 require('./socket/handlers')(io);
+
+// One-time backfill: switch on 300 RWF campus delivery for stores that never touched the setting.
+new PrismaClient().restaurant.updateMany({
+  where: { offersDelivery: false },
+  data: { offersDelivery: true, offersCampusDelivery: true, campusDeliveryFee: 300 }
+}).then(({ count }) => { if (count) console.log(`Enabled campus delivery (300 RWF) for ${count} store(s)`); })
+  .catch(e => console.error('Campus delivery backfill failed:', e.message));
 
 const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, () => console.log(`\n🚀 CaféCampus v3 running on http://localhost:${PORT}\n`));
