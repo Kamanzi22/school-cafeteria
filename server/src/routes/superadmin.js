@@ -66,18 +66,125 @@ router.get('/visits/live', authSuperAdmin, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// `date` anchors the period; the actual window depends on `type`:
+//   day   -> that calendar day
+//   week  -> Mon-Sun containing `date`
+//   month -> the whole calendar month containing `date`
+//   year  -> the whole calendar year containing `date`
+function getPeriodRange(type, dateStr) {
+  const d = new Date(`${dateStr}T00:00:00`);
+  if (type === 'week') {
+    const diffToMonday = (d.getDay() + 6) % 7;
+    const start = new Date(d); start.setDate(d.getDate() - diffToMonday); start.setHours(0, 0, 0, 0);
+    const end = new Date(start); end.setDate(start.getDate() + 6); end.setHours(23, 59, 59, 999);
+    return { start, end };
+  }
+  if (type === 'month') {
+    return { start: new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0), end: new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999) };
+  }
+  if (type === 'year') {
+    return { start: new Date(d.getFullYear(), 0, 1, 0, 0, 0, 0), end: new Date(d.getFullYear(), 11, 31, 23, 59, 59, 999) };
+  }
+  const start = new Date(d); start.setHours(0, 0, 0, 0);
+  const end = new Date(d); end.setHours(23, 59, 59, 999);
+  return { start, end };
+}
+
+// Attaches, to each visit: the visitor's login credential (email/studentId for account,
+// name for guest, nothing for anonymous — they have no credential to show), the order they
+// placed during that specific visit (if any — matched by same visitor+restaurant with the
+// order created between arrival and ~2min after they left, to allow for checkout time), and
+// that visitor's total time across the whole dataset ("time spent on website"). Also computes
+// the aggregate stats panel. Each visit stays its own row — visits/orders are never merged.
+async function enrichVisits(visits) {
+  const emptyStats = { totalVisitors: 0, totalVisits: 0, totalWebsiteTimeSec: 0, perRestaurant: [], topByVisitors: null, topByTime: null };
+  if (visits.length === 0) return { visits: [], stats: emptyStats };
+
+  const namedVisits = visits.filter(v => v.visitorType !== 'anonymous');
+  const customerIds = [...new Set(namedVisits.map(v => v.visitorId))];
+  const customers = customerIds.length
+    ? await prisma.customer.findMany({ where: { id: { in: customerIds } }, select: { id: true, name: true, email: true, studentId: true } })
+    : [];
+  const customerMap = Object.fromEntries(customers.map(c => [c.id, c]));
+
+  const restaurantIds = [...new Set(namedVisits.map(v => v.restaurantId))];
+  const candidateOrders = customerIds.length
+    ? await prisma.order.findMany({
+        where: { customerId: { in: customerIds }, restaurantId: { in: restaurantIds } },
+        include: { items: true },
+        orderBy: { createdAt: 'asc' },
+      })
+    : [];
+
+  const usedOrderIds = new Set();
+  const orderMatch = new Map(); // visit.id -> order
+  const byEntered = [...namedVisits].sort((a, b) => new Date(a.enteredAt) - new Date(b.enteredAt));
+  for (const v of byEntered) {
+    const windowEnd = new Date((v.leftAt ? new Date(v.leftAt) : new Date(v.lastSeenAt)).getTime() + 2 * 60 * 1000);
+    const match = candidateOrders.find(o =>
+      !usedOrderIds.has(o.id) && o.customerId === v.visitorId && o.restaurantId === v.restaurantId &&
+      new Date(o.createdAt) >= new Date(v.enteredAt) && new Date(o.createdAt) <= windowEnd
+    );
+    if (match) { usedOrderIds.add(match.id); orderMatch.set(v.id, match); }
+  }
+
+  const websiteTimeByVisitor = {};
+  for (const v of visits) websiteTimeByVisitor[v.visitorId] = (websiteTimeByVisitor[v.visitorId] || 0) + (v.durationSec || 0);
+
+  const enrichedVisits = visits.map(v => {
+    const c = v.visitorType !== 'anonymous' ? customerMap[v.visitorId] : null;
+    const order = orderMatch.get(v.id);
+    return {
+      ...v,
+      visitorLogin: c ? (c.email || c.studentId || c.name) : null,
+      websiteDurationSec: websiteTimeByVisitor[v.visitorId] || v.durationSec,
+      order: order ? {
+        itemsLabel: order.items.map(i => `${i.quantity}x ${i.menuItemName}`).join(', '),
+        amount: order.totalPrice,
+        status: order.status,
+      } : null,
+    };
+  });
+
+  const perRestaurantMap = {};
+  for (const v of visits) {
+    const key = v.restaurantId;
+    if (!perRestaurantMap[key]) perRestaurantMap[key] = { restaurantId: key, name: v.restaurant?.name, emoji: v.restaurant?.emoji, visitorSet: new Set(), totalTimeSec: 0 };
+    perRestaurantMap[key].visitorSet.add(v.visitorId);
+    perRestaurantMap[key].totalTimeSec += v.durationSec || 0;
+  }
+  const perRestaurant = Object.values(perRestaurantMap)
+    .map(r => ({ restaurantId: r.restaurantId, name: r.name, emoji: r.emoji, visitorCount: r.visitorSet.size, totalTimeSec: r.totalTimeSec }))
+    .sort((a, b) => b.visitorCount - a.visitorCount);
+
+  const topByVisitors = perRestaurant[0] || null;
+  const topByTime = [...perRestaurant].sort((a, b) => b.totalTimeSec - a.totalTimeSec)[0] || null;
+
+  return {
+    visits: enrichedVisits,
+    stats: {
+      totalVisitors: new Set(visits.map(v => v.visitorId)).size,
+      totalVisits: visits.length,
+      totalWebsiteTimeSec: visits.reduce((s, v) => s + (v.durationSec || 0), 0),
+      perRestaurant,
+      topByVisitors: topByVisitors ? { name: topByVisitors.name, count: topByVisitors.visitorCount } : null,
+      topByTime: topByTime ? { name: topByTime.name, totalTimeSec: topByTime.totalTimeSec } : null,
+    },
+  };
+}
+
 router.get('/visits/history', authSuperAdmin, async (req, res) => {
   try {
-    const { date } = req.query; // YYYY-MM-DD
+    const { date, type } = req.query; // date: YYYY-MM-DD anchor, type: day|week|month|year
     if (!date) return res.status(400).json({ success: false, error: 'date required' });
-    const start = new Date(`${date}T00:00:00`);
-    const end = new Date(`${date}T23:59:59.999`);
+    const { start, end } = getPeriodRange(type || 'day', date);
     const visits = await prisma.restaurantVisit.findMany({
       where: { enteredAt: { gte: start, lte: end } },
       include: { restaurant: { select: { name: true, emoji: true } } },
       orderBy: { enteredAt: 'desc' },
     });
-    res.json({ success: true, data: visits });
+    const enriched = await enrichVisits(visits);
+    res.json({ success: true, data: enriched });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 

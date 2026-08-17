@@ -14,7 +14,9 @@ const getToken = () => {
     const superadmin = JSON.parse(localStorage.getItem('cc-superadmin-v1') || '{}')?.state?.token || null
     const path = window.location.pathname
     if (path.startsWith('/superadmin')) return superadmin || admin || customer
-    if (path.startsWith('/admin') || path.startsWith('/restaurant')) return admin || customer || superadmin
+    // NOTE: /restaurant/:id (customer-facing menu page) is NOT an owner route — only
+    // /restaurant/auth and /admin* are. Don't match it with a bare startsWith('/restaurant').
+    if (path.startsWith('/admin') || path.startsWith('/restaurant/auth')) return admin || customer || superadmin
     return customer || admin || superadmin
   } catch { return null }
 }
@@ -104,7 +106,7 @@ export const superAdminAPI = {
   getStats: () => api.get('/superadmin/stats'),
   getViewToken: (id) => api.post(`/superadmin/restaurants/${id}/view-token`),
   getLiveVisits: () => api.get('/superadmin/visits/live'),
-  getVisitHistory: (date) => api.get('/superadmin/visits/history', { params: { date } }),
+  getVisitHistory: (date, type) => api.get('/superadmin/visits/history', { params: { date, type } }),
 }
 
 export const visitAPI = {

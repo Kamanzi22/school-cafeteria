@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Shield, Store, Users, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, EyeOff, Radio, History, MapPin } from 'lucide-react'
+import { Shield, Store, Users, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, EyeOff, Radio, History, MapPin, RefreshCw, Clock, Globe } from 'lucide-react'
 import { superAdminAPI, authAPI } from '../../services/api'
 import { useAdminStore } from '../../store'
 import { useSocket, getSocket } from '../../hooks/useSocket'
@@ -13,6 +13,8 @@ const fmtDuration = (sec) => {
   return m > 0 ? `${m}m ${s}s` : `${s}s`
 }
 
+const shortId = (id) => id ? id.slice(-8) : '—'
+
 const VISITOR_LABEL = {
   account: { label: 'Account', cls: 'bg-emerald-100 text-emerald-700' },
   guest: { label: 'Guest', cls: 'bg-amber-100 text-amber-700' },
@@ -24,14 +26,15 @@ function VisitorBadge({ type }) {
   return <span className={`badge ${v.cls}`}>{v.label}</span>
 }
 
-function VisitRow({ v, live }) {
+// Live tab — a raw, currently-happening feed. Kept simple (no order correlation / stats,
+// which only make sense once a visit is finished and part of a historical dataset).
+function LiveVisitRow({ v }) {
   const [now, setNow] = useState(Date.now())
   useEffect(() => {
-    if (!live) return
     const iv = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(iv)
-  }, [live])
-  const durationSec = live ? Math.round((now - new Date(v.enteredAt).getTime()) / 1000) : v.durationSec
+  }, [])
+  const durationSec = Math.round((now - new Date(v.enteredAt).getTime()) / 1000)
 
   return (
     <tr className="border-b border-ink-50 hover:bg-ink-50">
@@ -49,10 +52,44 @@ function VisitRow({ v, live }) {
       </td>
       <td className="px-4 py-3 text-ink-500 text-xs">{format(new Date(v.enteredAt), 'dd/MM/yyyy HH:mm')}</td>
       <td className="px-4 py-3 font-semibold text-ink-900">{fmtDuration(durationSec)}</td>
+      <td className="px-4 py-3"><span className="badge bg-emerald-100 text-emerald-700"><Radio size={10} /> Live</span></td>
+    </tr>
+  )
+}
+
+// History tab — each visit is its own row (never merged), enriched with the visitor's login
+// credential, the order placed during that specific visit (if any), and their running total
+// time across the whole site for this period.
+function HistoryVisitRow({ v }) {
+  const identity = v.visitorLogin || (v.visitorType === 'anonymous' ? `anon-${shortId(v.visitorId)}` : `${v.visitorType} visitor`)
+  return (
+    <tr className="border-b border-ink-50 hover:bg-ink-50 align-top">
       <td className="px-4 py-3">
-        {live
-          ? <span className="badge bg-emerald-100 text-emerald-700"><Radio size={10} /> Live</span>
-          : <span className="text-ink-400 text-xs">{v.leftAt ? format(new Date(v.leftAt), 'HH:mm') : '—'}</span>}
+        <div className="flex items-center gap-2 mb-0.5"><VisitorBadge type={v.visitorType} /></div>
+        <p className="text-ink-700 text-xs">{identity}</p>
+      </td>
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">{v.restaurant?.emoji}</span>
+          <span className="text-ink-900 font-medium">{v.restaurant?.name || 'Unknown'}</span>
+        </div>
+        <p className="text-ink-400 text-xs mt-0.5">
+          {format(new Date(v.enteredAt), 'dd/MM/yyyy HH:mm')} → {v.leftAt ? format(new Date(v.leftAt), 'HH:mm') : 'still active'}
+        </p>
+      </td>
+      <td className="px-4 py-3 text-xs space-y-0.5">
+        <p className="flex items-center gap-1 text-ink-500"><Globe size={11} /> Website: <strong className="text-ink-900">{fmtDuration(v.websiteDurationSec)}</strong></p>
+        <p className="flex items-center gap-1 text-ink-500"><Store size={11} /> This store: <strong className="text-ink-900">{fmtDuration(v.durationSec)}</strong></p>
+      </td>
+      <td className="px-4 py-3">
+        {v.order ? (
+          <div>
+            <p className="text-ink-900 font-medium text-xs">{v.order.itemsLabel || '—'}</p>
+            <p className={`text-xs font-semibold mt-0.5 ${v.order.status === 'cancelled' ? 'text-red-500' : 'text-emerald-600'}`}>
+              {v.order.status === 'cancelled' ? `Canceled (${v.order.amount.toLocaleString()} RWF)` : `${v.order.amount.toLocaleString()} RWF`}
+            </p>
+          </div>
+        ) : <span className="text-ink-300 text-xs">—</span>}
       </td>
     </tr>
   )
@@ -77,8 +114,12 @@ export default function SuperAdminPage() {
   const [viewingId, setViewingId] = useState(null)
   const [visitTab, setVisitTab] = useState('live')
   const [liveVisits, setLiveVisits] = useState([])
+  const [periodType, setPeriodType] = useState('day') // day | week | month | year
   const [historyDate, setHistoryDate] = useState(() => format(new Date(), 'yyyy-MM-dd'))
+  const [historyMonth, setHistoryMonth] = useState(() => format(new Date(), 'yyyy-MM'))
+  const [historyYear, setHistoryYear] = useState(() => format(new Date(), 'yyyy'))
   const [historyVisits, setHistoryVisits] = useState([])
+  const [historyStats, setHistoryStats] = useState(null)
   const [historyLoading, setHistoryLoading] = useState(false)
   const navigate = useNavigate()
   const { loginViewer, logout: exitAdminSession } = useAdminStore()
@@ -126,13 +167,24 @@ export default function SuperAdminPage() {
     }
   })
 
+  // The anchor date sent to the backend depends on which period type is selected — day/week
+  // reuse the plain date picker, month/year have their own inputs.
+  const periodAnchorDate =
+    periodType === 'month' ? `${historyMonth}-01` :
+    periodType === 'year' ? `${historyYear}-01-01` :
+    historyDate
+
+  const fetchHistory = () => {
+    setHistoryLoading(true)
+    superAdminAPI.getVisitHistory(periodAnchorDate, periodType).then(r => {
+      setHistoryVisits(r.data.data.visits); setHistoryStats(r.data.data.stats); setHistoryLoading(false)
+    }).catch(() => setHistoryLoading(false))
+  }
+
   useEffect(() => {
     if (!authed || visitTab !== 'history') return
-    setHistoryLoading(true)
-    superAdminAPI.getVisitHistory(historyDate).then(r => {
-      setHistoryVisits(r.data.data); setHistoryLoading(false)
-    }).catch(() => setHistoryLoading(false))
-  }, [authed, visitTab, historyDate])
+    fetchHistory()
+  }, [authed, visitTab, periodType, historyDate, historyMonth, historyYear])
 
   const toggleApprove = async (id) => {
     const res = await superAdminAPI.toggleApprove(id)
@@ -300,28 +352,94 @@ export default function SuperAdminPage() {
           </div>
 
           {visitTab === 'history' && (
-            <div className="px-5 py-3 border-b border-ink-100 bg-ink-50/50 flex items-center gap-2">
-              <label className="text-xs font-semibold text-ink-500 uppercase tracking-wider">Date</label>
-              <input type="date" value={historyDate} onChange={e => setHistoryDate(e.target.value)}
-                className="input py-1.5 text-sm w-auto" max={format(new Date(), 'yyyy-MM-dd')} />
-            </div>
+            <>
+              <div className="px-5 py-3 border-b border-ink-100 bg-ink-50/50 flex items-center gap-3 flex-wrap">
+                <div className="flex bg-white border border-ink-200 rounded-lg p-0.5">
+                  {[['day','Day'],['week','Week'],['month','Month'],['year','Year']].map(([v,label]) => (
+                    <button key={v} onClick={() => setPeriodType(v)}
+                      className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${periodType===v ? 'bg-ink-900 text-white' : 'text-ink-500 hover:text-ink-700'}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {(periodType === 'day' || periodType === 'week') && (
+                  <input type="date" value={historyDate} onChange={e => setHistoryDate(e.target.value)}
+                    className="input py-1.5 text-sm w-auto" max={format(new Date(), 'yyyy-MM-dd')} />
+                )}
+                {periodType === 'month' && (
+                  <input type="month" value={historyMonth} onChange={e => setHistoryMonth(e.target.value)}
+                    className="input py-1.5 text-sm w-auto" max={format(new Date(), 'yyyy-MM')} />
+                )}
+                {periodType === 'year' && (
+                  <input type="number" value={historyYear} onChange={e => setHistoryYear(e.target.value)}
+                    className="input py-1.5 text-sm w-24" min="2020" max={format(new Date(), 'yyyy')} />
+                )}
+                <button onClick={fetchHistory} disabled={historyLoading} className="btn btn-secondary btn-sm ml-auto">
+                  <RefreshCw size={13} className={historyLoading ? 'animate-spin' : ''} /> Refresh
+                </button>
+              </div>
+
+              {historyStats && (
+                <div className="px-5 py-4 border-b border-ink-100 space-y-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="bg-ink-50 rounded-xl p-3">
+                      <p className="text-[11px] text-ink-400 uppercase tracking-wider mb-1">Total Visitors</p>
+                      <p className="font-black text-xl text-ink-900">{historyStats.totalVisitors}</p>
+                    </div>
+                    <div className="bg-ink-50 rounded-xl p-3">
+                      <p className="text-[11px] text-ink-400 uppercase tracking-wider mb-1 flex items-center gap-1"><Globe size={11}/> Time on Website</p>
+                      <p className="font-black text-xl text-ink-900">{fmtDuration(historyStats.totalWebsiteTimeSec)}</p>
+                    </div>
+                    <div className="bg-ink-50 rounded-xl p-3">
+                      <p className="text-[11px] text-ink-400 uppercase tracking-wider mb-1">Most Visited</p>
+                      <p className="font-bold text-sm text-ink-900 truncate">{historyStats.topByVisitors ? `${historyStats.topByVisitors.name} (${historyStats.topByVisitors.count})` : '—'}</p>
+                    </div>
+                    <div className="bg-ink-50 rounded-xl p-3">
+                      <p className="text-[11px] text-ink-400 uppercase tracking-wider mb-1 flex items-center gap-1"><Clock size={11}/> Most Time Spent</p>
+                      <p className="font-bold text-sm text-ink-900 truncate">{historyStats.topByTime ? `${historyStats.topByTime.name} (${fmtDuration(historyStats.topByTime.totalTimeSec)})` : '—'}</p>
+                    </div>
+                  </div>
+
+                  {historyStats.perRestaurant.length > 0 && (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead><tr className="text-ink-400 uppercase tracking-wider">
+                          <th className="px-2 py-1.5 text-left font-semibold">Store</th>
+                          <th className="px-2 py-1.5 text-left font-semibold">Visitors</th>
+                          <th className="px-2 py-1.5 text-left font-semibold">Total Time</th>
+                        </tr></thead>
+                        <tbody>
+                          {historyStats.perRestaurant.map(r => (
+                            <tr key={r.restaurantId} className="border-t border-ink-100">
+                              <td className="px-2 py-1.5 text-ink-700">{r.emoji} {r.name}</td>
+                              <td className="px-2 py-1.5 text-ink-900 font-semibold">{r.visitorCount}</td>
+                              <td className="px-2 py-1.5 text-ink-900 font-semibold">{fmtDuration(r.totalTimeSec)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
           )}
 
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead><tr className="border-b border-ink-100 text-xs text-ink-400 uppercase tracking-wider">
-                {['Visitor','Restaurant','Entered','Time Spent', visitTab==='live' ? 'Status' : 'Left'].map(h => <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>)}
+                {(visitTab === 'live' ? ['Visitor','Restaurant','Entered','Time Spent','Status'] : ['Visitor','Store','Time Spent','Ordered']).map(h => <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>)}
               </tr></thead>
               <tbody>
                 {visitTab === 'live' ? (
                   liveVisits.length === 0 ? (
                     <tr><td colSpan={5} className="px-4 py-8 text-center text-ink-400">No one is browsing right now</td></tr>
-                  ) : liveVisits.map(v => <VisitRow key={v.id} v={v} live />)
+                  ) : liveVisits.map(v => <LiveVisitRow key={v.id} v={v} />)
                 ) : historyLoading ? (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center"><Loader className="animate-spin text-brand-500 mx-auto" /></td></tr>
+                  <tr><td colSpan={4} className="px-4 py-8 text-center"><Loader className="animate-spin text-brand-500 mx-auto" /></td></tr>
                 ) : historyVisits.length === 0 ? (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center text-ink-400">No visits on this date</td></tr>
-                ) : historyVisits.map(v => <VisitRow key={v.id} v={v} live={false} />)}
+                  <tr><td colSpan={4} className="px-4 py-8 text-center text-ink-400">No visits in this period</td></tr>
+                ) : historyVisits.map(v => <HistoryVisitRow key={v.id} v={v} />)}
               </tbody>
             </table>
           </div>
