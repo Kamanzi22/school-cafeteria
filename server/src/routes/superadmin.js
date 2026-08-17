@@ -222,6 +222,7 @@ async function enrichVisits(visits) {
         itemsLabel: order.items.map(i => `${i.quantity}x ${i.menuItemName}`).join(', '),
         amount: order.totalPrice,
         status: order.status,
+        paymentMethod: order.paymentMethod,
       } : null,
     };
   });

@@ -534,9 +534,9 @@ export default function SuperAdminPage() {
                     <tr><td colSpan={5} className="px-4 py-8 text-center text-ink-400">No one is browsing right now</td></tr>
                   ) : liveVisits.map(v => <LiveVisitRow key={v.id} v={v} />)
                 ) : historyLoading ? (
-                  <tr><td colSpan={4} className="px-4 py-8 text-center"><Loader className="animate-spin text-brand-500 mx-auto" /></td></tr>
+                  <tr><td colSpan={5} className="px-4 py-8 text-center"><Loader className="animate-spin text-brand-500 mx-auto" /></td></tr>
                 ) : historyVisits.length === 0 ? (
-                  <tr><td colSpan={4} className="px-4 py-8 text-center text-ink-400">No visits in this period</td></tr>
+                  <tr><td colSpan={5} className="px-4 py-8 text-center text-ink-400">No visits in this period</td></tr>
                 ) : historyVisits.map(v => <HistoryVisitRow key={v.id} v={v} />)}
               </tbody>
             </table>
