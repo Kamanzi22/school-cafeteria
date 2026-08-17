@@ -205,19 +205,13 @@ export default function SuperAdminPage() {
   }, [authed, visitTab, periodType, historyDate, historyMonth, historyYear])
 
   const clearVisitData = async () => {
-    if (!window.confirm(
-      'Clear all recorded visits? The very first time you do this it permanently deletes the data (meant for wiping test data before going live) — every time after that, it moves the data to a recoverable trash instead, undoable with Restore.'
-    )) return
+    if (!window.confirm('Move all recorded visits to trash? They stay recoverable with Restore until you explicitly Delete Permanently.')) return
     const res = await superAdminAPI.clearVisits()
     setLiveVisits([])
     setHistoryVisits([])
     setHistoryStats(null)
-    if (res.data.data.mode === 'permanent') {
-      toast.success('Visit history permanently deleted')
-    } else {
-      setTrashCount(res.data.data.count)
-      toast.success('Visit history moved to trash — click Restore if this was a mistake')
-    }
+    setTrashCount(res.data.data.count)
+    toast.success('Visit history moved to trash')
   }
 
   const restoreVisitData = async () => {
@@ -226,6 +220,13 @@ export default function SuperAdminPage() {
     toast.success('Visit history restored')
     if (visitTab === 'live') superAdminAPI.getLiveVisits().then(r => setLiveVisits(r.data.data)).catch(() => {})
     else fetchHistory()
+  }
+
+  const purgeVisitData = async () => {
+    if (!window.confirm(`Permanently delete ${trashCount} trashed visit${trashCount === 1 ? '' : 's'}? This cannot be undone.`)) return
+    await superAdminAPI.purgeVisits()
+    setTrashCount(0)
+    toast.success('Trash permanently deleted')
   }
 
   const toggleApprove = async (id) => {
@@ -241,25 +242,21 @@ export default function SuperAdminPage() {
     toast.success('Restaurant deleted')
   }
 
-  const toggleCampusDelivery = async (id, currentlyOn) => {
-    const res = await superAdminAPI.updateCampusDelivery(id, { enabled: !currentlyOn })
-    setRestaurants(prev => prev.map(r => r.id===id
-      ? { ...r, offersDelivery: res.data.data.offersDelivery, offersCampusDelivery: res.data.data.offersCampusDelivery }
-      : r))
+  const enableDeliveryForAll = async () => {
+    const input = window.prompt('Campus delivery fee for every store (RWF):', '300')
+    if (input === null) return
+    const fee = Number(input)
+    if (!Number.isFinite(fee) || fee < 0) { toast.error('Enter a valid, non-negative number'); return }
+    const res = await superAdminAPI.updateCampusDeliveryAll({ enabled: true, fee })
+    setRestaurants(prev => prev.map(r => ({ ...r, offersDelivery: true, offersCampusDelivery: true, campusDeliveryFee: fee })))
+    toast.success(`Enabled ${fee.toLocaleString()} RWF delivery for ${res.data.data.count} store(s)`)
   }
 
-  const updateDeliveryFee = async (id, fee) => {
-    const res = await superAdminAPI.updateCampusDelivery(id, { fee })
-    setRestaurants(prev => prev.map(r => r.id===id ? { ...r, campusDeliveryFee: res.data.data.campusDeliveryFee } : r))
-  }
-
-  const setDeliveryForAll = async (enabled) => {
-    if (!window.confirm(enabled ? 'Turn on 300 RWF campus delivery for every store?' : 'Turn OFF campus delivery for every store?')) return
-    const res = await superAdminAPI.updateCampusDeliveryAll(enabled ? { enabled: true, fee: 300 } : { enabled: false })
-    setRestaurants(prev => prev.map(r => enabled
-      ? { ...r, offersDelivery: true, offersCampusDelivery: true, campusDeliveryFee: 300 }
-      : { ...r, offersCampusDelivery: false }))
-    toast.success(`${enabled ? 'Enabled' : 'Disabled'} delivery for ${res.data.data.count} store(s)`)
+  const disableDeliveryForAll = async () => {
+    if (!window.confirm('Turn OFF campus delivery for every store?')) return
+    const res = await superAdminAPI.updateCampusDeliveryAll({ enabled: false })
+    setRestaurants(prev => prev.map(r => ({ ...r, offersCampusDelivery: false })))
+    toast.success(`Disabled delivery for ${res.data.data.count} store(s)`)
   }
 
   const viewStore = async (id) => {
@@ -346,11 +343,11 @@ export default function SuperAdminPage() {
           <div className="px-5 py-4 border-b border-ink-100 flex items-center justify-between flex-wrap gap-3">
             <h2 className="font-bold text-ink-900">All Restaurants</h2>
             <div className="flex items-center gap-2">
-              <button onClick={() => setDeliveryForAll(true)} title="Turn on 300 RWF campus delivery for every store"
+              <button onClick={enableDeliveryForAll} title="Turn on campus delivery for every store, with a fee you set"
                 className="btn btn-sm bg-white border border-emerald-200 text-emerald-600 hover:bg-emerald-50">
                 <Truck size={13}/> Enable Delivery for All
               </button>
-              <button onClick={() => setDeliveryForAll(false)} title="Turn off campus delivery for every store"
+              <button onClick={disableDeliveryForAll} title="Turn off campus delivery for every store"
                 className="btn btn-sm bg-white border border-ink-200 text-ink-500 hover:bg-ink-50">
                 Disable All
               </button>
@@ -361,7 +358,7 @@ export default function SuperAdminPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead><tr className="border-b border-ink-100 text-xs text-ink-400 uppercase tracking-wider">
-                  {['Restaurant','Owner','Status','Approved','Delivery','Orders','Joined','Actions'].map(h => <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>)}
+                  {['Restaurant','Owner','Status','Approved','Orders','Joined','Actions'].map(h => <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>)}
                 </tr></thead>
                 <tbody>
                   {restaurants.map(r => (
@@ -384,19 +381,6 @@ export default function SuperAdminPage() {
                           {r.isApproved ? <CheckCircle size={11}/> : <XCircle size={11}/>}
                           {r.isApproved ? 'Approved' : 'Suspended'}
                         </button>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => toggleCampusDelivery(r.id, r.offersDelivery && r.offersCampusDelivery)} disabled={r.isDeleted}
-                            className={`badge cursor-pointer ${r.offersDelivery && r.offersCampusDelivery ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-ink-100 text-ink-500 hover:bg-ink-200'}`}>
-                            <Truck size={11}/> {r.offersDelivery && r.offersCampusDelivery ? 'On' : 'Off'}
-                          </button>
-                          {r.offersDelivery && r.offersCampusDelivery && (
-                            <input type="number" defaultValue={r.campusDeliveryFee} min="0"
-                              onBlur={e => { const v = Number(e.target.value); if (v !== r.campusDeliveryFee && v >= 0) updateDeliveryFee(r.id, v) }}
-                              title="Campus delivery fee (RWF)" className="w-16 px-1.5 py-1 text-xs border border-ink-200 rounded-lg" />
-                          )}
-                        </div>
                       </td>
                       <td className="px-4 py-3 font-semibold">{r._count?.orders || 0}</td>
                       <td className="px-4 py-3 text-ink-400 text-xs">{format(new Date(r.createdAt), 'dd MMM yyyy')}</td>
@@ -427,25 +411,34 @@ export default function SuperAdminPage() {
         <div className="bg-white rounded-2xl border border-ink-100 overflow-hidden">
           <div className="px-5 py-4 border-b border-ink-100 flex items-center justify-between flex-wrap gap-3">
             <h2 className="font-bold text-ink-900 flex items-center gap-2"><MapPin size={16} className="text-brand-400" /> Visitors</h2>
-            <div className="flex items-center gap-2">
-              <div className="flex bg-ink-100 rounded-xl p-1">
-                {[['live','Live'],['history','History']].map(([v,label]) => (
-                  <button key={v} onClick={() => setVisitTab(v)}
-                    className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${visitTab===v ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-700'}`}>
-                    {label}
-                  </button>
-                ))}
+            <div className="flex flex-col items-end gap-2">
+              <div className="flex items-center gap-2">
+                <div className="flex bg-ink-100 rounded-xl p-1">
+                  {[['live','Live'],['history','History']].map(([v,label]) => (
+                    <button key={v} onClick={() => setVisitTab(v)}
+                      className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${visitTab===v ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-700'}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <button onClick={clearVisitData} title="Move all recorded visit data to trash"
+                  className="btn btn-sm bg-white border border-red-200 text-red-500 hover:bg-red-50">
+                  <Trash2 size={13} /> Clear Data
+                </button>
               </div>
               {trashCount > 0 && (
-                <button onClick={restoreVisitData} title="Undo the last Clear Data click"
-                  className="btn btn-sm bg-white border border-emerald-200 text-emerald-600 hover:bg-emerald-50">
-                  <RotateCcw size={13} /> Restore
-                </button>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-ink-400">{trashCount} in trash</span>
+                  <button onClick={purgeVisitData} title="Permanently delete everything in trash"
+                    className="btn btn-sm bg-white border border-red-200 text-red-600 hover:bg-red-50">
+                    <Trash2 size={13} /> Delete Permanently
+                  </button>
+                  <button onClick={restoreVisitData} title="Undo the last Clear Data click"
+                    className="btn btn-sm bg-white border border-emerald-200 text-emerald-600 hover:bg-emerald-50">
+                    <RotateCcw size={13} /> Restore
+                  </button>
+                </div>
               )}
-              <button onClick={clearVisitData} title="Clear all recorded visit data"
-                className="btn btn-sm bg-white border border-red-200 text-red-500 hover:bg-red-50">
-                <Trash2 size={13} /> Clear Data
-              </button>
             </div>
           </div>
 

@@ -304,11 +304,10 @@ model Promotion {
 // ─── SUPER ADMIN ────────────────────────────────────────────────────────────
 
 model SuperAdmin {
-  id                   String   @id @default(uuid())
-  username             String   @unique
-  passwordHash         String
-  hasClearedVisitsOnce Boolean  @default(false) // first "Clear Data" click is permanent, every one after soft-deletes into a recoverable trash
-  createdAt            DateTime @default(now())
+  id           String   @id @default(uuid())
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
 }
 
 // ─── VISITOR TRACKING ───────────────────────────────────────────────────────
@@ -323,7 +322,7 @@ model RestaurantVisit {
   lastSeenAt   DateTime  @default(now())
   leftAt       DateTime?
   durationSec  Int       @default(0)
-  deletedAt    DateTime? // soft-delete marker — set by a non-first "Clear Data" click, recoverable via Restore
+  deletedAt    DateTime? // soft-delete marker — set by "Clear Data", recoverable via Restore until "Delete Permanently"
 
   restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 

@@ -90,29 +90,29 @@ router.get('/stats', authSuperAdmin, async (req, res) => {
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
 
-// Clears recorded visits — meant for wiping out test data before going live. The FIRST time
-// a given super admin uses this, it's a real permanent delete (that's the intentional one-off
-// cleanup). Every time after that soft-deletes instead, so an accidental click later doesn't
-// destroy real traffic data — it can be undone with /visits/restore.
+// Clears recorded visits — always a soft-delete (moves active visits to trash), every time,
+// including the first. Real deletion only happens via the separate, explicit
+// /visits/trash (permanent) endpoint, so an accidental click never destroys data outright.
 router.delete('/visits', authSuperAdmin, async (req, res) => {
   try {
-    const admin = await prisma.superAdmin.findUnique({ where: { id: req.decoded.id } });
-    if (!admin.hasClearedVisitsOnce) {
-      const { count } = await prisma.restaurantVisit.deleteMany({ where: { deletedAt: null } });
-      await prisma.superAdmin.update({ where: { id: admin.id }, data: { hasClearedVisitsOnce: true } });
-      res.json({ success: true, data: { mode: 'permanent', count } });
-    } else {
-      const { count } = await prisma.restaurantVisit.updateMany({ where: { deletedAt: null }, data: { deletedAt: new Date() } });
-      res.json({ success: true, data: { mode: 'trash', count } });
-    }
+    const { count } = await prisma.restaurantVisit.updateMany({ where: { deletedAt: null }, data: { deletedAt: new Date() } });
+    res.json({ success: true, data: { count } });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-// Undoes the most recent soft-delete (accidental "Clear Data" click after the first one).
+// Undoes the most recent "Clear Data" — brings trashed visits back to active.
 router.post('/visits/restore', authSuperAdmin, async (req, res) => {
   try {
     const { count } = await prisma.restaurantVisit.updateMany({ where: { deletedAt: { not: null } }, data: { deletedAt: null } });
     res.json({ success: true, data: { restored: count } });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// Explicit, irreversible purge of whatever's currently in trash.
+router.delete('/visits/trash', authSuperAdmin, async (req, res) => {
+  try {
+    const { count } = await prisma.restaurantVisit.deleteMany({ where: { deletedAt: { not: null } } });
+    res.json({ success: true, data: { deleted: count } });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -134,7 +134,8 @@ router.get('/visits/live', authSuperAdmin, async (req, res) => {
       include: { restaurant: { select: { name: true, emoji: true } } },
       orderBy: { enteredAt: 'desc' },
     });
-    res.json({ success: true, data: visits });
+    const { visits: enriched } = await enrichVisits(visits);
+    res.json({ success: true, data: enriched });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -223,6 +224,7 @@ async function enrichVisits(visits) {
         amount: order.totalPrice,
         status: order.status,
         paymentMethod: order.paymentMethod,
+        fulfillmentType: order.fulfillmentType,
       } : null,
     };
   });
