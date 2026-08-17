@@ -267,7 +267,7 @@ export default function SuperAdminPage() {
         {stats && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[['Total Stores', stats.totalRestaurants, Store],['Open Now', stats.activeRestaurants, CheckCircle],['Total Orders', stats.totalOrders, ShoppingBag],['Customers', stats.totalCustomers, Users]].map(([l,v,Icon]) => (
-              <div key={l} className="card p-4">
+              <div key={l} className="bg-white rounded-2xl border border-ink-100 p-4">
                 <div className="flex items-center justify-between mb-1">
                   <p className="text-xs text-ink-400">{l}</p>
                   <Icon size={14} className="text-brand-400" />
@@ -279,7 +279,7 @@ export default function SuperAdminPage() {
         )}
 
         {/* Restaurants table */}
-        <div className="card overflow-hidden">
+        <div className="bg-white rounded-2xl border border-ink-100 overflow-hidden">
           <div className="px-5 py-4 border-b border-ink-100 flex items-center justify-between flex-wrap gap-3">
             <h2 className="font-bold text-ink-900">All Restaurants</h2>
           </div>
@@ -319,11 +319,11 @@ export default function SuperAdminPage() {
                           <div className="flex items-center gap-1">
                             <button onClick={() => viewStore(r.id)} disabled={viewingId === r.id}
                               title="View store's admin portal (read-only)"
-                              className="btn btn-ghost btn-icon text-ink-400 hover:text-brand-600">
+                              className="btn btn-icon text-ink-400 hover:text-brand-600 hover:bg-ink-100">
                               {viewingId === r.id ? <Loader size={15} className="animate-spin"/> : <Eye size={15}/>}
                             </button>
                             <button onClick={() => deleteRestaurant(r.id, r.name)} title="Delete permanently"
-                              className="btn btn-ghost btn-icon text-red-400 hover:text-red-600">
+                              className="btn btn-icon text-red-400 hover:text-red-600 hover:bg-ink-100">
                               <Trash2 size={15}/>
                             </button>
                           </div>
@@ -338,7 +338,7 @@ export default function SuperAdminPage() {
         </div>
 
         {/* Visitor tracking */}
-        <div className="card overflow-hidden">
+        <div className="bg-white rounded-2xl border border-ink-100 overflow-hidden">
           <div className="px-5 py-4 border-b border-ink-100 flex items-center justify-between flex-wrap gap-3">
             <h2 className="font-bold text-ink-900 flex items-center gap-2"><MapPin size={16} className="text-brand-400" /> Visitors</h2>
             <div className="flex bg-ink-100 rounded-xl p-1">
@@ -374,7 +374,7 @@ export default function SuperAdminPage() {
                   <input type="number" value={historyYear} onChange={e => setHistoryYear(e.target.value)}
                     className="input py-1.5 text-sm w-24" min="2020" max={format(new Date(), 'yyyy')} />
                 )}
-                <button onClick={fetchHistory} disabled={historyLoading} className="btn btn-secondary btn-sm ml-auto">
+                <button onClick={fetchHistory} disabled={historyLoading} className="btn btn-sm ml-auto bg-white border border-ink-200 text-ink-700 hover:bg-ink-50">
                   <RefreshCw size={13} className={historyLoading ? 'animate-spin' : ''} /> Refresh
                 </button>
               </div>
