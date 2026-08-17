@@ -110,6 +110,8 @@ export const superAdminAPI = {
   clearVisits: () => api.delete('/superadmin/visits'),
   restoreVisits: () => api.post('/superadmin/visits/restore'),
   getTrashCount: () => api.get('/superadmin/visits/trash-count'),
+  updateCampusDelivery: (id, d) => api.patch(`/superadmin/restaurants/${id}/campus-delivery`, d),
+  updateCampusDeliveryAll: (d) => api.patch('/superadmin/restaurants/campus-delivery-all', d),
 }
 
 export const visitAPI = {

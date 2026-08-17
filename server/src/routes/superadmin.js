@@ -26,6 +26,45 @@ router.delete('/restaurants/:id', authSuperAdmin, async (req, res) => {
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
 
+// Platform-level control over a store's on-campus delivery, separate from the store's own
+// settings page — lets the super admin flip it on/off or reprice it without impersonating the owner.
+router.patch('/restaurants/:id/campus-delivery', authSuperAdmin, async (req, res) => {
+  try {
+    const { enabled, fee } = req.body;
+    const data = {};
+    if (enabled !== undefined) {
+      data.offersCampusDelivery = !!enabled;
+      if (enabled) data.offersDelivery = true;
+    }
+    if (fee !== undefined) {
+      const n = Number(fee);
+      if (!Number.isFinite(n) || n < 0) return res.status(400).json({ success:false, error:'fee must be a non-negative number' });
+      data.campusDeliveryFee = n;
+    }
+    const updated = await prisma.restaurant.update({ where:{ id:req.params.id }, data });
+    res.json({ success:true, data:{ offersDelivery:updated.offersDelivery, offersCampusDelivery:updated.offersCampusDelivery, campusDeliveryFee:updated.campusDeliveryFee } });
+  } catch(e){ res.status(500).json({ success:false, error:e.message }); }
+});
+
+// Same toggle applied to every store at once.
+router.patch('/restaurants/campus-delivery-all', authSuperAdmin, async (req, res) => {
+  try {
+    const { enabled, fee } = req.body;
+    const data = {};
+    if (enabled !== undefined) {
+      data.offersCampusDelivery = !!enabled;
+      if (enabled) data.offersDelivery = true;
+    }
+    if (fee !== undefined) {
+      const n = Number(fee);
+      if (!Number.isFinite(n) || n < 0) return res.status(400).json({ success:false, error:'fee must be a non-negative number' });
+      data.campusDeliveryFee = n;
+    }
+    const { count } = await prisma.restaurant.updateMany({ where:{ isDeleted:false }, data });
+    res.json({ success:true, data:{ count } });
+  } catch(e){ res.status(500).json({ success:false, error:e.message }); }
+});
+
 // Mint a short-lived, read-only token that lets the super admin browse a store's own
 // admin portal exactly as its owner would see it — without ever granting write access
 // (enforced server-side by blockViewer on every mutating route, not just hidden client-side).

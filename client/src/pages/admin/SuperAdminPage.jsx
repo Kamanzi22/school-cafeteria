@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Shield, Store, Users, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, EyeOff, Radio, History, MapPin, RefreshCw, Clock, Globe, RotateCcw } from 'lucide-react'
+import { Shield, Store, Users, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, EyeOff, Radio, History, MapPin, RefreshCw, Clock, Globe, RotateCcw, Truck } from 'lucide-react'
 import { superAdminAPI, authAPI } from '../../services/api'
 import { useAdminStore } from '../../store'
 import { useSocket, getSocket } from '../../hooks/useSocket'
@@ -19,6 +19,12 @@ const VISITOR_LABEL = {
   account: { label: 'Account', cls: 'bg-emerald-100 text-emerald-700' },
   guest: { label: 'Guest', cls: 'bg-amber-100 text-amber-700' },
   anonymous: { label: 'Anonymous', cls: 'bg-ink-100 text-ink-500' },
+}
+
+const PAYMENT_LABEL = {
+  cash: { label: 'Cash', cls: 'bg-emerald-100 text-emerald-700' },
+  momo: { label: 'Momo', cls: 'bg-amber-100 text-amber-700' },
+  card: { label: 'Card', cls: 'bg-blue-100 text-blue-700' },
 }
 
 function VisitorBadge({ type }) {
@@ -85,10 +91,19 @@ function HistoryVisitRow({ v }) {
         {v.order ? (
           <div>
             <p className="text-ink-900 font-medium text-xs">{v.order.itemsLabel || '—'}</p>
-            <p className={`text-xs font-semibold mt-0.5 ${v.order.status === 'cancelled' ? 'text-red-500' : 'text-emerald-600'}`}>
-              {v.order.status === 'cancelled' ? `Canceled (${v.order.amount.toLocaleString()} RWF)` : `${v.order.amount.toLocaleString()} RWF`}
-            </p>
+            <p className="text-xs font-semibold text-emerald-600 mt-0.5">{v.order.amount.toLocaleString()} RWF</p>
           </div>
+        ) : <span className="text-ink-300 text-xs">—</span>}
+      </td>
+      <td className="px-4 py-3">
+        {v.order ? (
+          v.order.status === 'cancelled' ? (
+            <span className="badge bg-red-100 text-red-600">Canceled</span>
+          ) : (
+            <span className={`badge ${PAYMENT_LABEL[v.order.paymentMethod]?.cls || 'bg-ink-100 text-ink-600'}`}>
+              {PAYMENT_LABEL[v.order.paymentMethod]?.label || v.order.paymentMethod}
+            </span>
+          )
         ) : <span className="text-ink-300 text-xs">—</span>}
       </td>
     </tr>
@@ -226,6 +241,27 @@ export default function SuperAdminPage() {
     toast.success('Restaurant deleted')
   }
 
+  const toggleCampusDelivery = async (id, currentlyOn) => {
+    const res = await superAdminAPI.updateCampusDelivery(id, { enabled: !currentlyOn })
+    setRestaurants(prev => prev.map(r => r.id===id
+      ? { ...r, offersDelivery: res.data.data.offersDelivery, offersCampusDelivery: res.data.data.offersCampusDelivery }
+      : r))
+  }
+
+  const updateDeliveryFee = async (id, fee) => {
+    const res = await superAdminAPI.updateCampusDelivery(id, { fee })
+    setRestaurants(prev => prev.map(r => r.id===id ? { ...r, campusDeliveryFee: res.data.data.campusDeliveryFee } : r))
+  }
+
+  const setDeliveryForAll = async (enabled) => {
+    if (!window.confirm(enabled ? 'Turn on 300 RWF campus delivery for every store?' : 'Turn OFF campus delivery for every store?')) return
+    const res = await superAdminAPI.updateCampusDeliveryAll(enabled ? { enabled: true, fee: 300 } : { enabled: false })
+    setRestaurants(prev => prev.map(r => enabled
+      ? { ...r, offersDelivery: true, offersCampusDelivery: true, campusDeliveryFee: 300 }
+      : { ...r, offersCampusDelivery: false }))
+    toast.success(`${enabled ? 'Enabled' : 'Disabled'} delivery for ${res.data.data.count} store(s)`)
+  }
+
   const viewStore = async (id) => {
     setViewingId(id)
     try {
@@ -309,13 +345,23 @@ export default function SuperAdminPage() {
         <div className="bg-white rounded-2xl border border-ink-100 overflow-hidden">
           <div className="px-5 py-4 border-b border-ink-100 flex items-center justify-between flex-wrap gap-3">
             <h2 className="font-bold text-ink-900">All Restaurants</h2>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setDeliveryForAll(true)} title="Turn on 300 RWF campus delivery for every store"
+                className="btn btn-sm bg-white border border-emerald-200 text-emerald-600 hover:bg-emerald-50">
+                <Truck size={13}/> Enable Delivery for All
+              </button>
+              <button onClick={() => setDeliveryForAll(false)} title="Turn off campus delivery for every store"
+                className="btn btn-sm bg-white border border-ink-200 text-ink-500 hover:bg-ink-50">
+                Disable All
+              </button>
+            </div>
           </div>
           {loading ? <div className="p-8 text-center"><Loader className="animate-spin text-brand-500 mx-auto" /></div>
           : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead><tr className="border-b border-ink-100 text-xs text-ink-400 uppercase tracking-wider">
-                  {['Restaurant','Owner','Status','Approved','Orders','Joined','Actions'].map(h => <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>)}
+                  {['Restaurant','Owner','Status','Approved','Delivery','Orders','Joined','Actions'].map(h => <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>)}
                 </tr></thead>
                 <tbody>
                   {restaurants.map(r => (
@@ -338,6 +384,19 @@ export default function SuperAdminPage() {
                           {r.isApproved ? <CheckCircle size={11}/> : <XCircle size={11}/>}
                           {r.isApproved ? 'Approved' : 'Suspended'}
                         </button>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => toggleCampusDelivery(r.id, r.offersDelivery && r.offersCampusDelivery)} disabled={r.isDeleted}
+                            className={`badge cursor-pointer ${r.offersDelivery && r.offersCampusDelivery ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-ink-100 text-ink-500 hover:bg-ink-200'}`}>
+                            <Truck size={11}/> {r.offersDelivery && r.offersCampusDelivery ? 'On' : 'Off'}
+                          </button>
+                          {r.offersDelivery && r.offersCampusDelivery && (
+                            <input type="number" defaultValue={r.campusDeliveryFee} min="0"
+                              onBlur={e => { const v = Number(e.target.value); if (v !== r.campusDeliveryFee && v >= 0) updateDeliveryFee(r.id, v) }}
+                              title="Campus delivery fee (RWF)" className="w-16 px-1.5 py-1 text-xs border border-ink-200 rounded-lg" />
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3 font-semibold">{r._count?.orders || 0}</td>
                       <td className="px-4 py-3 text-ink-400 text-xs">{format(new Date(r.createdAt), 'dd MMM yyyy')}</td>
@@ -467,7 +526,7 @@ export default function SuperAdminPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead><tr className="border-b border-ink-100 text-xs text-ink-400 uppercase tracking-wider">
-                {(visitTab === 'live' ? ['Visitor','Restaurant','Entered','Time Spent','Status'] : ['Visitor','Store','Time Spent','Ordered']).map(h => <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>)}
+                {(visitTab === 'live' ? ['Visitor','Restaurant','Entered','Time Spent','Status'] : ['Visitor','Store','Time Spent','Ordered','Paid']).map(h => <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>)}
               </tr></thead>
               <tbody>
                 {visitTab === 'live' ? (
