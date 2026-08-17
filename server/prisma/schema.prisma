@@ -30,12 +30,12 @@ model Restaurant {
   floor         String?
   // Fulfillment
   offersPickup   Boolean  @default(true)
-  offersDelivery Boolean  @default(false)
+  offersDelivery Boolean  @default(true)
   deliveryFee    Float    @default(0)
   deliveryNote   String?
   offersCampusDelivery    Boolean @default(true)
   offersOffCampusDelivery Boolean @default(false)
-  campusDeliveryFee       Float   @default(0)
+  campusDeliveryFee       Float   @default(300)
   offCampusDeliveryFee    Float   @default(0)
   // Status
   isApproved    Boolean  @default(true)   // super-admin can suspend
@@ -304,10 +304,11 @@ model Promotion {
 // ─── SUPER ADMIN ────────────────────────────────────────────────────────────
 
 model SuperAdmin {
-  id           String   @id @default(uuid())
-  username     String   @unique
-  passwordHash String
-  createdAt    DateTime @default(now())
+  id                   String   @id @default(uuid())
+  username             String   @unique
+  passwordHash         String
+  hasClearedVisitsOnce Boolean  @default(false) // first "Clear Data" click is permanent, every one after soft-deletes into a recoverable trash
+  createdAt            DateTime @default(now())
 }
 
 // ─── VISITOR TRACKING ───────────────────────────────────────────────────────
@@ -322,6 +323,7 @@ model RestaurantVisit {
   lastSeenAt   DateTime  @default(now())
   leftAt       DateTime?
   durationSec  Int       @default(0)
+  deletedAt    DateTime? // soft-delete marker — set by a non-first "Clear Data" click, recoverable via Restore
 
   restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 

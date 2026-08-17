@@ -108,6 +108,8 @@ export const superAdminAPI = {
   getLiveVisits: () => api.get('/superadmin/visits/live'),
   getVisitHistory: (date, type) => api.get('/superadmin/visits/history', { params: { date, type } }),
   clearVisits: () => api.delete('/superadmin/visits'),
+  restoreVisits: () => api.post('/superadmin/visits/restore'),
+  getTrashCount: () => api.get('/superadmin/visits/trash-count'),
 }
 
 export const visitAPI = {

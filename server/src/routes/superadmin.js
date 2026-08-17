@@ -51,12 +51,36 @@ router.get('/stats', authSuperAdmin, async (req, res) => {
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
 
-// Wipes all recorded visits — for clearing out test data before going live, so real traffic
-// isn't mixed in with whatever was generated while testing this feature.
+// Clears recorded visits — meant for wiping out test data before going live. The FIRST time
+// a given super admin uses this, it's a real permanent delete (that's the intentional one-off
+// cleanup). Every time after that soft-deletes instead, so an accidental click later doesn't
+// destroy real traffic data — it can be undone with /visits/restore.
 router.delete('/visits', authSuperAdmin, async (req, res) => {
   try {
-    const { count } = await prisma.restaurantVisit.deleteMany();
-    res.json({ success: true, data: { deleted: count } });
+    const admin = await prisma.superAdmin.findUnique({ where: { id: req.decoded.id } });
+    if (!admin.hasClearedVisitsOnce) {
+      const { count } = await prisma.restaurantVisit.deleteMany({ where: { deletedAt: null } });
+      await prisma.superAdmin.update({ where: { id: admin.id }, data: { hasClearedVisitsOnce: true } });
+      res.json({ success: true, data: { mode: 'permanent', count } });
+    } else {
+      const { count } = await prisma.restaurantVisit.updateMany({ where: { deletedAt: null }, data: { deletedAt: new Date() } });
+      res.json({ success: true, data: { mode: 'trash', count } });
+    }
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// Undoes the most recent soft-delete (accidental "Clear Data" click after the first one).
+router.post('/visits/restore', authSuperAdmin, async (req, res) => {
+  try {
+    const { count } = await prisma.restaurantVisit.updateMany({ where: { deletedAt: { not: null } }, data: { deletedAt: null } });
+    res.json({ success: true, data: { restored: count } });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+router.get('/visits/trash-count', authSuperAdmin, async (req, res) => {
+  try {
+    const count = await prisma.restaurantVisit.count({ where: { deletedAt: { not: null } } });
+    res.json({ success: true, data: { count } });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -67,7 +91,7 @@ router.get('/visits/live', authSuperAdmin, async (req, res) => {
   try {
     const cutoff = new Date(Date.now() - 90 * 1000);
     const visits = await prisma.restaurantVisit.findMany({
-      where: { leftAt: null, lastSeenAt: { gte: cutoff } },
+      where: { leftAt: null, lastSeenAt: { gte: cutoff }, deletedAt: null },
       include: { restaurant: { select: { name: true, emoji: true } } },
       orderBy: { enteredAt: 'desc' },
     });
@@ -196,7 +220,7 @@ router.get('/visits/history', authSuperAdmin, async (req, res) => {
     if (!date) return res.status(400).json({ success: false, error: 'date required' });
     const { start, end } = getPeriodRange(type || 'day', date);
     const visits = await prisma.restaurantVisit.findMany({
-      where: { enteredAt: { gte: start, lte: end } },
+      where: { enteredAt: { gte: start, lte: end }, deletedAt: null },
       include: { restaurant: { select: { name: true, emoji: true } } },
       orderBy: { enteredAt: 'desc' },
     });

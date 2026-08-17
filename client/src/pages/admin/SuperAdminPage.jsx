@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Shield, Store, Users, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, EyeOff, Radio, History, MapPin, RefreshCw, Clock, Globe } from 'lucide-react'
+import { Shield, Store, Users, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, EyeOff, Radio, History, MapPin, RefreshCw, Clock, Globe, RotateCcw } from 'lucide-react'
 import { superAdminAPI, authAPI } from '../../services/api'
 import { useAdminStore } from '../../store'
 import { useSocket, getSocket } from '../../hooks/useSocket'
@@ -152,10 +152,13 @@ export default function SuperAdminPage() {
   }, [authed])
 
   // Live visitor feed — seed with a snapshot, then keep it current via socket updates.
+  const [trashCount, setTrashCount] = useState(0)
+
   useEffect(() => {
     if (!authed || !token) return
     getSocket().emit('join:superadmin', { token })
     superAdminAPI.getLiveVisits().then(r => setLiveVisits(r.data.data)).catch(() => {})
+    superAdminAPI.getTrashCount().then(r => setTrashCount(r.data.data.count)).catch(() => {})
   }, [authed, token])
 
   useSocket({
@@ -187,12 +190,27 @@ export default function SuperAdminPage() {
   }, [authed, visitTab, periodType, historyDate, historyMonth, historyYear])
 
   const clearVisitData = async () => {
-    if (!window.confirm('Delete ALL recorded visits and order correlations? This is meant for wiping out test data before going live — it cannot be undone.')) return
-    await superAdminAPI.clearVisits()
+    if (!window.confirm(
+      'Clear all recorded visits? The very first time you do this it permanently deletes the data (meant for wiping test data before going live) — every time after that, it moves the data to a recoverable trash instead, undoable with Restore.'
+    )) return
+    const res = await superAdminAPI.clearVisits()
     setLiveVisits([])
     setHistoryVisits([])
     setHistoryStats(null)
-    toast.success('Visit history cleared')
+    if (res.data.data.mode === 'permanent') {
+      toast.success('Visit history permanently deleted')
+    } else {
+      setTrashCount(res.data.data.count)
+      toast.success('Visit history moved to trash — click Restore if this was a mistake')
+    }
+  }
+
+  const restoreVisitData = async () => {
+    await superAdminAPI.restoreVisits()
+    setTrashCount(0)
+    toast.success('Visit history restored')
+    if (visitTab === 'live') superAdminAPI.getLiveVisits().then(r => setLiveVisits(r.data.data)).catch(() => {})
+    else fetchHistory()
   }
 
   const toggleApprove = async (id) => {
@@ -359,7 +377,13 @@ export default function SuperAdminPage() {
                   </button>
                 ))}
               </div>
-              <button onClick={clearVisitData} title="Delete all recorded visit data"
+              {trashCount > 0 && (
+                <button onClick={restoreVisitData} title="Undo the last Clear Data click"
+                  className="btn btn-sm bg-white border border-emerald-200 text-emerald-600 hover:bg-emerald-50">
+                  <RotateCcw size={13} /> Restore
+                </button>
+              )}
+              <button onClick={clearVisitData} title="Clear all recorded visit data"
                 className="btn btn-sm bg-white border border-red-200 text-red-500 hover:bg-red-50">
                 <Trash2 size={13} /> Clear Data
               </button>
