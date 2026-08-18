@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Shield, Store, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, EyeOff, Radio, History, MapPin, RefreshCw, Clock, Globe, RotateCcw, Bike } from 'lucide-react'
+import { Shield, Store, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, EyeOff, Radio, History, MapPin, RefreshCw, Clock, Globe, RotateCcw, Bike, Download } from 'lucide-react'
 import { superAdminAPI, authAPI } from '../../services/api'
 import { useAdminStore } from '../../store'
 import { useSocket, getSocket } from '../../hooks/useSocket'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 const fmtDuration = (sec) => {
   if (sec == null) return '—'
@@ -247,6 +249,85 @@ export default function SuperAdminPage() {
     await superAdminAPI.purgeVisits()
     setTrashCount(0)
     toast.success('Trash permanently deleted')
+  }
+
+  const periodLabel = () => {
+    if (periodType === 'day') return `Day: ${format(new Date(historyDate), 'dd/MM/yyyy')}`
+    if (periodType === 'week') return `Week of ${format(new Date(historyDate), 'dd/MM/yyyy')}`
+    if (periodType === 'month') return `Month: ${format(new Date(`${historyMonth}-01`), 'MMMM yyyy')}`
+    return `Year: ${historyYear}`
+  }
+
+  const downloadHistoryPDF = () => {
+    const doc = new jsPDF()
+    doc.setFontSize(16)
+    doc.text('CaféCampus — Visitor History Report', 14, 16)
+    doc.setFontSize(10)
+    doc.setTextColor(100)
+    doc.text(periodLabel(), 14, 23)
+    doc.text(`Generated: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, 14, 28)
+
+    let y = 36
+    if (historyStats) {
+      doc.setFontSize(11)
+      doc.setTextColor(0)
+      doc.text('Summary', 14, y)
+      autoTable(doc, {
+        startY: y + 3,
+        theme: 'grid',
+        styles: { fontSize: 9 },
+        head: [['Metric', 'Value']],
+        body: [
+          ['Total Visitors', String(historyStats.totalVisitors)],
+          ['Time on Website', fmtDuration(historyStats.totalWebsiteTimeSec)],
+          ['Most Visited', historyStats.topByTime ? `${historyStats.topByTime.name} (${fmtDuration(historyStats.topByTime.totalTimeSec)})` : '—'],
+          ['Most Sales', historyStats.topBySales ? `${historyStats.topBySales.name} (${historyStats.topBySales.amount.toLocaleString()} RWF)` : '—'],
+          ['Used Pickup', String(historyStats.pickupCount ?? '—')],
+          ['Used Delivery', String(historyStats.deliveryCount ?? '—')],
+        ],
+      })
+      y = doc.lastAutoTable.finalY + 10
+
+      if (historyStats.perRestaurant?.length > 0) {
+        doc.setFontSize(11)
+        doc.text('Per-Restaurant Breakdown', 14, y)
+        autoTable(doc, {
+          startY: y + 3,
+          theme: 'grid',
+          styles: { fontSize: 9 },
+          head: [['Store', 'Visitors', 'Total Time']],
+          body: historyStats.perRestaurant.map(r => [r.name, String(r.visitorCount), fmtDuration(r.totalTimeSec)]),
+        })
+        y = doc.lastAutoTable.finalY + 10
+      }
+    }
+
+    doc.setFontSize(11)
+    doc.setTextColor(0)
+    doc.text('Visits', 14, y)
+    autoTable(doc, {
+      startY: y + 3,
+      theme: 'grid',
+      styles: { fontSize: 8 },
+      head: [['Visitor', 'Store', 'Website Time', 'Store Time', 'Ordered', 'Amount', 'Payment', 'Fulfillment']],
+      body: historyVisits.map(v => {
+        const identity = v.visitorLogin || (v.visitorType === 'anonymous' ? `anon-${shortId(v.visitorId)}` : `${v.visitorType} visitor`)
+        const payment = !v.order ? '—' : v.order.status === 'cancelled' ? 'Canceled' : (v.order.paymentMethod || '—')
+        const fulfillment = !v.order || v.order.status === 'cancelled' ? '—' : (v.order.fulfillmentType === 'delivery' ? 'Delivery' : 'Pickup')
+        return [
+          `${identity} (${v.visitorType})`,
+          v.restaurant?.name || 'Unknown',
+          fmtDuration(v.websiteDurationSec),
+          fmtDuration(v.durationSec),
+          v.order?.itemsLabel || '—',
+          v.order ? `${v.order.amount.toLocaleString()} RWF` : '—',
+          payment,
+          fulfillment,
+        ]
+      }),
+    })
+
+    doc.save(`visitor-history-${periodType}-${format(new Date(), 'yyyyMMdd-HHmm')}.pdf`)
   }
 
   const toggleApprove = async (id) => {
@@ -493,7 +574,11 @@ export default function SuperAdminPage() {
                   <input type="number" value={historyYear} onChange={e => setHistoryYear(e.target.value)}
                     className="input py-1.5 text-sm w-24" min="2020" max={format(new Date(), 'yyyy')} />
                 )}
-                <button onClick={fetchHistory} disabled={historyLoading} className="btn btn-sm ml-auto bg-white border border-ink-200 text-ink-700 hover:bg-ink-50">
+                <button onClick={downloadHistoryPDF} disabled={historyLoading || historyVisits.length === 0} title="Download this history as a PDF"
+                  className="btn btn-sm ml-auto bg-white border border-ink-200 text-ink-700 hover:bg-ink-50 disabled:opacity-40">
+                  <Download size={13} /> Download PDF
+                </button>
+                <button onClick={fetchHistory} disabled={historyLoading} className="btn btn-sm bg-white border border-ink-200 text-ink-700 hover:bg-ink-50">
                   <RefreshCw size={13} className={historyLoading ? 'animate-spin' : ''} /> Refresh
                 </button>
               </div>
