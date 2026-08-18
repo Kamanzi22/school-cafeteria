@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Backpack, ArrowLeft, Loader, MapPin, RefreshCw, CheckCircle } from 'lucide-react'
+import { Backpack, ArrowLeft, Loader, MapPin, RefreshCw, CheckCircle, Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
 import { superAdminAPI } from '../../services/api'
 import { useSocket, getSocket } from '../../hooks/useSocket'
-import { format, addDays } from 'date-fns'
+import { format, addDays, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isSameMonth } from 'date-fns'
 import toast from 'react-hot-toast'
 
 const STATUS_META = {
@@ -17,6 +17,66 @@ const shortId = (id) => id ? id.slice(-8) : '—'
 
 const getStoredSuperAdminToken = () => {
   try { return JSON.parse(localStorage.getItem('cc-superadmin-v1') || '{}')?.state?.token || null } catch { return null }
+}
+
+// Custom picker (native <input type="date"> can't highlight a range) — picking a day selects
+// it plus the next 6 days as the week, with the whole 7-day span shown highlighted.
+function WeekRangePicker({ startDate, onSelect }) {
+  const rangeStart = new Date(`${startDate}T00:00:00`)
+  const rangeEnd = addDays(rangeStart, 6)
+  const [open, setOpen] = useState(false)
+  const [viewMonth, setViewMonth] = useState(startOfMonth(rangeStart))
+  const boxRef = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onClick = (e) => { if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', onClick)
+    return () => document.removeEventListener('mousedown', onClick)
+  }, [open])
+
+  const gridStart = startOfWeek(startOfMonth(viewMonth))
+  const gridEnd = endOfWeek(endOfMonth(viewMonth))
+  const days = eachDayOfInterval({ start: gridStart, end: gridEnd })
+
+  return (
+    <div className="relative" ref={boxRef}>
+      <button type="button" onClick={() => { setViewMonth(startOfMonth(rangeStart)); setOpen(o => !o) }}
+        className="btn btn-sm bg-white border border-ink-200 text-ink-900 hover:bg-ink-50">
+        <Calendar size={14} className="text-ink-400" /> {format(rangeStart, 'dd MMM yyyy')}
+      </button>
+      {open && (
+        <div className="absolute z-20 mt-2 bg-white border border-ink-100 rounded-xl shadow-lg p-3 w-72">
+          <div className="flex items-center justify-between mb-2">
+            <button type="button" onClick={() => setViewMonth(m => subMonths(m, 1))} className="btn btn-icon text-ink-400 hover:text-ink-700"><ChevronLeft size={16} /></button>
+            <p className="font-semibold text-sm text-ink-900">{format(viewMonth, 'MMMM yyyy')}</p>
+            <button type="button" onClick={() => setViewMonth(m => addMonths(m, 1))} className="btn btn-icon text-ink-400 hover:text-ink-700"><ChevronRight size={16} /></button>
+          </div>
+          <div className="grid grid-cols-7 gap-1 text-center text-[11px] text-ink-400 mb-1">
+            {['S','M','T','W','T','F','S'].map((d, i) => <span key={i}>{d}</span>)}
+          </div>
+          <div className="grid grid-cols-7 gap-0.5">
+            {days.map(d => {
+              const inRange = d >= rangeStart && d <= rangeEnd
+              const isStart = isSameDay(d, rangeStart)
+              const outsideMonth = !isSameMonth(d, viewMonth)
+              return (
+                <button key={d.toISOString()} type="button"
+                  onClick={() => { onSelect(format(d, 'yyyy-MM-dd')); setOpen(false) }}
+                  className={`text-xs py-1.5 rounded-lg transition-colors ${
+                    isStart ? 'bg-brand-600 text-white font-bold' :
+                    inRange ? 'bg-brand-100 text-brand-700 font-semibold' :
+                    outsideMonth ? 'text-ink-300 hover:bg-ink-50' : 'text-ink-700 hover:bg-ink-100'
+                  }`}>
+                  {format(d, 'd')}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 function LocationCell({ o, dateField }) {
@@ -198,21 +258,27 @@ export default function DeliveryPage() {
                     </button>
                   ))}
                 </div>
-                {(periodType === 'day' || periodType === 'week') && (
+                {periodType === 'day' && (
                   <input type="date" value={historyDate} onChange={e => setHistoryDate(e.target.value)}
-                    className="input py-1.5 text-sm w-auto" max={format(new Date(), 'yyyy-MM-dd')} />
+                    className="bg-white border border-ink-200 rounded-xl px-3.5 py-2 text-sm text-ink-900 w-auto focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"
+                    max={format(new Date(), 'yyyy-MM-dd')} />
                 )}
                 {periodType === 'week' && (
-                  <span className="text-xs text-ink-500 font-medium">
-                    → {format(addDays(new Date(`${historyDate}T00:00:00`), 6), 'dd MMM yyyy')} (7 days)
-                  </span>
+                  <>
+                    <WeekRangePicker startDate={historyDate} onSelect={setHistoryDate} />
+                    <span className="text-xs text-ink-500 font-medium">
+                      → {format(addDays(new Date(`${historyDate}T00:00:00`), 6), 'dd MMM yyyy')} (7 days)
+                    </span>
+                  </>
                 )}
                 {periodType === 'month' && (
                   <input type="month" value={historyMonth} onChange={e => setHistoryMonth(e.target.value)}
-                    className="input py-1.5 text-sm w-auto" max={format(new Date(), 'yyyy-MM')} />
+                    className="bg-white border border-ink-200 rounded-xl px-3.5 py-2 text-sm text-ink-900 w-auto focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"
+                    max={format(new Date(), 'yyyy-MM')} />
                 )}
                 {periodType === 'year' && (
-                  <select value={historyYear} onChange={e => setHistoryYear(e.target.value)} className="input py-1.5 text-sm w-28">
+                  <select value={historyYear} onChange={e => setHistoryYear(e.target.value)}
+                    className="bg-white border border-ink-200 rounded-xl px-3.5 py-2 text-sm text-ink-900 w-28 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500">
                     {['2026','2027','2028','2029','2030'].map(y => <option key={y} value={y}>{y}</option>)}
                   </select>
                 )}
