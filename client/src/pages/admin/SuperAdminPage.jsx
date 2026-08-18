@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Shield, Store, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, EyeOff, Radio, History, MapPin, RefreshCw, Clock, Globe, RotateCcw, Bike, Download } from 'lucide-react'
+import { Shield, Store, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, EyeOff, Radio, History, MapPin, RefreshCw, Clock, Globe, RotateCcw, Bike, Download, ToggleRight, ToggleLeft } from 'lucide-react'
 import { superAdminAPI, authAPI } from '../../services/api'
 import { useAdminStore } from '../../store'
 import { useSocket, getSocket } from '../../hooks/useSocket'
@@ -464,11 +464,11 @@ export default function SuperAdminPage() {
               </div>
               <button onClick={() => { setDeliveryFeeInput('300'); setDeliveryModal('enable') }} title="Turn on campus delivery for every store, with a fee you set"
                 className="btn btn-sm bg-white border border-emerald-200 text-emerald-600 hover:bg-emerald-50">
-                <Bike size={13}/> Enable Delivery for All
+                <ToggleRight size={15}/> Enable Delivery for All
               </button>
               <button onClick={() => setDeliveryModal('disable')} title="Turn off campus delivery for every store"
                 className="btn btn-sm bg-white border border-ink-200 text-ink-500 hover:bg-ink-50">
-                Disable All
+                <ToggleLeft size={15}/> Disable All
               </button>
             </div>
           </div>
