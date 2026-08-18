@@ -153,6 +153,9 @@ export default function SuperAdminPage() {
   const [historyVisits, setHistoryVisits] = useState([])
   const [historyStats, setHistoryStats] = useState(null)
   const [historyLoading, setHistoryLoading] = useState(false)
+  const [deliveryModal, setDeliveryModal] = useState(null) // null | 'enable' | 'disable'
+  const [deliveryFeeInput, setDeliveryFeeInput] = useState('300')
+  const [deliverySaving, setDeliverySaving] = useState(false)
   const navigate = useNavigate()
   const { loginViewer, logout: exitAdminSession } = useAdminStore()
 
@@ -222,7 +225,6 @@ export default function SuperAdminPage() {
   }, [authed, visitTab, periodType, historyDate, historyMonth, historyYear])
 
   const clearVisitData = async () => {
-    if (!window.confirm('Move all recorded visits to trash? They stay recoverable with Restore until you explicitly Delete Permanently.')) return
     const res = await superAdminAPI.clearVisits()
     setLiveVisits([])
     setHistoryVisits([])
@@ -240,7 +242,6 @@ export default function SuperAdminPage() {
   }
 
   const purgeVisitData = async () => {
-    if (!window.confirm(`Permanently delete ${trashCount} trashed visit${trashCount === 1 ? '' : 's'}? This cannot be undone.`)) return
     await superAdminAPI.purgeVisits()
     setTrashCount(0)
     toast.success('Trash permanently deleted')
@@ -259,21 +260,26 @@ export default function SuperAdminPage() {
     toast.success('Restaurant deleted')
   }
 
-  const enableDeliveryForAll = async () => {
-    const input = window.prompt('Campus delivery fee for every store (RWF):', '300')
-    if (input === null) return
-    const fee = Number(input)
+  const confirmEnableDeliveryForAll = async () => {
+    const fee = Number(deliveryFeeInput)
     if (!Number.isFinite(fee) || fee < 0) { toast.error('Enter a valid, non-negative number'); return }
-    const res = await superAdminAPI.updateCampusDeliveryAll({ enabled: true, fee })
-    setRestaurants(prev => prev.map(r => ({ ...r, offersDelivery: true, offersCampusDelivery: true, campusDeliveryFee: fee })))
-    toast.success(`Enabled ${fee.toLocaleString()} RWF delivery for ${res.data.data.count} store(s)`)
+    setDeliverySaving(true)
+    try {
+      const res = await superAdminAPI.updateCampusDeliveryAll({ enabled: true, fee })
+      setRestaurants(prev => prev.map(r => ({ ...r, offersDelivery: true, offersCampusDelivery: true, campusDeliveryFee: fee })))
+      toast.success(`Enabled ${fee.toLocaleString()} RWF delivery for ${res.data.data.count} store(s)`)
+      setDeliveryModal(null)
+    } finally { setDeliverySaving(false) }
   }
 
-  const disableDeliveryForAll = async () => {
-    if (!window.confirm('Turn OFF campus delivery for every store?')) return
-    const res = await superAdminAPI.updateCampusDeliveryAll({ enabled: false })
-    setRestaurants(prev => prev.map(r => ({ ...r, offersCampusDelivery: false })))
-    toast.success(`Disabled delivery for ${res.data.data.count} store(s)`)
+  const confirmDisableDeliveryForAll = async () => {
+    setDeliverySaving(true)
+    try {
+      const res = await superAdminAPI.updateCampusDeliveryAll({ enabled: false })
+      setRestaurants(prev => prev.map(r => ({ ...r, offersCampusDelivery: false })))
+      toast.success(`Disabled delivery for ${res.data.data.count} store(s)`)
+      setDeliveryModal(null)
+    } finally { setDeliverySaving(false) }
   }
 
   const viewStore = async (id) => {
@@ -360,11 +366,11 @@ export default function SuperAdminPage() {
           <div className="px-5 py-4 border-b border-ink-100 flex items-center justify-between flex-wrap gap-3">
             <h2 className="font-bold text-ink-900">All Restaurants</h2>
             <div className="flex items-center gap-2">
-              <button onClick={enableDeliveryForAll} title="Turn on campus delivery for every store, with a fee you set"
+              <button onClick={() => { setDeliveryFeeInput('300'); setDeliveryModal('enable') }} title="Turn on campus delivery for every store, with a fee you set"
                 className="btn btn-sm bg-white border border-emerald-200 text-emerald-600 hover:bg-emerald-50">
                 <Bike size={13}/> Enable Delivery for All
               </button>
-              <button onClick={disableDeliveryForAll} title="Turn off campus delivery for every store"
+              <button onClick={() => setDeliveryModal('disable')} title="Turn off campus delivery for every store"
                 className="btn btn-sm bg-white border border-ink-200 text-ink-500 hover:bg-ink-50">
                 Disable All
               </button>
@@ -551,6 +557,41 @@ export default function SuperAdminPage() {
           </div>
         </div>
       </div>
+
+      {/* Delivery modal — enable (with fee) or disable, for every store at once */}
+      {deliveryModal && (
+        <div className="fixed inset-0 bg-ink-950/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm p-6">
+            {deliveryModal === 'enable' ? (
+              <>
+                <h3 className="font-bold text-lg text-ink-900 mb-1">Enable Delivery for All Stores</h3>
+                <p className="text-sm text-ink-400 mb-4">Turns on campus delivery for every store and sets their fee.</p>
+                <label className="label">Delivery Fee (RWF)</label>
+                <input type="number" min="0" autoFocus value={deliveryFeeInput}
+                  onChange={e => setDeliveryFeeInput(e.target.value)} className="input mb-5" />
+                <div className="flex gap-3">
+                  <button onClick={() => setDeliveryModal(null)} className="btn btn-secondary flex-1">Cancel</button>
+                  <button onClick={confirmEnableDeliveryForAll} disabled={deliverySaving} className="btn btn-primary flex-1">
+                    {deliverySaving ? <Loader size={14} className="animate-spin" /> : 'Enable for All'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="font-bold text-lg text-ink-900 mb-1">Disable Delivery for All Stores</h3>
+                <p className="text-sm text-ink-400 mb-5">Turns off campus delivery for every store. They can each re-enable it individually later.</p>
+                <div className="flex gap-3">
+                  <button onClick={() => setDeliveryModal(null)} className="btn btn-secondary flex-1">Cancel</button>
+                  <button onClick={confirmDisableDeliveryForAll} disabled={deliverySaving}
+                    className="btn flex-1 bg-red-50 border border-red-200 text-red-600 hover:bg-red-100">
+                    {deliverySaving ? <Loader size={14} className="animate-spin" /> : 'Disable for All'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
