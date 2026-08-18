@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Shield, Store, Users, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, EyeOff, Radio, History, MapPin, RefreshCw, Clock, Globe, RotateCcw, Truck } from 'lucide-react'
+import { Shield, Store, Users, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, EyeOff, Radio, History, MapPin, RefreshCw, Clock, Globe, RotateCcw, Bike } from 'lucide-react'
 import { superAdminAPI, authAPI } from '../../services/api'
 import { useAdminStore } from '../../store'
 import { useSocket, getSocket } from '../../hooks/useSocket'
@@ -32,8 +32,37 @@ function VisitorBadge({ type }) {
   return <span className={`badge ${v.cls}`}>{v.label}</span>
 }
 
-// Live tab — a raw, currently-happening feed. Kept simple (no order correlation / stats,
-// which only make sense once a visit is finished and part of a historical dataset).
+function OrderedCell({ order }) {
+  return order ? (
+    <div>
+      <p className="text-ink-900 font-medium text-xs">{order.itemsLabel || '—'}</p>
+      <p className="text-xs font-semibold text-emerald-600 mt-0.5">{order.amount.toLocaleString()} RWF</p>
+    </div>
+  ) : <span className="text-ink-300 text-xs">—</span>
+}
+
+function PaymentCell({ order }) {
+  if (!order) return <span className="text-ink-300 text-xs">—</span>
+  if (order.status === 'cancelled') return <span className="badge bg-red-100 text-red-600">Canceled</span>
+  return (
+    <span className={`badge ${PAYMENT_LABEL[order.paymentMethod]?.cls || 'bg-ink-100 text-ink-600'}`}>
+      {PAYMENT_LABEL[order.paymentMethod]?.label || order.paymentMethod}
+    </span>
+  )
+}
+
+function FulfillmentCell({ order }) {
+  if (!order || order.status === 'cancelled') return <span className="text-ink-300 text-xs">—</span>
+  const isDelivery = order.fulfillmentType === 'delivery'
+  return (
+    <span className={`badge ${isDelivery ? 'bg-indigo-100 text-indigo-600' : 'bg-emerald-100 text-emerald-600'}`}>
+      {isDelivery ? <Bike size={11} /> : <ShoppingBag size={11} />} {isDelivery ? 'Delivery' : 'Pickup'}
+    </span>
+  )
+}
+
+// Live tab — a currently-happening feed, enriched the same way as history (order match,
+// website-wide time) but with "this store" duration ticking client-side every second.
 function LiveVisitRow({ v }) {
   const [now, setNow] = useState(Date.now())
   useEffect(() => {
@@ -43,7 +72,7 @@ function LiveVisitRow({ v }) {
   const durationSec = Math.round((now - new Date(v.enteredAt).getTime()) / 1000)
 
   return (
-    <tr className="border-b border-ink-50 hover:bg-ink-50">
+    <tr className="border-b border-ink-50 hover:bg-ink-50 align-top">
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
           <VisitorBadge type={v.visitorType} />
@@ -56,9 +85,13 @@ function LiveVisitRow({ v }) {
           <span className="text-ink-900 font-medium">{v.restaurant?.name || 'Unknown'}</span>
         </div>
       </td>
-      <td className="px-4 py-3 text-ink-500 text-xs">{format(new Date(v.enteredAt), 'dd/MM/yyyy HH:mm')}</td>
-      <td className="px-4 py-3 font-semibold text-ink-900">{fmtDuration(durationSec)}</td>
-      <td className="px-4 py-3"><span className="badge bg-emerald-100 text-emerald-700"><Radio size={10} /> Live</span></td>
+      <td className="px-4 py-3 text-xs space-y-0.5">
+        <p className="flex items-center gap-1 text-ink-500"><Globe size={11} /> Website: <strong className="text-ink-900">{fmtDuration(v.websiteDurationSec)}</strong></p>
+        <p className="flex items-center gap-1 text-ink-500"><Store size={11} /> This store: <strong className="text-ink-900">{fmtDuration(durationSec)}</strong> <Radio size={10} className="text-emerald-500" /></p>
+      </td>
+      <td className="px-4 py-3"><OrderedCell order={v.order} /></td>
+      <td className="px-4 py-3"><PaymentCell order={v.order} /></td>
+      <td className="px-4 py-3"><FulfillmentCell order={v.order} /></td>
     </tr>
   )
 }
@@ -87,25 +120,9 @@ function HistoryVisitRow({ v }) {
         <p className="flex items-center gap-1 text-ink-500"><Globe size={11} /> Website: <strong className="text-ink-900">{fmtDuration(v.websiteDurationSec)}</strong></p>
         <p className="flex items-center gap-1 text-ink-500"><Store size={11} /> This store: <strong className="text-ink-900">{fmtDuration(v.durationSec)}</strong></p>
       </td>
-      <td className="px-4 py-3">
-        {v.order ? (
-          <div>
-            <p className="text-ink-900 font-medium text-xs">{v.order.itemsLabel || '—'}</p>
-            <p className="text-xs font-semibold text-emerald-600 mt-0.5">{v.order.amount.toLocaleString()} RWF</p>
-          </div>
-        ) : <span className="text-ink-300 text-xs">—</span>}
-      </td>
-      <td className="px-4 py-3">
-        {v.order ? (
-          v.order.status === 'cancelled' ? (
-            <span className="badge bg-red-100 text-red-600">Canceled</span>
-          ) : (
-            <span className={`badge ${PAYMENT_LABEL[v.order.paymentMethod]?.cls || 'bg-ink-100 text-ink-600'}`}>
-              {PAYMENT_LABEL[v.order.paymentMethod]?.label || v.order.paymentMethod}
-            </span>
-          )
-        ) : <span className="text-ink-300 text-xs">—</span>}
-      </td>
+      <td className="px-4 py-3"><OrderedCell order={v.order} /></td>
+      <td className="px-4 py-3"><PaymentCell order={v.order} /></td>
+      <td className="px-4 py-3"><FulfillmentCell order={v.order} /></td>
     </tr>
   )
 }
@@ -345,7 +362,7 @@ export default function SuperAdminPage() {
             <div className="flex items-center gap-2">
               <button onClick={enableDeliveryForAll} title="Turn on campus delivery for every store, with a fee you set"
                 className="btn btn-sm bg-white border border-emerald-200 text-emerald-600 hover:bg-emerald-50">
-                <Truck size={13}/> Enable Delivery for All
+                <Bike size={13}/> Enable Delivery for All
               </button>
               <button onClick={disableDeliveryForAll} title="Turn off campus delivery for every store"
                 className="btn btn-sm bg-white border border-ink-200 text-ink-500 hover:bg-ink-50">
@@ -358,7 +375,7 @@ export default function SuperAdminPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead><tr className="border-b border-ink-100 text-xs text-ink-400 uppercase tracking-wider">
-                  {['Restaurant','Owner','Status','Approved','Orders','Joined','Actions'].map(h => <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>)}
+                  {['Restaurant','Owner','Status','Approved','Actions'].map(h => <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>)}
                 </tr></thead>
                 <tbody>
                   {restaurants.map(r => (
@@ -382,8 +399,6 @@ export default function SuperAdminPage() {
                           {r.isApproved ? 'Approved' : 'Suspended'}
                         </button>
                       </td>
-                      <td className="px-4 py-3 font-semibold">{r._count?.orders || 0}</td>
-                      <td className="px-4 py-3 text-ink-400 text-xs">{format(new Date(r.createdAt), 'dd MMM yyyy')}</td>
                       <td className="px-4 py-3">
                         {!r.isDeleted && (
                           <div className="flex items-center gap-1">
@@ -519,17 +534,17 @@ export default function SuperAdminPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead><tr className="border-b border-ink-100 text-xs text-ink-400 uppercase tracking-wider">
-                {(visitTab === 'live' ? ['Visitor','Restaurant','Entered','Time Spent','Status'] : ['Visitor','Store','Time Spent','Ordered','Paid']).map(h => <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>)}
+                {['Visitor','Restaurant','Time Spent','Ordered','Payment','Pickup/Delivery'].map(h => <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>)}
               </tr></thead>
               <tbody>
                 {visitTab === 'live' ? (
                   liveVisits.length === 0 ? (
-                    <tr><td colSpan={5} className="px-4 py-8 text-center text-ink-400">No one is browsing right now</td></tr>
+                    <tr><td colSpan={6} className="px-4 py-8 text-center text-ink-400">No one is browsing right now</td></tr>
                   ) : liveVisits.map(v => <LiveVisitRow key={v.id} v={v} />)
                 ) : historyLoading ? (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center"><Loader className="animate-spin text-brand-500 mx-auto" /></td></tr>
+                  <tr><td colSpan={6} className="px-4 py-8 text-center"><Loader className="animate-spin text-brand-500 mx-auto" /></td></tr>
                 ) : historyVisits.length === 0 ? (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center text-ink-400">No visits in this period</td></tr>
+                  <tr><td colSpan={6} className="px-4 py-8 text-center text-ink-400">No visits in this period</td></tr>
                 ) : historyVisits.map(v => <HistoryVisitRow key={v.id} v={v} />)}
               </tbody>
             </table>

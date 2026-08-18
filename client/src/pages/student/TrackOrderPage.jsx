@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, CheckCircle, Clock, X, Star, Loader, Truck } from 'lucide-react'
+import { ArrowLeft, CheckCircle, Clock, X, Star, Loader } from 'lucide-react'
 import { orderAPI, reviewAPI } from '../../services/api'
 import { useSocket } from '../../hooks/useSocket'
 import { useCustomerStore } from '../../store'

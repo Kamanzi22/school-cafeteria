@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { CheckCircle, Clock, MapPin, Truck, Receipt, Home, Radar } from 'lucide-react'
+import { CheckCircle, Clock, MapPin, Bike, Receipt, Home, Radar } from 'lucide-react'
 import { orderAPI } from '../../services/api'
 import { format } from 'date-fns'
 
@@ -70,7 +70,7 @@ export default function OrderConfirmPageImpl() {
             <p className="font-bold text-sm text-alu-cream">{order.estimatedReadyAt ? format(new Date(order.estimatedReadyAt), 'HH:mm') : '—'}</p>
           </div>
           <div className="card p-4 text-center">
-            {isDelivery ? <Truck size={20} className="text-alu-red mx-auto mb-1" /> : <MapPin size={20} className="text-alu-red mx-auto mb-1" />}
+            {isDelivery ? <Bike size={20} className="text-alu-red mx-auto mb-1" /> : <MapPin size={20} className="text-alu-red mx-auto mb-1" />}
             <p className="text-xs text-alu-muted">{isDelivery ? `Delivering ${order.deliveryScope === 'off_campus' ? 'off campus' : 'on campus'} to` : 'Pickup at'}</p>
             <p className="font-bold text-sm text-alu-cream">{isDelivery ? order.deliveryLocation : order.restaurant?.location}</p>
           </div>

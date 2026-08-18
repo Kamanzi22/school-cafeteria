@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, Plus, Minus, Trash2, ShoppingBag, Tag, ChevronRight, Loader, Truck, MapPin } from 'lucide-react'
+import { X, Plus, Minus, Trash2, ShoppingBag, Tag, ChevronRight, Loader, Bike, MapPin } from 'lucide-react'
 import { useCartStore, useCustomerStore, useUIStore } from '../../store'
 import { orderAPI, promoAPI } from '../../services/api'
 import toast from 'react-hot-toast'
@@ -148,12 +148,12 @@ export default function CartDrawer() {
                             </button>
                             <button onClick={() => setGroupFulfillment(group.id, { type: 'delivery' })}
                               className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold border transition ${f.type === 'delivery' ? 'border-flame-500 bg-flame-50 text-flame-600' : 'border-ink-200 text-ink-500'}`}>
-                              <Truck size={13} /> Delivery
+                              <Bike size={13} /> Delivery
                             </button>
                           </div>
                         ) : (
                           <p className="text-[11px] font-semibold text-ink-500 flex items-center gap-1.5">
-                            <Truck size={12} /> Delivery only — this is a virtual store with no pickup location
+                            <Bike size={12} /> Delivery only — this is a virtual store with no pickup location
                           </p>
                         )}
                         {f.type === 'delivery' && (

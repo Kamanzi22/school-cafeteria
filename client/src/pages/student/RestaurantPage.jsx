@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Star, Clock, MapPin, Phone, Plus, Minus, ShoppingBag, Flame, Leaf, Zap, AlertCircle, Heart, Search, X, PackageX, Truck } from 'lucide-react'
+import { ArrowLeft, Star, Clock, MapPin, Phone, Plus, Minus, ShoppingBag, Flame, Leaf, Zap, AlertCircle, Heart, Search, X, PackageX, Bike } from 'lucide-react'
 import { restaurantAPI } from '../../services/api'
 import { useCartStore, useCustomerStore, useUIStore } from '../../store'
 import CartDrawer from '../../components/student/CartDrawer'
@@ -154,7 +154,7 @@ export default function RestaurantPage() {
                 <span className="flex items-center gap-1"><Clock size={11} />{restaurant.prepTimeMin}–{restaurant.prepTimeMax} min</span>
                 <span className="flex items-center gap-1"><MapPin size={11} />{restaurant.location}</span>
                 {restaurant.offersDelivery && restaurant.offersCampusDelivery && (
-                  <span className="flex items-center gap-1"><Truck size={11} />Delivery {restaurant.campusDeliveryFee > 0 ? `+${restaurant.campusDeliveryFee.toLocaleString()} RWF` : 'free'}</span>
+                  <span className="flex items-center gap-1"><Bike size={11} />Delivery {restaurant.campusDeliveryFee > 0 ? `+${restaurant.campusDeliveryFee.toLocaleString()} RWF` : 'free'}</span>
                 )}
               </div>
             </div>

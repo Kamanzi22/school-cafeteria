@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { CheckCircle, ChefHat, Bell, DollarSign, ShoppingBag, Clock, X, RefreshCw, Loader, Truck, MapPin } from 'lucide-react'
+import { CheckCircle, ChefHat, Bell, DollarSign, ShoppingBag, Clock, X, RefreshCw, Loader, Bike, MapPin } from 'lucide-react'
 import { orderAPI } from '../../services/api'
 import { useAdminStore } from '../../store'
 import { useSocket, getSocket } from '../../hooks/useSocket'
@@ -51,7 +51,7 @@ function OrderCard({ order, onUpdate, isViewer }) {
             <span className="font-mono font-bold text-flame-500 text-sm">{order.orderNumber}</span>
             {isNew && <span className="badge bg-red-100 text-red-600 animate-pulse">🔴 NEW</span>}
             {order.fulfillmentType === 'delivery' && (
-              <span className="badge bg-indigo-100 text-indigo-600"><Truck size={10} className="mr-0.5" />Delivery · {order.deliveryScope === 'off_campus' ? 'Off campus' : 'On campus'}</span>
+              <span className="badge bg-indigo-100 text-indigo-600"><Bike size={10} className="mr-0.5" />Delivery · {order.deliveryScope === 'off_campus' ? 'Off campus' : 'On campus'}</span>
             )}
           </div>
           <p className="font-bold text-ink-900 text-sm mt-0.5">{order.customer?.name}</p>
