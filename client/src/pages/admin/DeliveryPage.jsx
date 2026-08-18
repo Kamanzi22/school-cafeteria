@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { Backpack, ArrowLeft, Loader, MapPin, RefreshCw, CheckCircle } from 'lucide-react'
 import { superAdminAPI } from '../../services/api'
 import { useSocket, getSocket } from '../../hooks/useSocket'
-import { format } from 'date-fns'
+import { format, addDays } from 'date-fns'
 import toast from 'react-hot-toast'
 
 const STATUS_META = {
@@ -201,6 +201,11 @@ export default function DeliveryPage() {
                 {(periodType === 'day' || periodType === 'week') && (
                   <input type="date" value={historyDate} onChange={e => setHistoryDate(e.target.value)}
                     className="input py-1.5 text-sm w-auto" max={format(new Date(), 'yyyy-MM-dd')} />
+                )}
+                {periodType === 'week' && (
+                  <span className="text-xs text-ink-500 font-medium">
+                    → {format(addDays(new Date(`${historyDate}T00:00:00`), 6), 'dd MMM yyyy')} (7 days)
+                  </span>
                 )}
                 {periodType === 'month' && (
                   <input type="month" value={historyMonth} onChange={e => setHistoryMonth(e.target.value)}

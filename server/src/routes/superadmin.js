@@ -317,7 +317,15 @@ router.get('/delivery-orders/history', authSuperAdmin, async (req, res) => {
   try {
     const { date, type } = req.query;
     if (!date) return res.status(400).json({ success: false, error: 'date required' });
-    const { start, end } = getPeriodRange(type || 'day', date);
+    // "week" here is a rolling 7-day window starting on the picked date, not Mon-Sun of that
+    // week — matches the date picker, which lets you pick any start day for the range.
+    let start, end;
+    if ((type || 'day') === 'week') {
+      start = new Date(`${date}T00:00:00`);
+      end = new Date(start); end.setDate(start.getDate() + 6); end.setHours(23, 59, 59, 999);
+    } else {
+      ({ start, end } = getPeriodRange(type || 'day', date));
+    }
     const orders = await prisma.order.findMany({
       where: { fulfillmentType: 'delivery', status: 'picked_up', pickedUpAt: { gte: start, lte: end } },
       include: DELIVERY_ORDER_INCLUDE,
