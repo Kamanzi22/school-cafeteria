@@ -26,7 +26,9 @@ function WeekRangePicker({ startDate, onSelect }) {
   const rangeEnd = addDays(rangeStart, 6)
   const [open, setOpen] = useState(false)
   const [viewMonth, setViewMonth] = useState(startOfMonth(rangeStart))
+  const [coords, setCoords] = useState(null)
   const boxRef = useRef(null)
+  const btnRef = useRef(null)
 
   useEffect(() => {
     if (!open) return
@@ -35,18 +37,27 @@ function WeekRangePicker({ startDate, onSelect }) {
     return () => document.removeEventListener('mousedown', onClick)
   }, [open])
 
+  const toggle = () => {
+    if (!open) {
+      const rect = btnRef.current.getBoundingClientRect()
+      setCoords({ top: rect.bottom + 8, left: rect.left })
+    }
+    setViewMonth(startOfMonth(rangeStart))
+    setOpen(o => !o)
+  }
+
   const gridStart = startOfWeek(startOfMonth(viewMonth))
   const gridEnd = endOfWeek(endOfMonth(viewMonth))
   const days = eachDayOfInterval({ start: gridStart, end: gridEnd })
 
   return (
-    <div className="relative" ref={boxRef}>
-      <button type="button" onClick={() => { setViewMonth(startOfMonth(rangeStart)); setOpen(o => !o) }}
+    <div ref={boxRef}>
+      <button ref={btnRef} type="button" onClick={toggle}
         className="btn btn-sm bg-white border border-ink-200 text-ink-900 hover:bg-ink-50">
         <Calendar size={14} className="text-ink-400" /> {format(rangeStart, 'dd MMM yyyy')}
       </button>
-      {open && (
-        <div className="absolute z-20 mt-2 bg-white border border-ink-100 rounded-xl shadow-lg p-3 w-72">
+      {open && coords && (
+        <div className="fixed z-50 bg-white border border-ink-100 rounded-xl shadow-lg p-3 w-72" style={{ top: coords.top, left: coords.left }}>
           <div className="flex items-center justify-between mb-2">
             <button type="button" onClick={() => setViewMonth(m => subMonths(m, 1))} className="btn btn-icon text-ink-400 hover:text-ink-700"><ChevronLeft size={16} /></button>
             <p className="font-semibold text-sm text-ink-900">{format(viewMonth, 'MMMM yyyy')}</p>
