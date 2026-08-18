@@ -155,6 +155,8 @@ export default function SuperAdminPage() {
   const [deliveryModal, setDeliveryModal] = useState(null) // null | 'enable' | 'disable'
   const [deliveryFeeInput, setDeliveryFeeInput] = useState('300')
   const [deliverySaving, setDeliverySaving] = useState(false)
+  const [campusFeeInput, setCampusFeeInput] = useState('')
+  const [savingCampusFee, setSavingCampusFee] = useState(false)
   const navigate = useNavigate()
   const { loginViewer, logout: exitAdminSession } = useAdminStore()
 
@@ -175,6 +177,7 @@ export default function SuperAdminPage() {
     setLoading(true)
     superAdminAPI.getRestaurants().then((r) => {
       setRestaurants(r.data.data); setLoading(false)
+      if (r.data.data.length) setCampusFeeInput(String(r.data.data[0].campusDeliveryFee ?? 0))
     }).catch((e) => {
       setLoading(false)
       // Stored token is invalid/expired — drop back to the login screen instead of a blank page.
@@ -281,6 +284,17 @@ export default function SuperAdminPage() {
     } finally { setDeliverySaving(false) }
   }
 
+  const saveCampusFee = async () => {
+    const fee = Number(campusFeeInput)
+    if (!Number.isFinite(fee) || fee < 0) { toast.error('Enter a valid, non-negative number'); return }
+    setSavingCampusFee(true)
+    try {
+      const res = await superAdminAPI.updateCampusDeliveryAll({ fee })
+      setRestaurants(prev => prev.map(r => ({ ...r, campusDeliveryFee: fee })))
+      toast.success(`Delivery fee set to ${fee.toLocaleString()} RWF for ${res.data.data.count} store(s)`)
+    } finally { setSavingCampusFee(false) }
+  }
+
   const viewStore = async (id) => {
     setViewingId(id)
     try {
@@ -349,7 +363,16 @@ export default function SuperAdminPage() {
         <div className="bg-white rounded-2xl border border-ink-100 overflow-hidden">
           <div className="px-5 py-4 border-b border-ink-100 flex items-center justify-between flex-wrap gap-3">
             <h2 className="font-bold text-ink-900">All Restaurants</h2>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5" title="Delivery fee applied platform-wide — edit and save any time, independent of on/off">
+                <span className="text-xs text-ink-400 whitespace-nowrap">Delivery Fee (RWF)</span>
+                <input type="number" min="0" value={campusFeeInput} onChange={e => setCampusFeeInput(e.target.value)}
+                  className="input py-1.5 text-sm w-24" />
+                <button onClick={saveCampusFee} disabled={savingCampusFee}
+                  className="btn btn-sm bg-white border border-ink-200 text-ink-700 hover:bg-ink-50">
+                  {savingCampusFee ? <Loader size={13} className="animate-spin"/> : 'Save'}
+                </button>
+              </div>
               <button onClick={() => { setDeliveryFeeInput('300'); setDeliveryModal('enable') }} title="Turn on campus delivery for every store, with a fee you set"
                 className="btn btn-sm bg-white border border-emerald-200 text-emerald-600 hover:bg-emerald-50">
                 <Bike size={13}/> Enable Delivery for All
