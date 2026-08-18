@@ -57,9 +57,17 @@ function FulfillmentCell({ order }) {
   if (!order || order.status === 'cancelled') return <span className="text-ink-300 text-xs">—</span>
   const isDelivery = order.fulfillmentType === 'delivery'
   return (
-    <span className={`badge ${isDelivery ? 'bg-indigo-100 text-indigo-600' : 'bg-emerald-100 text-emerald-600'}`}>
-      {isDelivery ? <Bike size={11} /> : <ShoppingBag size={11} />} {isDelivery ? 'Delivery' : 'Pickup'}
-    </span>
+    <div>
+      <span className={`badge ${isDelivery ? 'bg-indigo-100 text-indigo-600' : 'bg-emerald-100 text-emerald-600'}`}>
+        {isDelivery ? <Bike size={11} /> : <ShoppingBag size={11} />} {isDelivery ? 'Delivery' : 'Pickup'}
+      </span>
+      {isDelivery && order.deliveryLocation && (
+        <p className="flex items-center gap-1 text-ink-500 text-xs mt-1">
+          <MapPin size={11} className="shrink-0" />
+          {order.deliveryScope === 'off_campus' ? 'Off campus: ' : 'On campus: '}{order.deliveryLocation}
+        </p>
+      )}
+    </div>
   )
 }
 

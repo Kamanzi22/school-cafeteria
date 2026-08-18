@@ -206,6 +206,8 @@ async function enrichVisits(visits) {
         status: order.status,
         paymentMethod: order.paymentMethod,
         fulfillmentType: order.fulfillmentType,
+        deliveryScope: order.deliveryScope,
+        deliveryLocation: order.deliveryLocation,
       } : null,
     };
   });
