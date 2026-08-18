@@ -26,27 +26,8 @@ router.delete('/restaurants/:id', authSuperAdmin, async (req, res) => {
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
 
-// Platform-level control over a store's on-campus delivery, separate from the store's own
-// settings page — lets the super admin flip it on/off or reprice it without impersonating the owner.
-router.patch('/restaurants/:id/campus-delivery', authSuperAdmin, async (req, res) => {
-  try {
-    const { enabled, fee } = req.body;
-    const data = {};
-    if (enabled !== undefined) {
-      data.offersCampusDelivery = !!enabled;
-      if (enabled) data.offersDelivery = true;
-    }
-    if (fee !== undefined) {
-      const n = Number(fee);
-      if (!Number.isFinite(n) || n < 0) return res.status(400).json({ success:false, error:'fee must be a non-negative number' });
-      data.campusDeliveryFee = n;
-    }
-    const updated = await prisma.restaurant.update({ where:{ id:req.params.id }, data });
-    res.json({ success:true, data:{ offersDelivery:updated.offersDelivery, offersCampusDelivery:updated.offersCampusDelivery, campusDeliveryFee:updated.campusDeliveryFee } });
-  } catch(e){ res.status(500).json({ success:false, error:e.message }); }
-});
-
-// Same toggle applied to every store at once.
+// Platform-level control over on-campus delivery, applied to every store at once — lets the
+// super admin turn it on/off and reprice it without impersonating each owner.
 router.patch('/restaurants/campus-delivery-all', authSuperAdmin, async (req, res) => {
   try {
     const { enabled, fee } = req.body;

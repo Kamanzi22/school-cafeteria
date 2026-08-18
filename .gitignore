@@ -18,6 +18,9 @@ server/prisma/dev.db-journal
 server/uploads/*
 !server/uploads/.gitkeep
 
+# Claude Code local settings
+.claude/settings.local.json
+
 # OS
 .DS_Store
 
