@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { CheckCircle, MapPin, Bike, Receipt, Home, Radar } from 'lucide-react'
+import { CheckCircle, MapPin, Backpack, Receipt, Home, Radar } from 'lucide-react'
 import { orderAPI } from '../../services/api'
 
 export default function OrderConfirmPageImpl() {
@@ -64,7 +64,7 @@ export default function OrderConfirmPageImpl() {
         {/* Info grid */}
         <div className="grid grid-cols-1 gap-3 mb-5">
           <div className="card p-4 text-center">
-            {isDelivery ? <Bike size={20} className="text-alu-red mx-auto mb-1" /> : <MapPin size={20} className="text-alu-red mx-auto mb-1" />}
+            {isDelivery ? <Backpack size={20} className="text-alu-red mx-auto mb-1" /> : <MapPin size={20} className="text-alu-red mx-auto mb-1" />}
             <p className="text-xs text-alu-muted">{isDelivery ? `Delivering ${order.deliveryScope === 'off_campus' ? 'off campus' : 'on campus'} to` : 'Pickup at'}</p>
             <p className="font-bold text-sm text-alu-cream">{isDelivery ? order.deliveryLocation : order.restaurant?.location}</p>
           </div>
