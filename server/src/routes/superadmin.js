@@ -46,6 +46,15 @@ router.patch('/restaurants/campus-delivery-all', authSuperAdmin, async (req, res
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
 
+// One-time platform correction — every store operates out of the same shared cafeteria, so
+// their listed pickup location should read "Cafeteria" everywhere, not the old per-store names.
+router.patch('/restaurants/location-all', authSuperAdmin, async (req, res) => {
+  try {
+    const { count } = await prisma.restaurant.updateMany({ where: { isDeleted: false }, data: { location: 'Cafeteria' } });
+    res.json({ success: true, data: { count } });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
 // Mint a short-lived, read-only token that lets the super admin browse a store's own
 // admin portal exactly as its owner would see it — without ever granting write access
 // (enforced server-side by blockViewer on every mutating route, not just hidden client-side).
