@@ -76,52 +76,50 @@ export default function DeliveryPage() {
             <h2 className="font-bold text-ink-900">Delivery Orders</h2>
             <p className="text-ink-400 text-xs mt-0.5">Everyone who chose delivery, newest first. Updates live as orders come in and change status.</p>
           </div>
-          {loading ? (
-            <div className="p-8 text-center"><Loader className="animate-spin text-brand-500 mx-auto" /></div>
-          ) : orders.length === 0 ? (
-            <div className="p-8 text-center text-ink-400">No delivery orders yet</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead><tr className="border-b border-ink-100 text-xs text-ink-400 uppercase tracking-wider">
-                  {['Customer','Restaurant','Meal','Location','Ready for Pickup'].map(h => <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>)}
-                </tr></thead>
-                <tbody>
-                  {orders.map(o => {
-                    const meta = STATUS_META[o.status] || STATUS_META.pending
-                    const isReady = o.status === 'ready'
-                    return (
-                      <tr key={o.id} className={`border-b border-ink-50 ${isReady ? 'bg-emerald-50/60' : 'hover:bg-ink-50'}`}>
-                        <td className="px-4 py-3">
-                          <p className="font-semibold text-ink-900">{o.customer?.name || o.guestName || 'Guest'}</p>
-                          <p className="text-xs text-ink-400" title={o.customerId}>ID: {shortId(o.customerId)}</p>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg">{o.restaurant?.emoji}</span>
-                            <span className="text-ink-900 font-medium">{o.restaurant?.name}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-ink-700 text-xs max-w-[220px]">
-                          {o.items?.map(i => `${i.quantity}x ${i.menuItemName}`).join(', ')}
-                        </td>
-                        <td className="px-4 py-3">
-                          <p className="flex items-center gap-1 text-ink-700 text-xs">
-                            <MapPin size={11} className="shrink-0 text-ink-400" />
-                            {o.deliveryScope === 'off_campus' ? 'Off campus: ' : 'On campus: '}{o.deliveryLocation}
-                          </p>
-                          <p className="text-ink-300 text-xs mt-0.5">{format(new Date(o.createdAt), 'dd MMM HH:mm')}</p>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={`badge ${meta.cls} ${isReady ? 'animate-pulse' : ''}`}>{meta.label}</span>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr className="border-b border-ink-100 text-xs text-ink-400 uppercase tracking-wider">
+                {['Customer','Restaurant','Meal','Location','Ready for Pickup'].map(h => <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>)}
+              </tr></thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan={5} className="px-4 py-8 text-center"><Loader className="animate-spin text-brand-500 mx-auto" /></td></tr>
+                ) : orders.length === 0 ? (
+                  <tr><td colSpan={5} className="px-4 py-8 text-center text-ink-400">No delivery orders yet</td></tr>
+                ) : orders.map(o => {
+                  const meta = STATUS_META[o.status] || STATUS_META.pending
+                  const isReady = o.status === 'ready'
+                  return (
+                    <tr key={o.id} className={`border-b border-ink-50 ${isReady ? 'bg-emerald-50/60' : 'hover:bg-ink-50'}`}>
+                      <td className="px-4 py-3">
+                        <p className="font-semibold text-ink-900">{o.customer?.name || o.guestName || 'Guest'}</p>
+                        <p className="text-xs text-ink-400" title={o.customerId}>ID: {shortId(o.customerId)}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">{o.restaurant?.emoji}</span>
+                          <span className="text-ink-900 font-medium">{o.restaurant?.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-ink-700 text-xs max-w-[220px]">
+                        {o.items?.map(i => `${i.quantity}x ${i.menuItemName}`).join(', ')}
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="flex items-center gap-1 text-ink-700 text-xs">
+                          <MapPin size={11} className="shrink-0 text-ink-400" />
+                          {o.deliveryScope === 'off_campus' ? 'Off campus: ' : 'On campus: '}{o.deliveryLocation}
+                        </p>
+                        <p className="text-ink-300 text-xs mt-0.5">{format(new Date(o.createdAt), 'dd MMM HH:mm')}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`badge ${meta.cls} ${isReady ? 'animate-pulse' : ''}`}>{meta.label}</span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
