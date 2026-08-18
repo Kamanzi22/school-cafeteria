@@ -37,10 +37,16 @@ function WeekRangePicker({ startDate, onSelect }) {
     return () => document.removeEventListener('mousedown', onClick)
   }, [open])
 
+  const CALENDAR_HEIGHT = 300 // roughly a 6-row month grid + header, used to decide which way it opens
+
   const toggle = () => {
     if (!open) {
       const rect = btnRef.current.getBoundingClientRect()
-      setCoords({ top: rect.bottom + 8, left: rect.left })
+      const spaceBelow = window.innerHeight - rect.bottom
+      const openUpward = spaceBelow < CALENDAR_HEIGHT && rect.top > spaceBelow
+      setCoords(openUpward
+        ? { bottom: window.innerHeight - rect.top + 8, left: rect.left }
+        : { top: rect.bottom + 8, left: rect.left })
     }
     setViewMonth(startOfMonth(rangeStart))
     setOpen(o => !o)
@@ -57,7 +63,7 @@ function WeekRangePicker({ startDate, onSelect }) {
         <Calendar size={14} className="text-ink-400" /> {format(rangeStart, 'dd MMM yyyy')}
       </button>
       {open && coords && (
-        <div className="fixed z-50 bg-white border border-ink-100 rounded-xl shadow-lg p-3 w-72" style={{ top: coords.top, left: coords.left }}>
+        <div className="fixed z-50 bg-white border border-ink-100 rounded-xl shadow-lg p-3 w-72 overflow-y-auto" style={{ ...coords, maxHeight: '80vh' }}>
           <div className="flex items-center justify-between mb-2">
             <button type="button" onClick={() => setViewMonth(m => subMonths(m, 1))} className="btn btn-icon text-ink-400 hover:text-ink-700"><ChevronLeft size={16} /></button>
             <p className="font-semibold text-sm text-ink-900">{format(viewMonth, 'MMMM yyyy')}</p>
