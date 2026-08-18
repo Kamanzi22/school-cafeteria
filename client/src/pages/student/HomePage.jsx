@@ -142,12 +142,6 @@ export default function HomePage() {
           <h1 className="text-4xl md:text-5xl font-black leading-tight mb-2">
             Skip the line,<br /><span className="text-gradient">order ahead</span> — <span className="text-gradient">pickup or delivery.</span>
           </h1>
-          {cartCount > 0 && (
-            <button onClick={openCart} className="mt-5 btn btn-primary">
-              <ShoppingBag size={16} />
-              View cart ({cartCount} item{cartCount !== 1 ? 's' : ''})
-            </button>
-          )}
         </div>
         {/* Decorative blobs */}
         <div className="absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl opacity-10" style={{ background: '#ff5c1a' }} />
