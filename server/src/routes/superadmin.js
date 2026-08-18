@@ -211,18 +211,27 @@ async function enrichVisits(visits) {
   });
 
   const perRestaurantMap = {};
+  const pickupVisitors = new Set();
+  const deliveryVisitors = new Set();
   for (const v of visits) {
     const key = v.restaurantId;
-    if (!perRestaurantMap[key]) perRestaurantMap[key] = { restaurantId: key, name: v.restaurant?.name, emoji: v.restaurant?.emoji, visitorSet: new Set(), totalTimeSec: 0 };
+    if (!perRestaurantMap[key]) perRestaurantMap[key] = { restaurantId: key, name: v.restaurant?.name, emoji: v.restaurant?.emoji, visitorSet: new Set(), totalTimeSec: 0, salesTotal: 0 };
     perRestaurantMap[key].visitorSet.add(v.visitorId);
     perRestaurantMap[key].totalTimeSec += v.durationSec || 0;
+
+    const order = orderMatch.get(v.id);
+    if (order && order.status !== 'cancelled') {
+      perRestaurantMap[key].salesTotal += order.totalPrice;
+      if (order.fulfillmentType === 'delivery') deliveryVisitors.add(v.visitorId);
+      else pickupVisitors.add(v.visitorId);
+    }
   }
   const perRestaurant = Object.values(perRestaurantMap)
-    .map(r => ({ restaurantId: r.restaurantId, name: r.name, emoji: r.emoji, visitorCount: r.visitorSet.size, totalTimeSec: r.totalTimeSec }))
+    .map(r => ({ restaurantId: r.restaurantId, name: r.name, emoji: r.emoji, visitorCount: r.visitorSet.size, totalTimeSec: r.totalTimeSec, salesTotal: r.salesTotal }))
     .sort((a, b) => b.visitorCount - a.visitorCount);
 
-  const topByVisitors = perRestaurant[0] || null;
   const topByTime = [...perRestaurant].sort((a, b) => b.totalTimeSec - a.totalTimeSec)[0] || null;
+  const topBySales = [...perRestaurant].sort((a, b) => b.salesTotal - a.salesTotal)[0] || null;
 
   return {
     visits: enrichedVisits,
@@ -231,8 +240,10 @@ async function enrichVisits(visits) {
       totalVisits: visits.length,
       totalWebsiteTimeSec: visits.reduce((s, v) => s + (v.durationSec || 0), 0),
       perRestaurant,
-      topByVisitors: topByVisitors ? { name: topByVisitors.name, count: topByVisitors.visitorCount } : null,
-      topByTime: topByTime ? { name: topByTime.name, totalTimeSec: topByTime.totalTimeSec } : null,
+      topByTime: topByTime && topByTime.totalTimeSec > 0 ? { name: topByTime.name, totalTimeSec: topByTime.totalTimeSec } : null,
+      topBySales: topBySales && topBySales.salesTotal > 0 ? { name: topBySales.name, amount: topBySales.salesTotal } : null,
+      pickupCount: pickupVisitors.size,
+      deliveryCount: deliveryVisitors.size,
     },
   };
 }

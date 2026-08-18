@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Shield, Store, Users, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, EyeOff, Radio, History, MapPin, RefreshCw, Clock, Globe, RotateCcw, Bike } from 'lucide-react'
+import { Shield, Store, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, EyeOff, Radio, History, MapPin, RefreshCw, Clock, Globe, RotateCcw, Bike } from 'lucide-react'
 import { superAdminAPI, authAPI } from '../../services/api'
 import { useAdminStore } from '../../store'
 import { useSocket, getSocket } from '../../hooks/useSocket'
@@ -140,7 +140,6 @@ export default function SuperAdminPage() {
   const [form, setForm] = useState({ username:'', password:'' })
   const [showPw, setShowPw] = useState(false)
   const [restaurants, setRestaurants] = useState([])
-  const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(false)
   const [loginLoading, setLoginLoading] = useState(false)
   const [viewingId, setViewingId] = useState(null)
@@ -174,8 +173,8 @@ export default function SuperAdminPage() {
   useEffect(() => {
     if (!authed) return
     setLoading(true)
-    Promise.all([superAdminAPI.getRestaurants(), superAdminAPI.getStats()]).then(([r, s]) => {
-      setRestaurants(r.data.data); setStats(s.data.data); setLoading(false)
+    superAdminAPI.getRestaurants().then((r) => {
+      setRestaurants(r.data.data); setLoading(false)
     }).catch((e) => {
       setLoading(false)
       // Stored token is invalid/expired — drop back to the login screen instead of a blank page.
@@ -346,21 +345,6 @@ export default function SuperAdminPage() {
       </div>
 
       <div className="max-w-5xl mx-auto px-6 py-6 space-y-6">
-        {/* Stats */}
-        {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[['Total Stores', stats.totalRestaurants, Store],['Open Now', stats.activeRestaurants, CheckCircle],['Total Orders', stats.totalOrders, ShoppingBag],['Customers', stats.totalCustomers, Users]].map(([l,v,Icon]) => (
-              <div key={l} className="bg-white rounded-2xl border border-ink-100 p-4">
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-xs text-ink-400">{l}</p>
-                  <Icon size={14} className="text-brand-400" />
-                </div>
-                <p className="font-black text-2xl text-ink-900">{v}</p>
-              </div>
-            ))}
-          </div>
-        )}
-
         {/* Restaurants table */}
         <div className="bg-white rounded-2xl border border-ink-100 overflow-hidden">
           <div className="px-5 py-4 border-b border-ink-100 flex items-center justify-between flex-wrap gap-3">
@@ -493,22 +477,30 @@ export default function SuperAdminPage() {
 
               {historyStats && (
                 <div className="px-5 py-4 border-b border-ink-100 space-y-4">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     <div className="bg-ink-50 rounded-xl p-3">
                       <p className="text-[11px] text-ink-400 uppercase tracking-wider mb-1">Total Visitors</p>
                       <p className="font-black text-xl text-ink-900">{historyStats.totalVisitors}</p>
+                    </div>
+                    <div className="bg-ink-50 rounded-xl p-3">
+                      <p className="text-[11px] text-ink-400 uppercase tracking-wider mb-1 flex items-center gap-1"><Clock size={11}/> Most Visited</p>
+                      <p className="font-bold text-sm text-ink-900 truncate">{historyStats.topByTime ? `${historyStats.topByTime.name} (${fmtDuration(historyStats.topByTime.totalTimeSec)})` : '—'}</p>
+                    </div>
+                    <div className="bg-ink-50 rounded-xl p-3">
+                      <p className="text-[11px] text-ink-400 uppercase tracking-wider mb-1 flex items-center gap-1"><ShoppingBag size={11}/> Most Sales</p>
+                      <p className="font-bold text-sm text-ink-900 truncate">{historyStats.topBySales ? `${historyStats.topBySales.name} (${historyStats.topBySales.amount.toLocaleString()} RWF)` : '—'}</p>
                     </div>
                     <div className="bg-ink-50 rounded-xl p-3">
                       <p className="text-[11px] text-ink-400 uppercase tracking-wider mb-1 flex items-center gap-1"><Globe size={11}/> Time on Website</p>
                       <p className="font-black text-xl text-ink-900">{fmtDuration(historyStats.totalWebsiteTimeSec)}</p>
                     </div>
                     <div className="bg-ink-50 rounded-xl p-3">
-                      <p className="text-[11px] text-ink-400 uppercase tracking-wider mb-1">Most Visited</p>
-                      <p className="font-bold text-sm text-ink-900 truncate">{historyStats.topByVisitors ? `${historyStats.topByVisitors.name} (${historyStats.topByVisitors.count})` : '—'}</p>
+                      <p className="text-[11px] text-ink-400 uppercase tracking-wider mb-1 flex items-center gap-1"><ShoppingBag size={11}/> Used Pickup</p>
+                      <p className="font-black text-xl text-ink-900">{historyStats.pickupCount}</p>
                     </div>
                     <div className="bg-ink-50 rounded-xl p-3">
-                      <p className="text-[11px] text-ink-400 uppercase tracking-wider mb-1 flex items-center gap-1"><Clock size={11}/> Most Time Spent</p>
-                      <p className="font-bold text-sm text-ink-900 truncate">{historyStats.topByTime ? `${historyStats.topByTime.name} (${fmtDuration(historyStats.topByTime.totalTimeSec)})` : '—'}</p>
+                      <p className="text-[11px] text-ink-400 uppercase tracking-wider mb-1 flex items-center gap-1"><Bike size={11}/> Used Delivery</p>
+                      <p className="font-black text-xl text-ink-900">{historyStats.deliveryCount}</p>
                     </div>
                   </div>
 
