@@ -265,4 +265,22 @@ router.get('/visits/history', authSuperAdmin, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// Every non-cancelled delivery order, newest first — the operational list a delivery runner
+// (or whoever's dispatching them) checks to see who's waiting and what's ready to go out.
+router.get('/delivery-orders', authSuperAdmin, async (req, res) => {
+  try {
+    const orders = await prisma.order.findMany({
+      where: { fulfillmentType: 'delivery', status: { not: 'cancelled' } },
+      include: {
+        items: true,
+        customer: { select: { id: true, name: true, email: true, studentId: true, phone: true } },
+        restaurant: { select: { name: true, emoji: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+    res.json({ success: true, data: orders });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
 module.exports = router;

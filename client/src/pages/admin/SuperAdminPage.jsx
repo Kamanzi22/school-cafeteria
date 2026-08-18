@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Shield, Store, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, EyeOff, Radio, History, MapPin, RefreshCw, Clock, Globe, RotateCcw, Bike, Download, ToggleRight, ToggleLeft } from 'lucide-react'
+import { useNavigate, Link } from 'react-router-dom'
+import { Shield, Store, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, EyeOff, Radio, History, MapPin, RefreshCw, Clock, Globe, RotateCcw, Backpack, Download, ToggleRight, ToggleLeft } from 'lucide-react'
 import { superAdminAPI, authAPI } from '../../services/api'
 import { useAdminStore } from '../../store'
 import { useSocket, getSocket } from '../../hooks/useSocket'
@@ -59,7 +59,7 @@ function FulfillmentCell({ order }) {
   return (
     <div>
       <span className={`badge ${isDelivery ? 'bg-indigo-100 text-indigo-600' : 'bg-emerald-100 text-emerald-600'}`}>
-        {isDelivery ? <Bike size={11} /> : <ShoppingBag size={11} />} {isDelivery ? 'Delivery' : 'Pickup'}
+        {isDelivery ? <Backpack size={11} /> : <ShoppingBag size={11} />} {isDelivery ? 'Delivery' : 'Pickup'}
       </span>
       {isDelivery && order.deliveryLocation && (
         <p className="flex items-center gap-1 text-ink-500 text-xs mt-1">
@@ -435,6 +435,8 @@ export default function SuperAdminPage() {
     </div>
   )
 
+  const allDeliveryEnabled = restaurants.length > 0 && restaurants.every(r => r.offersCampusDelivery)
+
   return (
     <div className="min-h-screen bg-ink-50">
       <div className="gradient-dark text-white px-6 py-5">
@@ -443,7 +445,10 @@ export default function SuperAdminPage() {
             <Shield size={24} className="text-brand-400" />
             <div><p className="font-black text-lg">Super Admin Panel</p><p className="text-ink-400 text-xs">CaféCampus Platform</p></div>
           </div>
-          <a href="/" className="btn btn-ghost text-ink-400 text-sm">← Student App</a>
+          <div className="flex items-center gap-2">
+            <Link to="/superadmin/delivery" className="btn btn-ghost text-ink-400 text-sm"><Backpack size={14} /> Delivery</Link>
+            <a href="/" className="btn btn-ghost text-ink-400 text-sm">← Student App</a>
+          </div>
         </div>
       </div>
 
@@ -462,13 +467,11 @@ export default function SuperAdminPage() {
                   {savingCampusFee ? <Loader size={13} className="animate-spin"/> : 'Save'}
                 </button>
               </div>
-              <button onClick={() => { setDeliveryFeeInput('300'); setDeliveryModal('enable') }} title="Turn on campus delivery for every store, with a fee you set"
-                className="btn btn-sm bg-white border border-emerald-200 text-emerald-600 hover:bg-emerald-50">
-                <ToggleRight size={15}/> Enable Delivery for All
-              </button>
-              <button onClick={() => setDeliveryModal('disable')} title="Turn off campus delivery for every store"
-                className="btn btn-sm bg-white border border-ink-200 text-ink-500 hover:bg-ink-50">
-                <ToggleLeft size={15}/> Disable All
+              <button
+                onClick={() => { if (allDeliveryEnabled) { setDeliveryModal('disable') } else { setDeliveryFeeInput(campusFeeInput || '300'); setDeliveryModal('enable') } }}
+                title={allDeliveryEnabled ? 'Turn off campus delivery for every store' : 'Turn on campus delivery for every store, with a fee you set'}
+                className={`btn btn-sm bg-white border ${allDeliveryEnabled ? 'border-emerald-200 text-emerald-600 hover:bg-emerald-50' : 'border-ink-200 text-ink-500 hover:bg-ink-50'}`}>
+                {allDeliveryEnabled ? <ToggleRight size={15}/> : <ToggleLeft size={15}/>} Delivery
               </button>
             </div>
           </div>
@@ -615,7 +618,7 @@ export default function SuperAdminPage() {
                       <p className="font-black text-xl text-ink-900">{historyStats.pickupCount}</p>
                     </div>
                     <div className="bg-ink-50 rounded-xl p-3">
-                      <p className="text-[11px] text-ink-400 uppercase tracking-wider mb-1 flex items-center gap-1"><Bike size={11}/> Used Delivery</p>
+                      <p className="text-[11px] text-ink-400 uppercase tracking-wider mb-1 flex items-center gap-1"><Backpack size={11}/> Used Delivery</p>
                       <p className="font-black text-xl text-ink-900">{historyStats.deliveryCount}</p>
                     </div>
                   </div>

@@ -22,6 +22,7 @@ import SettingsPage from './pages/restaurant/SettingsPage'
 
 // Super admin
 import SuperAdminPage from './pages/admin/SuperAdminPage'
+import DeliveryPage from './pages/admin/DeliveryPage'
 
 function AdminGuard({ children }) {
   const { restaurant } = useAdminStore()
@@ -53,6 +54,7 @@ export default function App() {
 
       {/* ── Super admin ────────────────────────────────── */}
       <Route path="/superadmin" element={<SuperAdminPage />} />
+      <Route path="/superadmin/delivery" element={<DeliveryPage />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

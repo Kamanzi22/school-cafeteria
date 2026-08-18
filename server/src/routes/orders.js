@@ -129,6 +129,7 @@ router.post('/', async (req, res) => {
     });
 
     req.app.get('io').to(`restaurant:${restaurantId}`).emit('order:new', order);
+    if (order.fulfillmentType === 'delivery') req.app.get('io').to('superadmin').emit('delivery:order', order);
     res.json({ success:true, data: order });
   } catch(e){
     if (e instanceof OrderValidationError) return res.status(400).json({ success:false, error:e.message });
@@ -212,6 +213,7 @@ router.patch('/:id/status', authStaff, blockViewer, async (req, res) => {
     });
     req.app.get('io').to(`order:${req.params.id}`).emit('order:updated', updated);
     req.app.get('io').to(`restaurant:${order.restaurantId}`).emit('order:statusChanged', updated);
+    if (updated.fulfillmentType === 'delivery') req.app.get('io').to('superadmin').emit('delivery:order', updated);
     res.json({ success:true, data:updated });
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
@@ -229,6 +231,7 @@ router.patch('/:id/cancel', async (req, res) => {
       return tx.order.update({ where:{ id:req.params.id }, data:{ statusHistory:{ create:[{ status:'cancelled', note:req.body.reason }] } }, include:ORDER_INCLUDE });
     });
     req.app.get('io').to(`restaurant:${order.restaurantId}`).emit('order:cancelled', updated);
+    if (updated.fulfillmentType === 'delivery') req.app.get('io').to('superadmin').emit('delivery:order', updated);
     res.json({ success:true, data:updated });
   } catch(e){
     if (e instanceof OrderValidationError) return res.status(400).json({ success:false, error:e.message });
