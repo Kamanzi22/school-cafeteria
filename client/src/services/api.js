@@ -113,6 +113,8 @@ export const superAdminAPI = {
   getTrashCount: () => api.get('/superadmin/visits/trash-count'),
   updateCampusDeliveryAll: (d) => api.patch('/superadmin/restaurants/campus-delivery-all', d),
   getDeliveryOrders: () => api.get('/superadmin/delivery-orders'),
+  markDelivered: (id) => api.patch(`/superadmin/delivery-orders/${id}/delivered`),
+  getDeliveryHistory: (date, type) => api.get('/superadmin/delivery-orders/history', { params: { date, type } }),
 }
 
 export const visitAPI = {
