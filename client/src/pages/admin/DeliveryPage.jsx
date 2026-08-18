@@ -207,8 +207,9 @@ export default function DeliveryPage() {
                     className="input py-1.5 text-sm w-auto" max={format(new Date(), 'yyyy-MM')} />
                 )}
                 {periodType === 'year' && (
-                  <input type="number" value={historyYear} onChange={e => setHistoryYear(e.target.value)}
-                    className="input py-1.5 text-sm w-24" min="2020" max={format(new Date(), 'yyyy')} />
+                  <select value={historyYear} onChange={e => setHistoryYear(e.target.value)} className="input py-1.5 text-sm w-28">
+                    {['2026','2027','2028','2029','2030'].map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
                 )}
                 <button onClick={fetchHistory} disabled={historyLoading} className="btn btn-sm ml-auto bg-white border border-ink-200 text-ink-700 hover:bg-ink-50">
                   <RefreshCw size={13} className={historyLoading ? 'animate-spin' : ''} /> Refresh
