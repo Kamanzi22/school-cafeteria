@@ -97,4 +97,20 @@ const authSuperAdmin = async (req, res, next) => {
   } catch { res.status(401).json({ success: false, error: 'Invalid token' }); }
 };
 
-module.exports = { authOwner, authStaff, authCustomer, optionalCustomer, authSuperAdmin, blockViewer };
+// Delivery runner — a JWT type scoped to the delivery-orders endpoints only (mounted on those
+// routes in place of authSuperAdmin, never alongside the rest of the superadmin API). Also
+// accepts a real superadmin token so the super admin keeps access to the same routes.
+const authDelivery = async (req, res, next) => {
+  try {
+    const decoded = verify(getToken(req));
+    if (decoded.type === 'superadmin') { req.decoded = decoded; return next(); }
+    if (decoded.type !== 'delivery') return res.status(403).json({ success: false, error: 'Delivery access required' });
+    const staff = await prisma.deliveryStaff.findUnique({ where: { id: decoded.id } });
+    if (!staff || !staff.isActive) return res.status(403).json({ success: false, error: 'Access denied' });
+    req.deliveryStaff = staff;
+    req.decoded = decoded;
+    next();
+  } catch { res.status(401).json({ success: false, error: 'Invalid token' }); }
+};
+
+module.exports = { authOwner, authStaff, authCustomer, optionalCustomer, authSuperAdmin, blockViewer, authDelivery };

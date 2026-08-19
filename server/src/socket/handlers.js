@@ -33,6 +33,14 @@ module.exports = (io) => {
         if (decoded.type === 'superadmin') socket.join('superadmin');
       } catch {}
     });
+    // Live delivery-orders feed — separate from the 'superadmin' room (which also carries
+    // visitor-tracking events) so a scoped delivery token only ever receives delivery updates.
+    socket.on('join:delivery', ({ token } = {}) => {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (decoded.type === 'delivery' || decoded.type === 'superadmin') socket.join('delivery');
+      } catch {}
+    });
     socket.on('disconnect', () => {});
   });
 };

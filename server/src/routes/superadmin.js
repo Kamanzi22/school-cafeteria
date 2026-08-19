@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const jwt = require('jsonwebtoken');
 const { PrismaClient } = require('@prisma/client');
-const { authSuperAdmin } = require('../middleware/auth');
+const { authSuperAdmin, authDelivery } = require('../middleware/auth');
 const prisma = new PrismaClient();
 
 router.get('/restaurants', authSuperAdmin, async (req, res) => {
@@ -283,7 +283,7 @@ const DELIVERY_ORDER_INCLUDE = {
 // Delivery orders still in flight — not yet delivered, not cancelled. The operational list a
 // delivery runner (or whoever's dispatching them) checks to see who's waiting and what's ready
 // to go out. Once marked delivered (below) an order drops out of this list and into history.
-router.get('/delivery-orders', authSuperAdmin, async (req, res) => {
+router.get('/delivery-orders', authDelivery, async (req, res) => {
   try {
     const orders = await prisma.order.findMany({
       where: { fulfillmentType: 'delivery', status: { notIn: ['cancelled', 'picked_up'] } },
@@ -295,8 +295,26 @@ router.get('/delivery-orders', authSuperAdmin, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// Marks a delivery order as on the way — the runner has picked the order up from the
+// restaurant and is now en route to the customer. Stays in the live list, just with a new status.
+router.patch('/delivery-orders/:id/on-the-way', authDelivery, async (req, res) => {
+  try {
+    const order = await prisma.order.findUnique({ where: { id: req.params.id } });
+    if (!order || order.fulfillmentType !== 'delivery') return res.status(404).json({ success: false, error: 'Delivery order not found' });
+    const updated = await prisma.order.update({
+      where: { id: req.params.id },
+      data: { status: 'on_the_way', onTheWayAt: new Date(), statusHistory: { create: [{ status: 'on_the_way', note: 'Marked on the way by super admin' }] } },
+      include: DELIVERY_ORDER_INCLUDE,
+    });
+    req.app.get('io').to(`order:${updated.id}`).emit('order:updated', updated);
+    req.app.get('io').to(`restaurant:${updated.restaurantId}`).emit('order:statusChanged', updated);
+    req.app.get('io').to('superadmin').to('delivery').emit('delivery:order', updated);
+    res.json({ success: true, data: updated });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
 // Marks a delivery order as delivered — moves it out of the live list above and into history.
-router.patch('/delivery-orders/:id/delivered', authSuperAdmin, async (req, res) => {
+router.patch('/delivery-orders/:id/delivered', authDelivery, async (req, res) => {
   try {
     const order = await prisma.order.findUnique({ where: { id: req.params.id } });
     if (!order || order.fulfillmentType !== 'delivery') return res.status(404).json({ success: false, error: 'Delivery order not found' });
@@ -307,13 +325,13 @@ router.patch('/delivery-orders/:id/delivered', authSuperAdmin, async (req, res) 
     });
     req.app.get('io').to(`order:${updated.id}`).emit('order:updated', updated);
     req.app.get('io').to(`restaurant:${updated.restaurantId}`).emit('order:statusChanged', updated);
-    req.app.get('io').to('superadmin').emit('delivery:order', updated);
+    req.app.get('io').to('superadmin').to('delivery').emit('delivery:order', updated);
     res.json({ success: true, data: updated });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
 // Delivered orders for a given period — same day/week/month/year windowing as visit history.
-router.get('/delivery-orders/history', authSuperAdmin, async (req, res) => {
+router.get('/delivery-orders/history', authDelivery, async (req, res) => {
   try {
     const { date, type } = req.query;
     if (!date) return res.status(400).json({ success: false, error: 'date required' });

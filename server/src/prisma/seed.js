@@ -18,12 +18,17 @@ async function main() {
   await prisma.restaurant.deleteMany();
   await prisma.customer.deleteMany();
   await prisma.superAdmin.deleteMany();
+  await prisma.deliveryStaff.deleteMany();
 
   const hash12 = (pw) => bcrypt.hash(pw, 12);
 
   // ── Super Admin ────────────────────────────────────────────
   await prisma.superAdmin.create({ data: { username: 'superadmin', passwordHash: await hash12('super123') } });
   console.log('✅ Super Admin: username=superadmin, password=super123');
+
+  // ── Delivery Staff (scoped login, /delivery only — see authDelivery) ──
+  await prisma.deliveryStaff.create({ data: { name: 'Delivery Runner', username: 'delivery', passwordHash: await hash12('delivery123') } });
+  console.log('✅ Delivery Staff: username=delivery, password=delivery123');
 
   // ── Demo Restaurants (pre-registered so app works out of box) ─
   const restaurants = [

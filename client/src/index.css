@@ -29,6 +29,7 @@
   .badge-confirmed { @apply badge bg-blue-900/30 text-blue-400; }
   .badge-preparing { @apply badge bg-orange-900/30 text-orange-400; }
   .badge-ready { @apply badge bg-alu-success/20 text-alu-success-fg; }
+  .badge-on_the_way { @apply badge bg-indigo-900/30 text-indigo-400; }
   .badge-picked_up { @apply badge bg-alu-card text-alu-muted; }
   .badge-cancelled { @apply badge bg-red-900/30 text-red-400; }
   .badge-open { @apply badge bg-alu-success/20 text-alu-success-fg; }

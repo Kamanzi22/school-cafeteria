@@ -206,6 +206,7 @@ model Order {
   confirmedAt         DateTime?
   preparingAt         DateTime?
   readyAt             DateTime?
+  onTheWayAt          DateTime?
   pickedUpAt          DateTime?
   cancelledAt         DateTime?
   cancelReason        String?
@@ -307,6 +308,17 @@ model SuperAdmin {
   id           String   @id @default(uuid())
   username     String   @unique
   passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+// Scoped login for the delivery runner — a JWT type of its own (see authDelivery), restricted
+// server-side to the delivery-orders endpoints only, never the rest of the superadmin API.
+model DeliveryStaff {
+  id           String   @id @default(uuid())
+  name         String
+  username     String   @unique
+  passwordHash String
+  isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
 }
 

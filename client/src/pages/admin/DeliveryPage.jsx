@@ -11,12 +11,16 @@ const STATUS_META = {
   confirmed: { label: 'Confirmed', cls: 'bg-blue-100 text-blue-600' },
   preparing: { label: 'Preparing', cls: 'bg-amber-100 text-amber-700' },
   ready: { label: 'Ready for Pickup', cls: 'bg-emerald-100 text-emerald-700' },
+  on_the_way: { label: 'On the Way', cls: 'bg-indigo-100 text-indigo-600' },
 }
 
 const shortId = (id) => id ? id.slice(-8) : '—'
 
 const getStoredSuperAdminToken = () => {
   try { return JSON.parse(localStorage.getItem('cc-superadmin-v1') || '{}')?.state?.token || null } catch { return null }
+}
+const getStoredDeliveryToken = () => {
+  try { return JSON.parse(localStorage.getItem('cc-delivery-v1') || '{}')?.state?.token || null } catch { return null }
 }
 
 // Custom picker (native <input type="date"> can't highlight a range) — picking a day selects
@@ -108,13 +112,14 @@ function LocationCell({ o, dateField }) {
   )
 }
 
-export default function DeliveryPage() {
+export default function DeliveryPage({ standalone = false }) {
   const navigate = useNavigate()
-  const [token] = useState(getStoredSuperAdminToken)
+  const [token] = useState(standalone ? getStoredDeliveryToken : getStoredSuperAdminToken)
   const [tab, setTab] = useState('live') // live | history
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [delivering, setDelivering] = useState(null) // id currently being marked delivered
+  const [startingDelivery, setStartingDelivery] = useState(null) // id currently being marked on the way
 
   const [periodType, setPeriodType] = useState('day') // day | week | month | year
   const [historyDate, setHistoryDate] = useState(() => format(new Date(), 'yyyy-MM-dd'))
@@ -124,10 +129,12 @@ export default function DeliveryPage() {
   const [historyLoading, setHistoryLoading] = useState(false)
 
   useEffect(() => {
-    if (!token) { navigate('/superadmin'); return }
+    if (!token) { navigate(standalone ? '/delivery/login' : '/superadmin'); return }
     load()
-    getSocket().emit('join:superadmin', { token })
+    getSocket().emit('join:delivery', { token })
   }, [token])
+
+  const logout = () => { localStorage.removeItem('cc-delivery-v1'); navigate('/delivery/login') }
 
   const load = () => {
     setLoading(true)
@@ -165,6 +172,16 @@ export default function DeliveryPage() {
     }
   })
 
+  const markOnTheWay = async (id) => {
+    setStartingDelivery(id)
+    try {
+      const r = await superAdminAPI.markOnTheWay(id)
+      setOrders(prev => prev.map(o => o.id === id ? r.data.data : o))
+      toast.success('Marked on the way')
+    } catch (e) { toast.error(e.response?.data?.error || 'Could not mark on the way') }
+    finally { setStartingDelivery(null) }
+  }
+
   const markDelivered = async (id) => {
     setDelivering(id)
     try {
@@ -182,21 +199,30 @@ export default function DeliveryPage() {
       <div className="gradient-dark text-white px-6 py-5">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link to="/superadmin" className="w-9 h-9 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center transition">
-              <ArrowLeft size={18} />
-            </Link>
+            {!standalone && (
+              <Link to="/superadmin" className="w-9 h-9 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center transition">
+                <ArrowLeft size={18} />
+              </Link>
+            )}
             <div className="flex items-center gap-2">
               <Backpack size={22} className="text-brand-400" />
               <div><p className="font-black text-lg">Delivery</p><p className="text-ink-400 text-xs">CaféCampus Platform</p></div>
             </div>
           </div>
-          <div className="flex bg-white/10 rounded-xl p-1">
-            {[['live','Live'],['history','History']].map(([v,label]) => (
-              <button key={v} onClick={() => setTab(v)}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${tab===v ? 'bg-white text-ink-900 shadow-sm' : 'text-white/70 hover:text-white'}`}>
-                {label}
+          <div className="flex items-center gap-3">
+            <div className="flex bg-white/10 rounded-xl p-1">
+              {[['live','Live'],['history','History']].map(([v,label]) => (
+                <button key={v} onClick={() => setTab(v)}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${tab===v ? 'bg-white text-ink-900 shadow-sm' : 'text-white/70 hover:text-white'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            {standalone && (
+              <button onClick={logout} className="w-9 h-9 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center transition" title="Log out">
+                <ArrowLeft size={18} />
               </button>
-            ))}
+            )}
           </div>
         </div>
       </div>
@@ -217,7 +243,7 @@ export default function DeliveryPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead><tr className="border-b border-ink-100 text-xs text-ink-400 uppercase tracking-wider">
-                    {['Customer','Restaurant','Meal','Location','Ready for Pickup',''].map(h => <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>)}
+                    {['Customer','Restaurant','Meal','Location','Pickup','Delivered'].map(h => <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>)}
                   </tr></thead>
                   <tbody>
                     {loading ? (
@@ -227,8 +253,9 @@ export default function DeliveryPage() {
                     ) : orders.map(o => {
                       const meta = STATUS_META[o.status] || STATUS_META.pending
                       const isReady = o.status === 'ready'
+                      const isOnTheWay = o.status === 'on_the_way'
                       return (
-                        <tr key={o.id} className={`border-b border-ink-50 ${isReady ? 'bg-emerald-50/60' : 'hover:bg-ink-50'}`}>
+                        <tr key={o.id} className={`border-b border-ink-50 ${isReady ? 'bg-emerald-50/60' : isOnTheWay ? 'bg-indigo-50/60' : 'hover:bg-ink-50'}`}>
                           <td className="px-4 py-3">
                             <p className="font-semibold text-ink-900">{o.customer?.name || o.guestName || 'Guest'}</p>
                             <p className="text-xs text-ink-400" title={o.customerId}>ID: {shortId(o.customerId)}</p>
@@ -244,14 +271,33 @@ export default function DeliveryPage() {
                           </td>
                           <td className="px-4 py-3"><LocationCell o={o} dateField="createdAt" /></td>
                           <td className="px-4 py-3">
-                            <span className={`badge ${meta.cls} ${isReady ? 'animate-pulse' : ''}`}>{meta.label}</span>
+                            {isReady || isOnTheWay ? (
+                              <select
+                                value={o.status}
+                                disabled={isOnTheWay || startingDelivery === o.id}
+                                onChange={e => e.target.value === 'on_the_way' && markOnTheWay(o.id)}
+                                title="Set by the restaurant as 'Ready' — pick 'On the Way' once you've collected the order"
+                                className={`text-xs font-semibold rounded-lg border pl-2.5 pr-1.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:opacity-100 ${isOnTheWay ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700 animate-pulse'}`}>
+                                <option value="ready">Ready</option>
+                                <option value="on_the_way">On the Way</option>
+                              </select>
+                            ) : (
+                              <span className={`badge ${meta.cls}`}>{meta.label}</span>
+                            )}
                           </td>
                           <td className="px-4 py-3">
-                            <button onClick={() => markDelivered(o.id)} disabled={delivering === o.id}
-                              title="Mark this order delivered — moves it to History"
-                              className="btn btn-sm bg-white border border-emerald-200 text-emerald-600 hover:bg-emerald-50 whitespace-nowrap">
-                              {delivering === o.id ? <Loader size={13} className="animate-spin" /> : <CheckCircle size={13} />} Delivered
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <select
+                                value="no"
+                                disabled={!isOnTheWay || delivering === o.id}
+                                onChange={e => e.target.value === 'yes' && markDelivered(o.id)}
+                                title={isOnTheWay ? "Set to 'Yes' once handed over and paid — moves it to History" : "Available once the order is on the way"}
+                                className={`text-xs font-semibold rounded-lg border pl-2.5 pr-1.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:opacity-100 ${isOnTheWay ? 'bg-white border-ink-200 text-ink-700' : 'bg-ink-50 border-ink-100 text-ink-300'}`}>
+                                <option value="no">No</option>
+                                <option value="yes">Yes</option>
+                              </select>
+                              {delivering === o.id && <Loader size={13} className="animate-spin text-brand-500" />}
+                            </div>
                           </td>
                         </tr>
                       )

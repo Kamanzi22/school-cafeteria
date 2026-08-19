@@ -19,7 +19,9 @@ const TABS = [
 
 function OrderCard({ order, onUpdate, isViewer }) {
   const [loading, setLoading] = useState(false)
-  const nextStatus = STATUS_NEXT[order.status]
+  // A delivery order stops at 'ready' on the restaurant's side — from there the delivery
+  // runner (superadmin/delivery) takes over marking it on the way and delivered.
+  const nextStatus = order.status === 'ready' && order.fulfillmentType === 'delivery' ? null : STATUS_NEXT[order.status]
   const Icon = BTN_ICONS[order.status]
   const isNew = Date.now() - new Date(order.createdAt) < 90000
 
@@ -95,6 +97,12 @@ function OrderCard({ order, onUpdate, isViewer }) {
       {order.estimatedReadyAt && (
         <p className="text-xs text-ink-400 flex items-center gap-1 mb-3">
           <Clock size={11} />Ready at {format(new Date(order.estimatedReadyAt), 'HH:mm')}
+        </p>
+      )}
+
+      {order.status === 'ready' && order.fulfillmentType === 'delivery' && (
+        <p className="text-xs text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-xl px-3 py-2 mb-3 flex items-center gap-1.5">
+          <Backpack size={12} className="shrink-0" />Waiting for a delivery runner to pick it up
         </p>
       )}
 

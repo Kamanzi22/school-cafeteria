@@ -248,4 +248,19 @@ router.post('/superadmin/login', async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// ══════════════════════════════════════════════════════
+// DELIVERY STAFF — login (scoped to delivery-orders only, see authDelivery)
+// ══════════════════════════════════════════════════════
+router.post('/delivery/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    const staff = await prisma.deliveryStaff.findUnique({ where: { username } });
+    if (!staff || !staff.isActive) return res.status(401).json({ success: false, error: 'Invalid credentials' });
+    const valid = await bcrypt.compare(password, staff.passwordHash);
+    if (!valid) return res.status(401).json({ success: false, error: 'Invalid credentials' });
+    const token = sign({ type: 'delivery', id: staff.id });
+    res.json({ success: true, data: { token, staff: { id: staff.id, name: staff.name, username: staff.username } } });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
 module.exports = router;

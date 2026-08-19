@@ -12,7 +12,11 @@ const getToken = () => {
     const admin = JSON.parse(localStorage.getItem('cc-admin-v3') || '{}')?.state?.token || null
     const customer = JSON.parse(localStorage.getItem('cc-customer-v4') || '{}')?.state?.token || null
     const superadmin = JSON.parse(localStorage.getItem('cc-superadmin-v1') || '{}')?.state?.token || null
+    const delivery = JSON.parse(localStorage.getItem('cc-delivery-v1') || '{}')?.state?.token || null
     const path = window.location.pathname
+    // /delivery is the standalone delivery-runner route — it must never fall back to a
+    // superadmin/admin/customer token, since that would defeat the whole point of the scope.
+    if (path.startsWith('/delivery')) return delivery
     if (path.startsWith('/superadmin')) return superadmin || admin || customer
     // NOTE: /restaurant/:id (customer-facing menu page) is NOT an owner route — only
     // /restaurant/auth and /admin* are. Don't match it with a bare startsWith('/restaurant').
@@ -39,6 +43,8 @@ export const authAPI = {
   guestSession: (d) => api.post('/auth/guest/session', d),
   // Super admin
   superAdminLogin: (d) => api.post('/auth/superadmin/login', d),
+  // Delivery staff
+  deliveryLogin: (d) => api.post('/auth/delivery/login', d),
 }
 
 export const restaurantAPI = {
@@ -113,6 +119,7 @@ export const superAdminAPI = {
   getTrashCount: () => api.get('/superadmin/visits/trash-count'),
   updateCampusDeliveryAll: (d) => api.patch('/superadmin/restaurants/campus-delivery-all', d),
   getDeliveryOrders: () => api.get('/superadmin/delivery-orders'),
+  markOnTheWay: (id) => api.patch(`/superadmin/delivery-orders/${id}/on-the-way`),
   markDelivered: (id) => api.patch(`/superadmin/delivery-orders/${id}/delivered`),
   getDeliveryHistory: (date, type) => api.get('/superadmin/delivery-orders/history', { params: { date, type } }),
 }

@@ -23,6 +23,7 @@ import SettingsPage from './pages/restaurant/SettingsPage'
 // Super admin
 import SuperAdminPage from './pages/admin/SuperAdminPage'
 import DeliveryPage from './pages/admin/DeliveryPage'
+import DeliveryAuthPage from './pages/admin/DeliveryAuthPage'
 
 function AdminGuard({ children }) {
   const { restaurant } = useAdminStore()
@@ -55,6 +56,10 @@ export default function App() {
       {/* ── Super admin ────────────────────────────────── */}
       <Route path="/superadmin" element={<SuperAdminPage />} />
       <Route path="/superadmin/delivery" element={<DeliveryPage />} />
+
+      {/* ── Delivery runner (scoped, standalone) ───────── */}
+      <Route path="/delivery/login" element={<DeliveryAuthPage />} />
+      <Route path="/delivery" element={<DeliveryPage standalone />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

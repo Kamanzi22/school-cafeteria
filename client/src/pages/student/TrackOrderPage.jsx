@@ -13,7 +13,8 @@ const STEPS = [
   { key: 'preparing', emoji: '👨‍🍳', label: 'Being Prepared', sub: 'Your food is cooking right now' },
   { key: 'ready', emoji: '🎉', label: 'Ready!', sub: 'Go pick up at the counter' },
 ]
-const STATUS_IDX = { pending: 0, confirmed: 1, preparing: 2, ready: 3, picked_up: 4 }
+const DELIVERY_STEP = { key: 'on_the_way', emoji: '🚴', label: 'Out for Delivery', sub: '' }
+const STATUS_IDX = { pending: 0, confirmed: 1, preparing: 2, ready: 3, on_the_way: 4, picked_up: 5 }
 
 export default function TrackOrderPage() {
   const { id } = useParams()
@@ -61,9 +62,12 @@ export default function TrackOrderPage() {
   const isDone = order.status === 'picked_up'
   const isDelivery = order.fulfillmentType === 'delivery'
   const deliveryLabel = order.deliveryScope === 'off_campus' ? 'off campus' : 'on campus'
-  const steps = STEPS.map(s => s.key === 'ready'
-    ? { ...s, label: isDelivery ? 'Out for delivery' : 'Ready!', sub: isDelivery ? `On its way ${deliveryLabel} to ${order.deliveryLocation}` : 'Go pick up at the counter' }
-    : s)
+  const steps = [
+    ...STEPS.map(s => s.key === 'ready'
+      ? { ...s, label: isDelivery ? 'Packed & Ready' : 'Ready!', sub: isDelivery ? 'Waiting for a delivery runner to pick it up' : 'Go pick up at the counter' }
+      : s),
+    ...(isDelivery ? [{ ...DELIVERY_STEP, sub: `Delivering ${deliveryLabel} to ${order.deliveryLocation}` }] : []),
+  ]
 
   return (
     <div className="min-h-screen bg-alu-bg">
@@ -108,8 +112,14 @@ export default function TrackOrderPage() {
             <>
               {order.status === 'ready' && (
                 <div className="bg-alu-success/10 border border-alu-success/25 rounded-xl p-4 mb-4 text-center">
-                  <p className="font-bold text-alu-success-fg text-lg">{isDelivery ? '🚚 On its way!' : '🎉 Ready for pickup!'}</p>
-                  <p className="text-alu-success-fg/70 text-sm">{isDelivery ? `Delivering ${deliveryLabel} to ${order.deliveryLocation}` : `Head to ${order.restaurant?.location} now`}</p>
+                  <p className="font-bold text-alu-success-fg text-lg">{isDelivery ? '📦 Ready!' : '🎉 Ready for pickup!'}</p>
+                  <p className="text-alu-success-fg/70 text-sm">{isDelivery ? 'Waiting for a delivery runner to pick it up' : `Head to ${order.restaurant?.location} now`}</p>
+                </div>
+              )}
+              {order.status === 'on_the_way' && (
+                <div className="bg-alu-success/10 border border-alu-success/25 rounded-xl p-4 mb-4 text-center">
+                  <p className="font-bold text-alu-success-fg text-lg">🚚 On its way!</p>
+                  <p className="text-alu-success-fg/70 text-sm">Delivering {deliveryLabel} to {order.deliveryLocation}</p>
                 </div>
               )}
               <div className="space-y-2">

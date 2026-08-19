@@ -234,7 +234,7 @@ export default function SearchPage() {
               ref={inputRef}
               value={query}
               onChange={e => setQuery(e.target.value)}
-              placeholder="Search restaurants or meals…"
+              placeholder="Search…"
               className="w-full bg-alu-surface border border-alu-border rounded-xl pl-10 pr-9 py-2 text-sm text-alu-cream placeholder-alu-muted focus:outline-none focus:ring-2 focus:ring-alu-red/30 focus:border-alu-red transition-colors"
             />
             {query && (

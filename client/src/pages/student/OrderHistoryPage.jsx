@@ -7,7 +7,7 @@ import { useBackNavigate } from '../../hooks/useBackNavigate'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 
-const STATUS_LABELS = { pending: 'Pending', confirmed: 'Confirmed', preparing: 'Preparing', ready: 'Ready!', picked_up: 'Picked Up', cancelled: 'Cancelled' }
+const STATUS_LABELS = { pending: 'Pending', confirmed: 'Confirmed', preparing: 'Preparing', ready: 'Ready!', on_the_way: 'On the Way', picked_up: 'Picked Up', cancelled: 'Cancelled' }
 
 export default function OrderHistoryPage() {
   const [orders, setOrders] = useState([])
@@ -49,7 +49,7 @@ export default function OrderHistoryPage() {
       <div className="max-w-lg mx-auto px-4 py-4">
         {/* Filter tabs */}
         <div className="flex gap-1 overflow-x-auto scrollbar-hide mb-4">
-          {['all', 'pending', 'preparing', 'ready', 'picked_up', 'cancelled'].map(f => (
+          {['all', 'pending', 'preparing', 'ready', 'on_the_way', 'picked_up', 'cancelled'].map(f => (
             <button key={f} onClick={() => setFilter(f)}
               className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-semibold transition ${filter === f ? 'bg-alu-red text-white' : 'bg-alu-surface text-alu-muted hover:bg-alu-card hover:text-alu-cream border border-alu-border'}`}>
               {f === 'all' ? 'All' : STATUS_LABELS[f]}
