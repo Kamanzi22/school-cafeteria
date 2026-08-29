@@ -1,0 +1,40 @@
+name: Deploy client to Vercel production
+
+# Fixes the stale-alias problem: deploys were happening via manual `vercel`
+# CLI runs, so the production alias (cafecampus.vercel.app) drifted out of
+# sync with what was actually pushed. This makes every push to main deploy
+# and re-alias automatically, so the production domain always matches main.
+#
+# Required repo secret (Settings -> Secrets and variables -> Actions):
+#   VERCEL_TOKEN   personal token from https://vercel.com/account/tokens
+
+on:
+  push:
+    branches: [main]
+    paths: ['client/**']
+  workflow_dispatch: {}
+
+env:
+  VERCEL_ORG_ID: team_h0Ke9inGbHVb919nnz0pcoCo
+  VERCEL_PROJECT_ID: prj_We05a4lJFssLFrRpeFEsshHbp1EL
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel project settings
+        run: vercel pull --yes --environment=production --token="${{ secrets.VERCEL_TOKEN }}"
+        working-directory: client
+
+      - name: Build
+        run: vercel build --prod --token="${{ secrets.VERCEL_TOKEN }}"
+        working-directory: client
+
+      - name: Deploy to production (updates the production alias)
+        run: vercel deploy --prebuilt --prod --token="${{ secrets.VERCEL_TOKEN }}"
+        working-directory: client

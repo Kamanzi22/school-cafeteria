@@ -1,0 +1,71 @@
+name: Backup database to Supabase Storage
+
+# Free Supabase has no automated backups. This job dumps the DB and uploads
+# it to a PRIVATE Supabase Storage bucket instead of committing it anywhere
+# in this repo — this repo is public, so a dump committed here (or even
+# attached as a workflow artifact) would leak customer emails, order data,
+# and password hashes to anyone on the internet. Storage stays server-side
+# and private as long as the "backups" bucket below is not marked public.
+#
+# Required repo secrets (Settings -> Secrets and variables -> Actions):
+#   SUPABASE_DIRECT_URL       the direct (port 5432) Postgres connection string
+#   SUPABASE_URL              e.g. https://xxxx.supabase.co
+#   SUPABASE_SERVICE_ROLE_KEY service role key (Project Settings -> API) — never expose this client-side
+#
+# One-time setup in the Supabase dashboard: Storage -> New bucket -> name it
+# "backups" -> leave "Public bucket" UNCHECKED.
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install postgresql-client
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - name: Dump database
+        env:
+          DIRECT_URL: ${{ secrets.SUPABASE_DIRECT_URL }}
+        run: |
+          STAMP=$(date -u +"%Y-%m-%dT%H-%M-%SZ")
+          echo "STAMP=$STAMP" >> "$GITHUB_ENV"
+          pg_dump "$DIRECT_URL" --no-owner --no-privileges -Fc -f "backup-$STAMP.dump"
+
+      - name: Upload to private Supabase Storage bucket
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          curl -sf -X POST \
+            "$SUPABASE_URL/storage/v1/object/backups/db/backup-$STAMP.dump" \
+            -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary "@backup-$STAMP.dump"
+
+      - name: Delete local dump
+        if: always()
+        run: rm -f backup-*.dump
+
+      - name: Prune backups older than 14 days
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          CUTOFF=$(date -u -d '14 days ago' +%Y-%m-%dT%H-%M-%SZ)
+          curl -sf "$SUPABASE_URL/storage/v1/object/list/backups" \
+            -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"prefix":"db/"}' \
+          | grep -o '"name":"[^"]*"' | cut -d'"' -f4 \
+          | while read -r name; do
+              [ -z "$name" ] && continue
+              file_stamp=$(echo "$name" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z')
+              if [ -n "$file_stamp" ] && [ "$file_stamp" \< "$CUTOFF" ]; then
+                curl -sf -X DELETE "$SUPABASE_URL/storage/v1/object/backups/db/$name" \
+                  -H "Authorization: Bearer $SERVICE_ROLE_KEY"
+              fi
+            done

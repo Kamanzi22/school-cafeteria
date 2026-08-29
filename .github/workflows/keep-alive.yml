@@ -1,0 +1,34 @@
+name: Keep GitHub Actions schedule alive
+
+# This job's only job is to push a commit every few days so GitHub never sees
+# 60 days of zero repo activity and silently disables scheduled workflows.
+# The actual anti-idle/anti-pause pinging lives in keep-alive-ping.yml, which
+# runs far more often but never commits (to avoid spamming the commit history).
+
+on:
+  schedule:
+    - cron: '0 6 */3 * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Hit /api/health (queries the DB, so it also keeps Supabase active)
+        run: curl -sf --retry 5 --retry-delay 15 --max-time 90 https://cafecampus-api.onrender.com/api/health
+
+      - name: Record ping + commit
+        run: |
+          mkdir -p .github/keepalive
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > .github/keepalive/last-ping.txt
+          git config user.name "keep-alive-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add .github/keepalive/last-ping.txt
+          git diff --cached --quiet || git commit -m "chore: keep-alive ping"
+          git push
