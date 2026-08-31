@@ -23,4 +23,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Hit /api/health
-        run: curl -sf --retry 3 --retry-delay 10 --max-time 60 https://cafecampus-api.onrender.com/api/health
+        run: curl -sf --retry 3 --retry-delay 10 --max-time 60 https://cafecampus-api-feu3.onrender.com/api/health
