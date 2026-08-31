@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const { PrismaClient } = require('@prisma/client');
-const { authOwner, authStaff, optionalCustomer, blockViewer } = require('../middleware/auth');
+const { authOwner, authStaff, optionalCustomer, blockViewer, requireManager } = require('../middleware/auth');
 const prisma = new PrismaClient();
 
 router.get('/', optionalCustomer, async (req, res) => {
@@ -94,7 +94,7 @@ router.patch('/admin/toggle-accepting', authStaff, blockViewer, async (req, res)
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.put('/admin/settings', authStaff, blockViewer, async (req, res) => {
+router.put('/admin/settings', authStaff, blockViewer, requireManager, async (req, res) => {
   try {
     const { name, description, phone, prepTimeMin, prepTimeMax, openTime, closeTime, minOrder, notice, coverColor, ownerPhone, logo, offersPickup, offersDelivery, deliveryFee, deliveryNote, offersCampusDelivery, offersOffCampusDelivery, offCampusDeliveryFee } = req.body;
     const current = await prisma.restaurant.findUnique({ where: { id: req.restaurantId } });
@@ -140,7 +140,9 @@ router.get('/:id/reviews', async (req, res) => {
 
 router.patch('/admin/reviews/:reviewId/reply', authStaff, blockViewer, async (req, res) => {
   try {
-    const r = await prisma.review.update({ where:{ id: req.params.reviewId }, data:{ reply: req.body.reply, repliedAt: new Date() } });
+    const { count } = await prisma.review.updateMany({ where:{ id: req.params.reviewId, restaurantId: req.restaurantId }, data:{ reply: req.body.reply, repliedAt: new Date() } });
+    if (!count) return res.status(404).json({ success: false, error: 'Review not found' });
+    const r = await prisma.review.findUnique({ where:{ id: req.params.reviewId } });
     res.json({ success: true, data: r });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

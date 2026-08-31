@@ -15,8 +15,8 @@ on:
   workflow_dispatch: {}
 
 env:
-  VERCEL_ORG_ID: team_h0Ke9inGbHVb919nnz0pcoCo
-  VERCEL_PROJECT_ID: prj_We05a4lJFssLFrRpeFEsshHbp1EL
+  VERCEL_ORG_ID: team_bkECLlXZwhDMc62slLWiAa7s
+  VERCEL_PROJECT_ID: prj_5ENCYv0OnPmgYBMayaAN7Q4AjmXn
 
 jobs:
   deploy:

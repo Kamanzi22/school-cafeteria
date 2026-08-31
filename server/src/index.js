@@ -7,16 +7,21 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
-const { PrismaClient } = require('@prisma/client');
+
+// Comma-separated list, e.g. "https://app.onrender.com,https://app.vercel.app". An empty/unset
+// CLIENT_URL denies all cross-origin requests instead of falling back to the cors package's
+// wildcard default for a falsy origin.
+const allowedOrigins = (process.env.CLIENT_URL || '').split(',').map(s => s.trim()).filter(Boolean);
+const corsOrigin = (origin, cb) => cb(null, !origin || allowedOrigins.includes(origin));
 
 const app = express();
 const httpServer = http.createServer(app);
 const io = new Server(httpServer, {
-  cors: { origin: process.env.CLIENT_URL, methods: ['GET','POST','PUT','PATCH','DELETE'], credentials: true }
+  cors: { origin: corsOrigin, methods: ['GET','POST','PUT','PATCH','DELETE'], credentials: true }
 });
 
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
-app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
+app.use(cors({ origin: corsOrigin, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 if (process.env.NODE_ENV === 'development') app.use(morgan('dev'));
 app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, max: 1000 }));
@@ -43,13 +48,6 @@ app.use((err, req, res, next) => {
 });
 
 require('./socket/handlers')(io);
-
-// One-time backfill: switch on 300 RWF campus delivery for stores that never touched the setting.
-new PrismaClient().restaurant.updateMany({
-  where: { offersDelivery: false },
-  data: { offersDelivery: true, offersCampusDelivery: true, campusDeliveryFee: 300 }
-}).then(({ count }) => { if (count) console.log(`Enabled campus delivery (300 RWF) for ${count} store(s)`); })
-  .catch(e => console.error('Campus delivery backfill failed:', e.message));
 
 const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, () => console.log(`\n🚀 CaféCampus v3 running on http://localhost:${PORT}\n`));

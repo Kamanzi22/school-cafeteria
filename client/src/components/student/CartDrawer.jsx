@@ -70,7 +70,9 @@ export default function CartDrawer() {
           fulfillmentType: f.type,
           deliveryScope: f.type === 'delivery' ? f.scope : undefined,
           deliveryLocation: f.type === 'delivery' ? f.location.trim() : undefined,
-          promoCode: promoData ? promoCode : undefined
+          // Promo was only validated against groups[0] (see applyPromo below) — never forward
+          // it to other restaurants in a multi-store cart, even if they happen to share the code.
+          promoCode: promoData && group.id === groups[0]?.id ? promoCode : undefined
         })
       }))
       clear()

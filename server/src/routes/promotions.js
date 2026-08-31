@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const { PrismaClient } = require('@prisma/client');
-const { authStaff, blockViewer } = require('../middleware/auth');
+const { authStaff, blockViewer, requireManager } = require('../middleware/auth');
 const prisma = new PrismaClient();
 
 router.get('/admin', authStaff, async (req, res) => {
@@ -8,7 +8,7 @@ router.get('/admin', authStaff, async (req, res) => {
   catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
 
-router.post('/', authStaff, blockViewer, async (req, res) => {
+router.post('/', authStaff, blockViewer, requireManager, async (req, res) => {
   try {
     const { code, title, value, description, type, minOrder, maxDiscount, usageLimit, validFrom, validUntil } = req.body;
     if (!code?.trim() || !title?.trim() || value === undefined || value === '') return res.status(400).json({ success:false, error:'Code, title and discount value are required' });
@@ -20,7 +20,7 @@ router.post('/', authStaff, blockViewer, async (req, res) => {
   }
 });
 
-router.patch('/:id/toggle', authStaff, blockViewer, async (req, res) => {
+router.patch('/:id/toggle', authStaff, blockViewer, requireManager, async (req, res) => {
   try {
     const p = await prisma.promotion.findFirst({ where:{ id:req.params.id, restaurantId:req.restaurantId } });
     if (!p) return res.status(404).json({ success:false, error:'Not found' });
@@ -28,7 +28,7 @@ router.patch('/:id/toggle', authStaff, blockViewer, async (req, res) => {
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
 
-router.delete('/:id', authStaff, blockViewer, async (req, res) => {
+router.delete('/:id', authStaff, blockViewer, requireManager, async (req, res) => {
   try { await prisma.promotion.deleteMany({ where:{ id:req.params.id, restaurantId:req.restaurantId } }); res.json({ success:true, data:null }); }
   catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });

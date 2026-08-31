@@ -61,6 +61,15 @@ const blockViewer = (req, res, next) => {
   next();
 };
 
+// Blocks the 'staff' role (orders only) from manager/owner-tier routes — menu, promotions,
+// restaurant settings, and uploads. Insert after authStaff on those routes (owner/manager
+// pass through untouched). The Staff-vs-Manager split shown in StaffPage.jsx was previously
+// UI-only; this is what actually enforces it server-side.
+const requireManager = (req, res, next) => {
+  if (req.role === 'staff') return res.status(403).json({ success: false, error: 'Manager or owner access required' });
+  next();
+};
+
 // Customer (registered)
 const authCustomer = async (req, res, next) => {
   try {
@@ -113,4 +122,4 @@ const authDelivery = async (req, res, next) => {
   } catch { res.status(401).json({ success: false, error: 'Invalid token' }); }
 };
 
-module.exports = { authOwner, authStaff, authCustomer, optionalCustomer, authSuperAdmin, blockViewer, authDelivery };
+module.exports = { authOwner, authStaff, authCustomer, optionalCustomer, authSuperAdmin, blockViewer, requireManager, authDelivery };

@@ -88,10 +88,16 @@ router.post('/', async (req, res) => {
     let discountAmount = 0;
     if (promoCode) {
       const promo = await prisma.promotion.findFirst({ where:{ restaurantId, code:promoCode.toUpperCase(), isActive:true, validFrom:{ lte:new Date() }, validUntil:{ gte:new Date() } } });
-      if (promo && subtotal >= promo.minOrder) {
+      if (promo && subtotal >= promo.minOrder && !(promo.usageLimit && promo.usageCount >= promo.usageLimit)) {
         discountAmount = promo.type === 'percentage' ? subtotal * (promo.value/100) : promo.value;
         if (promo.maxDiscount) discountAmount = Math.min(discountAmount, promo.maxDiscount);
-        await prisma.promotion.update({ where:{ id:promo.id }, data:{ usageCount:{ increment:1 } } });
+        // Guarded by usageLimit in the where clause so a race between two concurrent orders
+        // can't both increment past the cap — whichever loses the race just applies no discount.
+        const { count } = await prisma.promotion.updateMany({
+          where:{ id:promo.id, ...(promo.usageLimit ? { usageCount:{ lt:promo.usageLimit } } : {}) },
+          data:{ usageCount:{ increment:1 } }
+        });
+        if (!count) discountAmount = 0;
       }
     }
 

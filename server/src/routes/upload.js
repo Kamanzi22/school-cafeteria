@@ -2,7 +2,7 @@ const router = require('express').Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { authStaff, blockViewer } = require('../middleware/auth');
+const { authStaff, blockViewer, requireManager } = require('../middleware/auth');
 
 const uploadDir = path.join(__dirname, '../../uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
@@ -19,7 +19,7 @@ const upload = multer({ storage, limits:{ fileSize:5*1024*1024 }, fileFilter:(_,
   ALLOWED_TYPES.includes(file.mimetype) ? cb(null,true) : cb(new Error('Only JPG, PNG, WEBP or GIF images are allowed'));
 }});
 
-router.post('/', authStaff, blockViewer, upload.single('file'), (req, res) => {
+router.post('/', authStaff, blockViewer, requireManager, upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ success:false, error:'No file' });
   res.json({ success:true, data:{ url:`/uploads/${req.file.filename}` } });
 });
