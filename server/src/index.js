@@ -5,7 +5,6 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const path = require('path');
 const rateLimit = require('express-rate-limit');
 
 // Comma-separated list, e.g. "https://app.onrender.com,https://app.vercel.app". An empty/unset
@@ -25,7 +24,6 @@ app.use(cors({ origin: corsOrigin, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 if (process.env.NODE_ENV === 'development') app.use(morgan('dev'));
 app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, max: 1000 }));
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.set('io', io);
 
 app.use('/api/auth', require('./routes/auth'));

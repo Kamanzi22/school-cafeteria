@@ -1,23 +1,17 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const path = require('path');
-const fs = require('fs');
 const multer = require('multer');
 const { PrismaClient } = require('@prisma/client');
 const { authStaff, authSuperAdmin, blockViewer } = require('../middleware/auth');
+const { uploadImage } = require('../lib/supabaseStorage');
 const prisma = new PrismaClient();
 
-const uploadDir = path.join(__dirname, '../../uploads');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 const logoUpload = multer({
-  storage: multer.diskStorage({
-    destination: (_, __, cb) => cb(null, uploadDir),
-    filename: (_, file, cb) => cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${path.extname(file.originalname)}`)
-  }),
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
   // SVGs deliberately excluded — they can carry embedded <script> and run it if the raw
-  // /uploads/... URL is ever opened directly, unlike raster formats.
+  // storage URL is ever opened directly, unlike raster formats.
   fileFilter: (_, file, cb) => ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.mimetype) ? cb(null, true) : cb(new Error('Only JPG, PNG, WEBP or GIF images are allowed'))
 });
 
@@ -48,6 +42,7 @@ router.post('/restaurant/register', logoUpload.single('logo'), async (req, res) 
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
+    const logoUrl = req.file ? await uploadImage(req.file) : null;
     const restaurant = await prisma.restaurant.create({
       data: {
         ownerName: ownerName.trim(),
@@ -58,7 +53,7 @@ router.post('/restaurant/register', logoUpload.single('logo'), async (req, res) 
         slug,
         description: description?.trim() || '',
         phone: phone?.trim(),
-        logo: req.file ? `/uploads/${req.file.filename}` : null,
+        logo: logoUrl,
       }
     });
 
@@ -245,6 +240,21 @@ router.post('/superadmin/login', async (req, res) => {
     if (!valid) return res.status(401).json({ success: false, error: 'Invalid credentials' });
     const token = sign({ type: 'superadmin', id: admin.id });
     res.json({ success: true, data: { token, admin: { id: admin.id, username: admin.username } } });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// ══════════════════════════════════════════════════════
+// SUPER ADMIN — change own password
+// ══════════════════════════════════════════════════════
+router.put('/superadmin/password', authSuperAdmin, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (newPassword?.length < 6) return res.status(400).json({ success: false, error: 'Min 6 characters' });
+    const admin = await prisma.superAdmin.findUnique({ where: { id: req.decoded.id } });
+    const valid = await bcrypt.compare(currentPassword, admin.passwordHash);
+    if (!valid) return res.status(400).json({ success: false, error: 'Current password is incorrect' });
+    await prisma.superAdmin.update({ where: { id: admin.id }, data: { passwordHash: await bcrypt.hash(newPassword, 12) } });
+    res.json({ success: true, data: { message: 'Password updated' } });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
