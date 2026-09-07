@@ -40,6 +40,9 @@ jobs:
           sudo sh -c 'echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends postgresql-client-17
+          # The runner image ships an older pg_dump on PATH ahead of this one
+          # (not managed via update-alternatives), so prepend the v17 bin dir.
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
 
       - name: Dump database
         env:
