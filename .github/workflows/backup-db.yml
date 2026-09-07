@@ -8,7 +8,13 @@ name: Backup database to Supabase Storage
 # and private as long as the "backups" bucket below is not marked public.
 #
 # Required repo secrets (Settings -> Secrets and variables -> Actions):
-#   SUPABASE_DIRECT_URL       the direct (port 5432) Postgres connection string
+#   SUPABASE_DIRECT_URL       Postgres connection string. Use the Session pooler
+#                             URI (port 5432), not the "Direct connection" one —
+#                             GitHub-hosted runners lack outbound IPv6, and
+#                             Supabase's direct connection is IPv6-only on free
+#                             tier. The Session pooler supports IPv4 and (unlike
+#                             the transaction pooler) session-level connections,
+#                             which pg_dump needs.
 #   SUPABASE_URL              e.g. https://xxxx.supabase.co
 #   SUPABASE_SERVICE_ROLE_KEY service role key (Project Settings -> API) — never expose this client-side
 #
@@ -24,8 +30,16 @@ jobs:
   backup:
     runs-on: ubuntu-latest
     steps:
-      - name: Install postgresql-client
-        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends postgresql-client
+      - name: Install postgresql-client 17
+        # Ubuntu's default postgresql-client is v16, but Supabase runs Postgres
+        # 17 — pg_dump refuses to dump from a newer major server version, so
+        # pull the matching client from the official PGDG apt repo instead.
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          sudo sh -c 'echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client-17
 
       - name: Dump database
         env:
