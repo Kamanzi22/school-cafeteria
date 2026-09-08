@@ -43,6 +43,7 @@ export const authAPI = {
   guestSession: (d) => api.post('/auth/guest/session', d),
   // Super admin
   superAdminLogin: (d) => api.post('/auth/superadmin/login', d),
+  superAdminChangePassword: (d) => api.put('/auth/superadmin/password', d),
   // Delivery staff
   deliveryLogin: (d) => api.post('/auth/delivery/login', d),
 }

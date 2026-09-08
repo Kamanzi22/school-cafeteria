@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Shield, Store, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, EyeOff, Radio, History, MapPin, RefreshCw, Clock, Globe, RotateCcw, Backpack, Download, ToggleRight, ToggleLeft } from 'lucide-react'
+import { Shield, Store, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, EyeOff, Radio, History, MapPin, RefreshCw, Clock, Globe, RotateCcw, Backpack, Download, ToggleRight, ToggleLeft, Lock } from 'lucide-react'
 import { superAdminAPI, authAPI } from '../../services/api'
 import { useAdminStore } from '../../store'
 import { useSocket, getSocket } from '../../hooks/useSocket'
@@ -167,6 +167,9 @@ export default function SuperAdminPage() {
   const [deliverySaving, setDeliverySaving] = useState(false)
   const [campusFeeInput, setCampusFeeInput] = useState('')
   const [savingCampusFee, setSavingCampusFee] = useState(false)
+  const [pwModal, setPwModal] = useState(false)
+  const [pwForm, setPwForm] = useState({ currentPassword:'', newPassword:'', confirm:'' })
+  const [pwSaving, setPwSaving] = useState(false)
   const navigate = useNavigate()
   const { loginViewer, logout: exitAdminSession } = useAdminStore()
 
@@ -384,6 +387,20 @@ export default function SuperAdminPage() {
     } finally { setSavingCampusFee(false) }
   }
 
+  const changePassword = async (e) => {
+    e.preventDefault()
+    if (pwForm.newPassword !== pwForm.confirm) { toast.error("Passwords don't match"); return }
+    if (pwForm.newPassword.length < 6) { toast.error('Min 6 characters'); return }
+    setPwSaving(true)
+    try {
+      await authAPI.superAdminChangePassword({ currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword })
+      toast.success('Password changed!')
+      setPwForm({ currentPassword:'', newPassword:'', confirm:'' })
+      setPwModal(false)
+    } catch (e2) { toast.error(e2.response?.data?.error || 'Could not change password') }
+    finally { setPwSaving(false) }
+  }
+
   const viewStore = async (id) => {
     setViewingId(id)
     try {
@@ -447,6 +464,7 @@ export default function SuperAdminPage() {
           </div>
           <div className="flex items-center gap-2">
             <Link to="/superadmin/delivery" className="btn btn-ghost text-ink-400 text-sm"><Backpack size={14} /> Delivery</Link>
+            <button onClick={() => setPwModal(true)} className="btn btn-ghost text-ink-400 text-sm"><Lock size={14} /> Change Password</button>
             <a href="/" className="btn btn-ghost text-ink-400 text-sm">← Student App</a>
           </div>
         </div>
@@ -700,6 +718,30 @@ export default function SuperAdminPage() {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Change password modal */}
+      {pwModal && (
+        <div className="fixed inset-0 bg-ink-950/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm p-6">
+            <h3 className="font-bold text-lg text-ink-900 mb-4 flex items-center gap-2"><Lock size={16}/>Change Password</h3>
+            <form onSubmit={changePassword} className="space-y-3">
+              {[['Current Password','currentPassword'],['New Password','newPassword'],['Confirm New Password','confirm']].map(([label,key]) => (
+                <div key={key}>
+                  <label className="label">{label}</label>
+                  <input type="password" autoFocus={key==='currentPassword'} value={pwForm[key]}
+                    onChange={e => setPwForm(p => ({ ...p, [key]:e.target.value }))} className="input" required />
+                </div>
+              ))}
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setPwModal(false)} className="btn btn-secondary flex-1">Cancel</button>
+                <button type="submit" disabled={pwSaving} className="btn btn-primary flex-1">
+                  {pwSaving ? <Loader size={14} className="animate-spin" /> : 'Change Password'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
