@@ -3,6 +3,13 @@ const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 
 async function main() {
+  // This wipes every table and recreates accounts with the well-known demo
+  // passwords printed below — never let it run against a real deployment.
+  if (process.env.NODE_ENV === 'production') {
+    console.error('❌ Refusing to seed: NODE_ENV is "production". This script deletes all data and resets every account to publicly-known demo passwords.');
+    process.exit(1);
+  }
+
   console.log('\n🌱 Seeding CaféCampus v3...\n');
 
   // Clean
