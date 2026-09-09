@@ -171,9 +171,11 @@ export default function SuperAdminPage() {
   const [pwForm, setPwForm] = useState({ currentPassword:'', newPassword:'', confirm:'' })
   const [pwSaving, setPwSaving] = useState(false)
   const [emailSettingsModal, setEmailSettingsModal] = useState(false)
-  const [emailSettingsForm, setEmailSettingsForm] = useState({ senderName:'', senderEmail:'' })
+  const [emailSettingsForm, setEmailSettingsForm] = useState({ senderName:'', senderEmail:'', smtpAppPassword:'' })
+  const [smtpConfigured, setSmtpConfigured] = useState(false)
   const [emailSettingsLoading, setEmailSettingsLoading] = useState(false)
   const [emailSettingsSaving, setEmailSettingsSaving] = useState(false)
+  const [smtpResetting, setSmtpResetting] = useState(false)
   const navigate = useNavigate()
   const { loginViewer, logout: exitAdminSession } = useAdminStore()
 
@@ -410,7 +412,8 @@ export default function SuperAdminPage() {
     setEmailSettingsLoading(true)
     try {
       const res = await superAdminAPI.getSettings()
-      setEmailSettingsForm({ senderName: res.data.data.senderName, senderEmail: res.data.data.senderEmail })
+      setEmailSettingsForm({ senderName: res.data.data.senderName, senderEmail: res.data.data.senderEmail, smtpAppPassword:'' })
+      setSmtpConfigured(res.data.data.smtpConfigured)
     } catch { toast.error('Could not load settings') }
     finally { setEmailSettingsLoading(false) }
   }
@@ -419,11 +422,24 @@ export default function SuperAdminPage() {
     e.preventDefault()
     setEmailSettingsSaving(true)
     try {
-      await superAdminAPI.updateSettings(emailSettingsForm)
+      const res = await superAdminAPI.updateSettings(emailSettingsForm)
       toast.success('Email settings saved!')
+      setSmtpConfigured(res.data.data.smtpConfigured)
+      setEmailSettingsForm(p => ({ ...p, smtpAppPassword:'' }))
       setEmailSettingsModal(false)
     } catch (e2) { toast.error(e2.response?.data?.error || 'Could not save settings') }
     finally { setEmailSettingsSaving(false) }
+  }
+
+  const resetSmtp = async () => {
+    if (!window.confirm('Stop using this account and fall back to the server\'s environment default?')) return
+    setSmtpResetting(true)
+    try {
+      await superAdminAPI.resetSmtp()
+      toast.success('Reverted to environment default')
+      setSmtpConfigured(false)
+    } catch { toast.error('Failed') }
+    finally { setSmtpResetting(false) }
   }
 
   const viewStore = async (id) => {
@@ -772,12 +788,12 @@ export default function SuperAdminPage() {
         </div>
       )}
 
-      {/* Email settings modal — sender name/address used on outgoing verification emails */}
+      {/* Email settings modal — the account verification emails are sent from + display name */}
       {emailSettingsModal && (
         <div className="fixed inset-0 bg-ink-950/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-sm p-6">
             <h3 className="font-bold text-lg text-ink-900 mb-1 flex items-center gap-2"><Mail size={16}/>Email Settings</h3>
-            <p className="text-xs text-ink-400 mb-4">Controls the sender name and reply-to address on verification emails sent to customers and restaurants. The mailbox that actually sends them is set separately in the server environment.</p>
+            <p className="text-xs text-ink-400 mb-4">Controls what verification emails to customers and restaurants are sent as. Set the App Password from a Gmail/Workspace account here to fully take over sending — no Render or code change needed.</p>
             {emailSettingsLoading ? (
               <div className="py-6 text-center"><Loader size={20} className="animate-spin text-brand-500 mx-auto" /></div>
             ) : (
@@ -787,8 +803,17 @@ export default function SuperAdminPage() {
                   <input value={emailSettingsForm.senderName} onChange={e => setEmailSettingsForm(p => ({ ...p, senderName:e.target.value }))} className="input" placeholder="CaféCampus" required />
                 </div>
                 <div>
-                  <label className="label">Reply-To Email</label>
+                  <label className="label">Sending Email</label>
                   <input type="email" value={emailSettingsForm.senderEmail} onChange={e => setEmailSettingsForm(p => ({ ...p, senderEmail:e.target.value }))} className="input" placeholder="you@yourbusiness.com" required />
+                </div>
+                <div>
+                  <label className="label">SMTP App Password {smtpConfigured && <span className="text-emerald-600 font-normal">— currently set, using this account</span>}</label>
+                  <input type="password" value={emailSettingsForm.smtpAppPassword} onChange={e => setEmailSettingsForm(p => ({ ...p, smtpAppPassword:e.target.value }))} className="input" placeholder={smtpConfigured ? 'Leave blank to keep current password' : 'Paste the Gmail App Password for the email above'} />
+                  <p className="text-xs text-ink-400 mt-1">
+                    {smtpConfigured
+                      ? <>Currently sending as this account. <button type="button" onClick={resetSmtp} disabled={smtpResetting} className="text-red-500 hover:underline disabled:opacity-50">{smtpResetting ? 'Reverting…' : 'Revert to server default'}</button></>
+                      : "Not set — currently sending using the server's environment default."}
+                  </p>
                 </div>
                 <div className="flex gap-3 pt-2">
                   <button type="button" onClick={() => setEmailSettingsModal(false)} className="btn btn-secondary flex-1">Cancel</button>

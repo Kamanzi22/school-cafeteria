@@ -1,23 +1,21 @@
 const nodemailer = require('nodemailer');
 const prisma = require('./prisma');
+const { decrypt } = require('./crypto');
 
-let transporter;
-// Lazily built so a missing EMAIL_USER/EMAIL_APP_PASSWORD doesn't crash the whole
-// process at boot — only the routes that actually need to send mail see the failure.
-function getTransporter() {
-  if (transporter !== undefined) return transporter;
-  transporter = (process.env.EMAIL_USER && process.env.EMAIL_APP_PASSWORD)
-    ? nodemailer.createTransport({ service: 'gmail', auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_APP_PASSWORD } })
-    : null;
-  return transporter;
-}
-
-async function getSenderIdentity() {
+// The account verification emails are sent from/authenticated as. A super admin-configured
+// account (Email Settings → SMTP App Password) takes priority over the environment's
+// EMAIL_USER/EMAIL_APP_PASSWORD, so the sending account can be swapped without touching
+// Render — set once via env vars to bootstrap, then optionally overridden from the panel.
+// Built fresh per send (not cached) so a change in the panel takes effect immediately.
+async function getEffectiveCredentials() {
   const settings = await prisma.platformSettings.findUnique({ where: { id: 'default' } });
-  return {
-    name: settings?.senderName || 'CaféCampus',
-    replyTo: settings?.senderEmail || process.env.EMAIL_USER,
-  };
+  if (settings?.smtpAppPasswordEnc) {
+    return { user: settings.senderEmail, pass: decrypt(settings.smtpAppPasswordEnc), name: settings.senderName || 'CaféCampus' };
+  }
+  if (process.env.EMAIL_USER && process.env.EMAIL_APP_PASSWORD) {
+    return { user: process.env.EMAIL_USER, pass: process.env.EMAIL_APP_PASSWORD, name: settings?.senderName || 'CaféCampus' };
+  }
+  return null;
 }
 
 const COPY = {
@@ -27,19 +25,18 @@ const COPY = {
 };
 
 async function sendVerificationEmail({ to, code, link, purpose }) {
-  const t = getTransporter();
   const { subject, heading } = COPY[purpose] || { subject: 'Verify your email', heading: 'Confirm your email address.' };
+  const creds = await getEffectiveCredentials();
 
-  if (!t) {
+  if (!creds) {
     if (process.env.NODE_ENV === 'production') throw new Error('Email sending is not configured');
     console.log(`\n📧 [DEV — email not configured] Verification code for ${to} (${purpose}): ${code}${link ? `\n   Link: ${link}` : ''}\n`);
     return;
   }
 
-  const { name, replyTo } = await getSenderIdentity();
-  await t.sendMail({
-    from: `"${name}" <${process.env.EMAIL_USER}>`,
-    replyTo,
+  const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user: creds.user, pass: creds.pass } });
+  await transporter.sendMail({
+    from: `"${creds.name}" <${creds.user}>`,
     to,
     subject,
     html: `

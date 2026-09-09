@@ -327,10 +327,16 @@ model DeliveryStaff {
 // super admin panel so it can move from the founder's personal inbox to a business address
 // later without a code change. Single row, fixed id.
 model PlatformSettings {
-  id          String   @id @default("default")
-  senderEmail String   @default("gkamanzig@gmail.com")
-  senderName  String   @default("CaféCampus")
-  updatedAt   DateTime @updatedAt
+  id                  String   @id @default("default")
+  senderEmail         String   @default("gkamanzig@gmail.com")
+  senderName          String   @default("CaféCampus")
+  // When set, this is the actual Gmail/Workspace account verification emails are sent
+  // from and authenticated as — overriding EMAIL_USER/EMAIL_APP_PASSWORD from the
+  // environment, so the sending account can be swapped from the super admin panel alone,
+  // with no Render/env var change. The app password is encrypted at rest (see lib/crypto.js);
+  // it's never read back out to the client once saved.
+  smtpAppPasswordEnc  String?
+  updatedAt           DateTime @updatedAt
 }
 
 // One-time codes emailed to prove control of an address — used both for customer signup

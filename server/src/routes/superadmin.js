@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const jwt = require('jsonwebtoken');
 const { authSuperAdmin, authDelivery } = require('../middleware/auth');
+const { encrypt } = require('../lib/crypto');
 const prisma = require('../lib/prisma');
 
 router.get('/restaurants', authSuperAdmin, async (req, res) => {
@@ -67,27 +68,43 @@ router.post('/restaurants/:id/view-token', authSuperAdmin, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-// Sender identity used on outgoing verification emails (see lib/mailer.js) — lets the
-// business address move off the founder's personal Gmail without a code change. The
-// actual SMTP mailbox is still whatever EMAIL_USER is set to in the environment; this only
-// controls the display name and reply-to shown to recipients.
+// Sender identity + sending account used on outgoing verification emails (see lib/mailer.js).
+// Setting smtpAppPassword here fully overrides EMAIL_USER/EMAIL_APP_PASSWORD from the
+// environment — swapping the account that sends these emails (e.g. moving off a personal
+// Gmail onto a business one) never needs a Render/env var change, just this panel. The app
+// password is encrypted before storage and is write-only — GET never returns it, only
+// whether one is currently set.
 router.get('/settings', authSuperAdmin, async (req, res) => {
   try {
     const s = await prisma.platformSettings.upsert({ where: { id: 'default' }, update: {}, create: { id: 'default' } });
-    res.json({ success: true, data: s });
+    const { smtpAppPasswordEnc, ...safe } = s;
+    res.json({ success: true, data: { ...safe, smtpConfigured: !!smtpAppPasswordEnc } });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
 router.put('/settings', authSuperAdmin, async (req, res) => {
   try {
-    const { senderEmail, senderName } = req.body;
+    const { senderEmail, senderName, smtpAppPassword } = req.body;
     if (senderEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(senderEmail))
       return res.status(400).json({ success: false, error: 'Invalid email address' });
     const data = {};
     if (senderEmail) data.senderEmail = senderEmail.trim();
     if (senderName) data.senderName = senderName.trim();
+    // Blank/omitted leaves whatever's already stored untouched, so changing just the display
+    // name doesn't force re-entering the app password every time.
+    if (smtpAppPassword) data.smtpAppPasswordEnc = encrypt(smtpAppPassword.replace(/\s+/g, ''));
     const s = await prisma.platformSettings.upsert({ where: { id: 'default' }, update: data, create: { id: 'default', ...data } });
-    res.json({ success: true, data: s });
+    const { smtpAppPasswordEnc, ...safe } = s;
+    res.json({ success: true, data: { ...safe, smtpConfigured: !!smtpAppPasswordEnc } });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// Lets the super admin drop the panel-configured sending account and fall back to
+// EMAIL_USER/EMAIL_APP_PASSWORD from the environment.
+router.delete('/settings/smtp', authSuperAdmin, async (req, res) => {
+  try {
+    await prisma.platformSettings.upsert({ where: { id: 'default' }, update: { smtpAppPasswordEnc: null }, create: { id: 'default' } });
+    res.json({ success: true, data: { message: 'Reverted to environment default' } });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
