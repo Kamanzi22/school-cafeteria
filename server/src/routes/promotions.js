@@ -1,7 +1,6 @@
 const router = require('express').Router();
-const { PrismaClient } = require('@prisma/client');
 const { authStaff, blockViewer, requireManager } = require('../middleware/auth');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 router.get('/admin', authStaff, async (req, res) => {
   try { res.json({ success:true, data: await prisma.promotion.findMany({ where:{ restaurantId:req.restaurantId }, orderBy:{ createdAt:'desc' } }) }); }

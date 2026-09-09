@@ -1,7 +1,6 @@
 const router = require('express').Router();
-const { PrismaClient } = require('@prisma/client');
 const { authStaff } = require('../middleware/auth');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 const RANGE_MS = { day: 86400000, week: 7 * 86400000 };
 const MIN_YEAR = 2026;

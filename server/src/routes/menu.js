@@ -1,7 +1,6 @@
 const router = require('express').Router();
-const { PrismaClient } = require('@prisma/client');
 const { authStaff, blockViewer, requireManager } = require('../middleware/auth');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 // Replace all variants for a menu item inside the given transaction client
 async function syncVariants(tx, menuItemId, variants) {

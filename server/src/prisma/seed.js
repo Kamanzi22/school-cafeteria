@@ -1,6 +1,5 @@
-const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 async function main() {
   // This wipes every table and recreates accounts with the well-known demo

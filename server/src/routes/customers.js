@@ -1,8 +1,7 @@
 // customers.js
 const router = require('express').Router();
-const { PrismaClient } = require('@prisma/client');
 const { optionalCustomer } = require('../middleware/auth');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 // All routes here act on a specific customer record, so require a valid customer/guest
 // token whose id matches the :id in the URL — otherwise anyone could read or overwrite

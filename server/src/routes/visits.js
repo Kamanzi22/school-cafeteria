@@ -1,7 +1,6 @@
 const router = require('express').Router();
-const { PrismaClient } = require('@prisma/client');
 const { optionalCustomer } = require('../middleware/auth');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 const emit = (req, visit) => {
   req.app.get('io').to('superadmin').emit('visit:update', visit);

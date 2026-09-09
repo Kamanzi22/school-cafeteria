@@ -1,8 +1,7 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
-const { PrismaClient } = require('@prisma/client');
 const { authOwner, authStaff, optionalCustomer, blockViewer, requireManager } = require('../middleware/auth');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 router.get('/', optionalCustomer, async (req, res) => {
   try {

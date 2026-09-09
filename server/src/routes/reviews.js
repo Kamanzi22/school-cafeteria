@@ -1,8 +1,7 @@
 // reviews.js
 const router = require('express').Router();
-const { PrismaClient } = require('@prisma/client');
 const { optionalCustomer } = require('../middleware/auth');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 router.post('/', optionalCustomer, async (req, res) => {
   try {
