@@ -2,18 +2,20 @@ const nodemailer = require('nodemailer');
 const prisma = require('./prisma');
 const { decrypt } = require('./crypto');
 
-// The account verification emails are sent from/authenticated as. A super admin-configured
-// account (Email Settings → SMTP App Password) takes priority over the environment's
-// EMAIL_USER/EMAIL_APP_PASSWORD, so the sending account can be swapped without touching
-// Render — set once via env vars to bootstrap, then optionally overridden from the panel.
-// Built fresh per send (not cached) so a change in the panel takes effect immediately.
+// The "noreply" account verification emails are sent from/authenticated as — the only one
+// of the three configurable identities (noreply/info/support) actually wired to a live
+// feature. A super admin-configured account (Email Settings → Noreply → App Password) takes
+// priority over the environment's EMAIL_USER/EMAIL_APP_PASSWORD, so the sending account can
+// be swapped without touching Render — set once via env vars to bootstrap, then optionally
+// overridden from the panel. Built fresh per send (not cached) so a panel change takes
+// effect immediately.
 async function getEffectiveCredentials() {
   const settings = await prisma.platformSettings.findUnique({ where: { id: 'default' } });
-  if (settings?.smtpAppPasswordEnc) {
-    return { user: settings.senderEmail, pass: decrypt(settings.smtpAppPasswordEnc), name: settings.senderName || 'CaféCampus' };
+  if (settings?.noreplyAppPasswordEnc) {
+    return { user: settings.noreplyEmail, pass: decrypt(settings.noreplyAppPasswordEnc), name: settings.noreplyName || 'CaféCampus' };
   }
   if (process.env.EMAIL_USER && process.env.EMAIL_APP_PASSWORD) {
-    return { user: process.env.EMAIL_USER, pass: process.env.EMAIL_APP_PASSWORD, name: settings?.senderName || 'CaféCampus' };
+    return { user: process.env.EMAIL_USER, pass: process.env.EMAIL_APP_PASSWORD, name: settings?.noreplyName || 'CaféCampus' };
   }
   return null;
 }

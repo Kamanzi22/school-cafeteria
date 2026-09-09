@@ -134,7 +134,7 @@ export const superAdminAPI = {
   getDeliveryHistory: (date, type) => api.get('/superadmin/delivery-orders/history', { params: { date, type } }),
   getSettings: () => api.get('/superadmin/settings'),
   updateSettings: (d) => api.put('/superadmin/settings', d),
-  resetSmtp: () => api.delete('/superadmin/settings/smtp'),
+  resetSmtp: (purpose) => api.delete(`/superadmin/settings/smtp/${purpose}`),
 }
 
 export const visitAPI = {

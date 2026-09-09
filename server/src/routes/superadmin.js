@@ -68,42 +68,50 @@ router.post('/restaurants/:id/view-token', authSuperAdmin, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-// Sender identity + sending account used on outgoing verification emails (see lib/mailer.js).
-// Setting smtpAppPassword here fully overrides EMAIL_USER/EMAIL_APP_PASSWORD from the
-// environment — swapping the account that sends these emails (e.g. moving off a personal
-// Gmail onto a business one) never needs a Render/env var change, just this panel. The app
-// password is encrypted before storage and is write-only — GET never returns it, only
-// whether one is currently set.
+// Three platform email identities (see schema.prisma PlatformSettings for what each does).
+// Only "noreply" is wired to a live feature (verification emails, lib/mailer.js) — "info"
+// and "support" are stored ready for future features. App passwords are encrypted before
+// storage and write-only: GET never returns them, only whether one is currently set.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const stripEncFields = (s) => {
+  const { noreplyAppPasswordEnc, infoAppPasswordEnc, ...safe } = s;
+  return { ...safe, noreplySmtpConfigured: !!noreplyAppPasswordEnc, infoSmtpConfigured: !!infoAppPasswordEnc };
+};
+
 router.get('/settings', authSuperAdmin, async (req, res) => {
   try {
     const s = await prisma.platformSettings.upsert({ where: { id: 'default' }, update: {}, create: { id: 'default' } });
-    const { smtpAppPasswordEnc, ...safe } = s;
-    res.json({ success: true, data: { ...safe, smtpConfigured: !!smtpAppPasswordEnc } });
+    res.json({ success: true, data: stripEncFields(s) });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
 router.put('/settings', authSuperAdmin, async (req, res) => {
   try {
-    const { senderEmail, senderName, smtpAppPassword } = req.body;
-    if (senderEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(senderEmail))
-      return res.status(400).json({ success: false, error: 'Invalid email address' });
+    const { noreplyName, noreplyEmail, noreplyAppPassword, infoName, infoEmail, infoAppPassword, supportName, supportEmail } = req.body;
+    for (const [label, email] of [['Noreply', noreplyEmail], ['Info', infoEmail], ['Support', supportEmail]]) {
+      if (email && !EMAIL_RE.test(email)) return res.status(400).json({ success: false, error: `Invalid ${label} email address` });
+    }
     const data = {};
-    if (senderEmail) data.senderEmail = senderEmail.trim();
-    if (senderName) data.senderName = senderName.trim();
-    // Blank/omitted leaves whatever's already stored untouched, so changing just the display
-    // name doesn't force re-entering the app password every time.
-    if (smtpAppPassword) data.smtpAppPasswordEnc = encrypt(smtpAppPassword.replace(/\s+/g, ''));
+    if (noreplyName) data.noreplyName = noreplyName.trim();
+    if (noreplyEmail) data.noreplyEmail = noreplyEmail.trim();
+    if (noreplyAppPassword) data.noreplyAppPasswordEnc = encrypt(noreplyAppPassword.replace(/\s+/g, ''));
+    if (infoName) data.infoName = infoName.trim();
+    if (infoEmail) data.infoEmail = infoEmail.trim();
+    if (infoAppPassword) data.infoAppPasswordEnc = encrypt(infoAppPassword.replace(/\s+/g, ''));
+    if (supportName) data.supportName = supportName.trim();
+    if (supportEmail) data.supportEmail = supportEmail.trim();
     const s = await prisma.platformSettings.upsert({ where: { id: 'default' }, update: data, create: { id: 'default', ...data } });
-    const { smtpAppPasswordEnc, ...safe } = s;
-    res.json({ success: true, data: { ...safe, smtpConfigured: !!smtpAppPasswordEnc } });
+    res.json({ success: true, data: stripEncFields(s) });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-// Lets the super admin drop the panel-configured sending account and fall back to
-// EMAIL_USER/EMAIL_APP_PASSWORD from the environment.
-router.delete('/settings/smtp', authSuperAdmin, async (req, res) => {
+// Drops the panel-configured account for one purpose, falling back to its environment
+// default (currently only "noreply" has one: EMAIL_USER/EMAIL_APP_PASSWORD).
+router.delete('/settings/smtp/:purpose', authSuperAdmin, async (req, res) => {
   try {
-    await prisma.platformSettings.upsert({ where: { id: 'default' }, update: { smtpAppPasswordEnc: null }, create: { id: 'default' } });
+    const field = { noreply: 'noreplyAppPasswordEnc', info: 'infoAppPasswordEnc' }[req.params.purpose];
+    if (!field) return res.status(400).json({ success: false, error: 'Unknown purpose' });
+    await prisma.platformSettings.upsert({ where: { id: 'default' }, update: { [field]: null }, create: { id: 'default' } });
     res.json({ success: true, data: { message: 'Reverted to environment default' } });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

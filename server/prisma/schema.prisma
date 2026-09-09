@@ -323,19 +323,30 @@ model DeliveryStaff {
   createdAt    DateTime @default(now())
 }
 
-// Platform-wide sender identity used on outgoing verification emails — editable from the
-// super admin panel so it can move from the founder's personal inbox to a business address
-// later without a code change. Single row, fixed id.
+// Platform-wide email identities, editable from the super admin panel so they can move off
+// personal inboxes to business addresses later without a code change. Single row, fixed id.
+// Three purposes, each independent:
+//   noreply — sends verification codes/links (lib/mailer.js). The only one wired to a live
+//             feature today; email + app password are required for sending to work at all.
+//   info    — reserved for a future "message registered users" feature. Not sent from yet.
+//   support — a contact address surfaced in the UI (no sending capability needed — email
+//             flows the other way, from a user's own inbox to this address).
+// Each *AppPasswordEnc is encrypted at rest (see lib/crypto.js) and never read back to the
+// client once saved — the client only ever learns whether one is currently set.
 model PlatformSettings {
   id                  String   @id @default("default")
-  senderEmail         String   @default("gkamanzig@gmail.com")
-  senderName          String   @default("CaféCampus")
-  // When set, this is the actual Gmail/Workspace account verification emails are sent
-  // from and authenticated as — overriding EMAIL_USER/EMAIL_APP_PASSWORD from the
-  // environment, so the sending account can be swapped from the super admin panel alone,
-  // with no Render/env var change. The app password is encrypted at rest (see lib/crypto.js);
-  // it's never read back out to the client once saved.
-  smtpAppPasswordEnc  String?
+
+  noreplyName         String   @default("CaféCampus")
+  noreplyEmail        String   @default("gkamanzig@gmail.com")
+  noreplyAppPasswordEnc String?
+
+  infoName            String?
+  infoEmail           String?
+  infoAppPasswordEnc  String?
+
+  supportName         String?
+  supportEmail        String?
+
   updatedAt           DateTime @updatedAt
 }
 
