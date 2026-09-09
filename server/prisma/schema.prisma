@@ -323,6 +323,37 @@ model DeliveryStaff {
   createdAt    DateTime @default(now())
 }
 
+// Platform-wide sender identity used on outgoing verification emails — editable from the
+// super admin panel so it can move from the founder's personal inbox to a business address
+// later without a code change. Single row, fixed id.
+model PlatformSettings {
+  id          String   @id @default("default")
+  senderEmail String   @default("gkamanzig@gmail.com")
+  senderName  String   @default("CaféCampus")
+  updatedAt   DateTime @updatedAt
+}
+
+// One-time codes emailed to prove control of an address — used both for customer signup
+// (before the account exists) and for a restaurant owner changing their login email or
+// password (after re-entering their current password). `payload` carries whatever the action
+// needs to complete once verified (e.g. the new email, or the new password's hash) so nothing
+// sensitive has to be re-submitted or re-derived after the code is confirmed.
+model VerificationCode {
+  id            String    @id @default(uuid())
+  email         String    // address the code was actually sent to
+  purpose       String    // customer_signup | restaurant_email_change | restaurant_password_change
+  restaurantId  String?   // scopes restaurant_* purposes; null for customer_signup
+  codeHash      String
+  payload       String?
+  attempts      Int       @default(0)
+  expiresAt     DateTime
+  consumedAt    DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([purpose, email])
+  @@index([purpose, restaurantId])
+}
+
 // ─── VISITOR TRACKING ───────────────────────────────────────────────────────
 
 model RestaurantVisit {

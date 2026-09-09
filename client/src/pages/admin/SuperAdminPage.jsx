@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Shield, Store, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, EyeOff, Radio, History, MapPin, RefreshCw, Clock, Globe, RotateCcw, Backpack, Download, ToggleRight, ToggleLeft, Lock } from 'lucide-react'
+import { Shield, Store, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, EyeOff, Radio, History, MapPin, RefreshCw, Clock, Globe, RotateCcw, Backpack, Download, ToggleRight, ToggleLeft, Lock, Mail } from 'lucide-react'
 import { superAdminAPI, authAPI } from '../../services/api'
 import { useAdminStore } from '../../store'
 import { useSocket, getSocket } from '../../hooks/useSocket'
@@ -170,6 +170,10 @@ export default function SuperAdminPage() {
   const [pwModal, setPwModal] = useState(false)
   const [pwForm, setPwForm] = useState({ currentPassword:'', newPassword:'', confirm:'' })
   const [pwSaving, setPwSaving] = useState(false)
+  const [emailSettingsModal, setEmailSettingsModal] = useState(false)
+  const [emailSettingsForm, setEmailSettingsForm] = useState({ senderName:'', senderEmail:'' })
+  const [emailSettingsLoading, setEmailSettingsLoading] = useState(false)
+  const [emailSettingsSaving, setEmailSettingsSaving] = useState(false)
   const navigate = useNavigate()
   const { loginViewer, logout: exitAdminSession } = useAdminStore()
 
@@ -401,6 +405,27 @@ export default function SuperAdminPage() {
     finally { setPwSaving(false) }
   }
 
+  const openEmailSettings = async () => {
+    setEmailSettingsModal(true)
+    setEmailSettingsLoading(true)
+    try {
+      const res = await superAdminAPI.getSettings()
+      setEmailSettingsForm({ senderName: res.data.data.senderName, senderEmail: res.data.data.senderEmail })
+    } catch { toast.error('Could not load settings') }
+    finally { setEmailSettingsLoading(false) }
+  }
+
+  const saveEmailSettings = async (e) => {
+    e.preventDefault()
+    setEmailSettingsSaving(true)
+    try {
+      await superAdminAPI.updateSettings(emailSettingsForm)
+      toast.success('Email settings saved!')
+      setEmailSettingsModal(false)
+    } catch (e2) { toast.error(e2.response?.data?.error || 'Could not save settings') }
+    finally { setEmailSettingsSaving(false) }
+  }
+
   const viewStore = async (id) => {
     setViewingId(id)
     try {
@@ -465,6 +490,7 @@ export default function SuperAdminPage() {
           <div className="flex items-center gap-2">
             <Link to="/superadmin/delivery" className="btn btn-ghost text-ink-400 text-sm"><Backpack size={14} /> Delivery</Link>
             <button onClick={() => setPwModal(true)} className="btn btn-ghost text-ink-400 text-sm"><Lock size={14} /> Change Password</button>
+            <button onClick={openEmailSettings} className="btn btn-ghost text-ink-400 text-sm"><Mail size={14} /> Email Settings</button>
             <a href="/" className="btn btn-ghost text-ink-400 text-sm">← Student App</a>
           </div>
         </div>
@@ -742,6 +768,36 @@ export default function SuperAdminPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Email settings modal — sender name/address used on outgoing verification emails */}
+      {emailSettingsModal && (
+        <div className="fixed inset-0 bg-ink-950/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm p-6">
+            <h3 className="font-bold text-lg text-ink-900 mb-1 flex items-center gap-2"><Mail size={16}/>Email Settings</h3>
+            <p className="text-xs text-ink-400 mb-4">Controls the sender name and reply-to address on verification emails sent to customers and restaurants. The mailbox that actually sends them is set separately in the server environment.</p>
+            {emailSettingsLoading ? (
+              <div className="py-6 text-center"><Loader size={20} className="animate-spin text-brand-500 mx-auto" /></div>
+            ) : (
+              <form onSubmit={saveEmailSettings} className="space-y-3">
+                <div>
+                  <label className="label">Sender Name</label>
+                  <input value={emailSettingsForm.senderName} onChange={e => setEmailSettingsForm(p => ({ ...p, senderName:e.target.value }))} className="input" placeholder="CaféCampus" required />
+                </div>
+                <div>
+                  <label className="label">Reply-To Email</label>
+                  <input type="email" value={emailSettingsForm.senderEmail} onChange={e => setEmailSettingsForm(p => ({ ...p, senderEmail:e.target.value }))} className="input" placeholder="you@yourbusiness.com" required />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button type="button" onClick={() => setEmailSettingsModal(false)} className="btn btn-secondary flex-1">Cancel</button>
+                  <button type="submit" disabled={emailSettingsSaving} className="btn btn-primary flex-1">
+                    {emailSettingsSaving ? <Loader size={14} className="animate-spin" /> : 'Save'}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

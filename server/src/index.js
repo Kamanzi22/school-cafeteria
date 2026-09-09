@@ -27,6 +27,7 @@ app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, max: 1000 }));
 app.set('io', io);
 
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/verify', require('./routes/verify'));
 app.use('/api/restaurants', require('./routes/restaurants'));
 app.use('/api/menu', require('./routes/menu'));
 app.use('/api/orders', require('./routes/orders'));

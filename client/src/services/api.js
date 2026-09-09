@@ -36,9 +36,7 @@ export const authAPI = {
   restaurantRegister: (d) => api.post('/auth/restaurant/register', d),
   restaurantLogin: (d) => api.post('/auth/restaurant/login', d),
   restaurantStaffLogin: (d) => api.post('/auth/restaurant/staff/login', d),
-  changePassword: (d) => api.put('/auth/restaurant/password', d),
   // Customer
-  customerRegister: (d) => api.post('/auth/customer/register', d),
   customerLogin: (d) => api.post('/auth/customer/login', d),
   guestSession: (d) => api.post('/auth/guest/session', d),
   // Super admin
@@ -46,6 +44,17 @@ export const authAPI = {
   superAdminChangePassword: (d) => api.put('/auth/superadmin/password', d),
   // Delivery staff
   deliveryLogin: (d) => api.post('/auth/delivery/login', d),
+}
+
+// Email-verification-gated actions: customer signup, and a restaurant owner changing their
+// login email or password. Each is request (send code) then confirm (apply the change).
+export const verifyAPI = {
+  customerSignupRequest: (d) => api.post('/verify/customer-signup/request', d),
+  customerSignupConfirm: (d) => api.post('/verify/customer-signup/confirm', d),
+  restaurantEmailRequest: (d) => api.post('/verify/restaurant-email/request', d),
+  restaurantEmailConfirm: (d) => api.post('/verify/restaurant-email/confirm', d),
+  restaurantPasswordRequest: (d) => api.post('/verify/restaurant-password/request', d),
+  restaurantPasswordConfirm: (d) => api.post('/verify/restaurant-password/confirm', d),
 }
 
 export const restaurantAPI = {
@@ -123,6 +132,8 @@ export const superAdminAPI = {
   markOnTheWay: (id) => api.patch(`/superadmin/delivery-orders/${id}/on-the-way`),
   markDelivered: (id) => api.patch(`/superadmin/delivery-orders/${id}/delivered`),
   getDeliveryHistory: (date, type) => api.get('/superadmin/delivery-orders/history', { params: { date, type } }),
+  getSettings: () => api.get('/superadmin/settings'),
+  updateSettings: (d) => api.put('/superadmin/settings', d),
 }
 
 export const visitAPI = {

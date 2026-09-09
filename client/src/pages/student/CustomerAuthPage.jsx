@@ -1,22 +1,39 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Mail, Lock, User, Loader, UserCheck, Ghost, Eye, EyeOff } from 'lucide-react'
-import { authAPI } from '../../services/api'
+import { authAPI, verifyAPI } from '../../services/api'
 import { useCustomerStore } from '../../store'
 import { getGuestToken } from '../../hooks/useGuestToken'
 import { useBackNavigate } from '../../hooks/useBackNavigate'
+import VerifyCodeStep from '../../components/shared/VerifyCodeStep'
 import toast from 'react-hot-toast'
 
 export default function CustomerAuthPage() {
   const [tab, setTab] = useState('login') // login | register | guest
+  const [regStep, setRegStep] = useState('form') // form | code
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({ name:'', email:'', password:'', phone:'' })
   const [guestName, setGuestName] = useState('')
+  const [searchParams] = useSearchParams()
   const { login, setGuest } = useCustomerStore()
   const navigate = useNavigate()
   const goBack = useBackNavigate()
   const f = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
+
+  // Landing here from the "Verify Email" link in the signup email — jump straight to the
+  // code step, pre-filled. Confirming only needs email+code (the rest was saved server-side
+  // when the code was requested), so this works even if opened on a different device.
+  const linkEmail = searchParams.get('verifyEmail')
+  const linkCode = searchParams.get('verifyCode')
+  useEffect(() => {
+    if (linkEmail && linkCode) {
+      setTab('register')
+      setForm(p => ({ ...p, email: linkEmail }))
+      setRegStep('code')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleLogin = async (e) => {
     e.preventDefault(); setLoading(true)
@@ -30,15 +47,23 @@ export default function CustomerAuthPage() {
     finally { setLoading(false) }
   }
 
-  const handleRegister = async (e) => {
+  const requestCode = async (e) => {
     e.preventDefault(); setLoading(true)
     try {
-      const res = await authAPI.customerRegister(form)
+      await verifyAPI.customerSignupRequest(form)
+      toast.success(`Code sent to ${form.email} 📧`)
+      setRegStep('code')
+    } catch (e) { toast.error(e.response?.data?.error || 'Could not send code') }
+    finally { setLoading(false) }
+  }
+
+  const confirmCode = async (code) => {
+    try {
+      const res = await verifyAPI.customerSignupConfirm({ email: form.email, code })
       login(res.data.data.customer, res.data.data.token)
       toast.success(`Account created! Welcome, ${res.data.data.customer.name} 🎉`)
       navigate('/')
-    } catch (e) { toast.error(e.response?.data?.error || 'Registration failed') }
-    finally { setLoading(false) }
+    } catch (e) { toast.error(e.response?.data?.error || 'Verification failed') }
   }
 
   const handleGuest = async () => {
@@ -108,8 +133,8 @@ export default function CustomerAuthPage() {
           )}
 
           {/* ── REGISTER ── */}
-          {tab === 'register' && (
-            <form onSubmit={handleRegister} className="space-y-3">
+          {tab === 'register' && regStep === 'form' && (
+            <form onSubmit={requestCode} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2">
                   <label className="label">Full Name *</label>
@@ -130,9 +155,19 @@ export default function CustomerAuthPage() {
               </div>
               <button type="submit" disabled={loading} className="btn btn-primary w-full btn-lg mt-1">
                 {loading ? <Loader size={16} className="animate-spin" /> : null}
-                {loading ? 'Creating account…' : 'Create Account'}
+                {loading ? 'Sending code…' : 'Send Verification Code'}
               </button>
             </form>
+          )}
+
+          {tab === 'register' && regStep === 'code' && (
+            <VerifyCodeStep
+              email={form.email}
+              initialCode={linkCode || ''}
+              onConfirm={confirmCode}
+              onBack={() => setRegStep('form')}
+              onResend={() => verifyAPI.customerSignupRequest(form).then(() => toast.success('Code resent 📧'))}
+            />
           )}
 
           {/* ── GUEST ── */}

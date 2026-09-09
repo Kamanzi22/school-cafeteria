@@ -1,15 +1,18 @@
 import { useState, useEffect, useRef } from 'react'
-import { Save, Loader, ToggleLeft, ToggleRight, Lock, Trash2, AlertTriangle, ImagePlus } from 'lucide-react'
-import { restaurantAPI, uploadAPI } from '../../services/api'
+import { Save, Loader, ToggleLeft, ToggleRight, Lock, Mail, Trash2, AlertTriangle, ImagePlus } from 'lucide-react'
+import { restaurantAPI, uploadAPI, verifyAPI } from '../../services/api'
 import { useAdminStore } from '../../store'
 import AdminLayout from '../../components/restaurant/AdminLayout'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import VerifyCodeStep from '../../components/shared/VerifyCodeStep'
 import toast from 'react-hot-toast'
 
 export default function SettingsPage() {
   const { restaurant, role, updateRestaurant, logout } = useAdminStore()
   const isViewer = role === 'viewer'
+  const isOwner = role === 'owner'
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [form, setForm] = useState({ name:'', description:'', phone:'', prepTimeMin:10, prepTimeMax:20, openTime:'07:00', closeTime:'18:00', minOrder:0, notice:'', coverColor:'#f97316', ownerPhone:'', offersPickup:true, offersDelivery:false, deliveryNote:'', offersCampusDelivery:true, offersOffCampusDelivery:false, campusDeliveryFee:0, offCampusDeliveryFee:0 })
   const [logoPreview, setLogoPreview] = useState('')
   const [logoUploading, setLogoUploading] = useState(false)
@@ -17,11 +20,26 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false)
   const [toggling, setToggling] = useState(false)
   const [pwForm, setPwForm] = useState({ currentPassword:'', newPassword:'', confirm:'' })
+  const [pwStep, setPwStep] = useState('form') // form | code
   const [pwSaving, setPwSaving] = useState(false)
+  const [emailForm, setEmailForm] = useState({ currentPassword:'', newEmail:'' })
+  const [emailStep, setEmailStep] = useState('form') // form | code
+  const [emailSaving, setEmailSaving] = useState(false)
   const [showDelete, setShowDelete] = useState(false)
   const [deleteForm, setDeleteForm] = useState({ password:'', reason:'' })
   const [deleting, setDeleting] = useState(false)
   const f = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
+
+  // Landing here from the "Verify Email" link sent during a change — jump straight to the
+  // code step for whichever change it was (confirming only needs the code, not the original
+  // form, since that's already saved server-side from the request step).
+  const linkCode = searchParams.get('verifyCode')
+  const linkContext = searchParams.get('verifyContext')
+  useEffect(() => {
+    if (linkCode && linkContext === 'password') setPwStep('code')
+    if (linkCode && linkContext === 'email') setEmailStep('code')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     if (restaurant) {
@@ -65,18 +83,47 @@ export default function SettingsPage() {
     finally { setToggling(false) }
   }
 
-  const changePassword = async (e) => {
+  const requestPasswordChange = async (e) => {
     e.preventDefault()
     if (pwForm.newPassword !== pwForm.confirm) { toast.error("Passwords don't match"); return }
     if (pwForm.newPassword.length < 6) { toast.error("Min 6 characters"); return }
     setPwSaving(true)
     try {
-      const { authAPI } = await import('../../services/api')
-      await authAPI.changePassword({ currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword })
-      toast.success('Password changed!')
-      setPwForm({ currentPassword:'', newPassword:'', confirm:'' })
+      await verifyAPI.restaurantPasswordRequest({ currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword })
+      toast.success('Verification code sent to your email 📧')
+      setPwStep('code')
     } catch (e) { toast.error(e.response?.data?.error || 'Failed') }
     finally { setPwSaving(false) }
+  }
+
+  const confirmPasswordChange = async (code) => {
+    try {
+      await verifyAPI.restaurantPasswordConfirm({ code })
+      toast.success('Password changed!')
+      setPwForm({ currentPassword:'', newPassword:'', confirm:'' })
+      setPwStep('form')
+    } catch (e) { toast.error(e.response?.data?.error || 'Verification failed') }
+  }
+
+  const requestEmailChange = async (e) => {
+    e.preventDefault()
+    setEmailSaving(true)
+    try {
+      await verifyAPI.restaurantEmailRequest(emailForm)
+      toast.success(`Verification code sent to ${emailForm.newEmail} 📧`)
+      setEmailStep('code')
+    } catch (e) { toast.error(e.response?.data?.error || 'Failed') }
+    finally { setEmailSaving(false) }
+  }
+
+  const confirmEmailChange = async (code) => {
+    try {
+      const res = await verifyAPI.restaurantEmailConfirm({ code })
+      updateRestaurant({ ownerEmail: res.data.data.restaurant.ownerEmail })
+      toast.success('Login email updated!')
+      setEmailForm({ currentPassword:'', newEmail:'' })
+      setEmailStep('form')
+    } catch (e) { toast.error(e.response?.data?.error || 'Verification failed') }
   }
 
   const handleDeleteAccount = async () => {
@@ -204,16 +251,49 @@ export default function SettingsPage() {
           </form>
         </div>
 
-        {/* Change password — not applicable to a read-only viewer session */}
-        {!isViewer && (
+        {/* Change login email — owner only, needs current password + a code sent to the new address */}
+        {isOwner && (
+        <div className="card p-5">
+          <h2 className="font-bold text-white mb-4 flex items-center gap-2"><Mail size={16}/>Change Login Email</h2>
+          <p className="text-xs text-ink-400 mb-3">Current: <span className="font-medium">{restaurant?.ownerEmail}</span></p>
+          {emailStep === 'form' ? (
+            <form onSubmit={requestEmailChange} className="space-y-3">
+              <div><label className="label">Current Password</label><input type="password" value={emailForm.currentPassword} onChange={e => setEmailForm(p => ({ ...p, currentPassword:e.target.value }))} className="input" required /></div>
+              <div><label className="label">New Email</label><input type="email" value={emailForm.newEmail} onChange={e => setEmailForm(p => ({ ...p, newEmail:e.target.value }))} className="input" required /></div>
+              <button type="submit" disabled={emailSaving} className="btn btn-secondary">{emailSaving?'Sending…':'Send Verification Code'}</button>
+            </form>
+          ) : (
+            <VerifyCodeStep
+              email={emailForm.newEmail || 'your new email'}
+              initialCode={linkContext === 'email' ? linkCode || '' : ''}
+              onConfirm={confirmEmailChange}
+              onBack={() => setEmailStep('form')}
+              onResend={emailForm.newEmail ? () => verifyAPI.restaurantEmailRequest(emailForm).then(() => toast.success('Code resent 📧')) : undefined}
+            />
+          )}
+        </div>
+        )}
+
+        {/* Change password — owner only, needs current password + a code sent to the current email */}
+        {isOwner && (
         <div className="card p-5">
           <h2 className="font-bold text-white mb-4 flex items-center gap-2"><Lock size={16}/>Change Password</h2>
-          <form onSubmit={changePassword} className="space-y-3">
-            {[['Current Password','currentPassword'],['New Password','newPassword'],['Confirm New Password','confirm']].map(([label,key]) => (
-              <div key={key}><label className="label">{label}</label><input type="password" value={pwForm[key]} onChange={e => setPwForm(p => ({ ...p, [key]:e.target.value }))} className="input" required /></div>
-            ))}
-            <button type="submit" disabled={pwSaving} className="btn btn-secondary">{pwSaving?'Changing…':'Change Password'}</button>
-          </form>
+          {pwStep === 'form' ? (
+            <form onSubmit={requestPasswordChange} className="space-y-3">
+              {[['Current Password','currentPassword'],['New Password','newPassword'],['Confirm New Password','confirm']].map(([label,key]) => (
+                <div key={key}><label className="label">{label}</label><input type="password" value={pwForm[key]} onChange={e => setPwForm(p => ({ ...p, [key]:e.target.value }))} className="input" required /></div>
+              ))}
+              <button type="submit" disabled={pwSaving} className="btn btn-secondary">{pwSaving?'Sending…':'Send Verification Code'}</button>
+            </form>
+          ) : (
+            <VerifyCodeStep
+              email={restaurant?.ownerEmail || 'your email'}
+              initialCode={linkContext === 'password' ? linkCode || '' : ''}
+              onConfirm={confirmPasswordChange}
+              onBack={() => setPwStep('form')}
+              onResend={pwForm.currentPassword ? () => verifyAPI.restaurantPasswordRequest({ currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword }).then(() => toast.success('Code resent 📧')) : undefined}
+            />
+          )}
         </div>
         )}
 

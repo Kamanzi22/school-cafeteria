@@ -2,10 +2,9 @@ const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
-const { PrismaClient } = require('@prisma/client');
 const { authStaff, authSuperAdmin, blockViewer } = require('../middleware/auth');
 const { uploadImage } = require('../lib/supabaseStorage');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 const logoUpload = multer({
   storage: multer.memoryStorage(),
@@ -109,41 +108,9 @@ router.post('/restaurant/staff/login', async (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════
-// CUSTOMER — REGISTER
+// CUSTOMER — REGISTER — see /api/verify/customer-signup/request + /confirm. Registration
+// only completes after the entered email is verified, so there's no direct-create route here.
 // ══════════════════════════════════════════════════════
-router.post('/customer/register', async (req, res) => {
-  try {
-    const { name, email, password, phone, studentId, year, department } = req.body;
-    if (!name || !email || !password)
-      return res.status(400).json({ success: false, error: 'Name, email and password are required' });
-    if (password.length < 6)
-      return res.status(400).json({ success: false, error: 'Password must be at least 6 characters' });
-
-    const exists = await prisma.customer.findUnique({ where: { email: email.toLowerCase() } });
-    if (exists) return res.status(409).json({ success: false, error: 'Email already registered' });
-
-    if (studentId) {
-      const sExists = await prisma.customer.findUnique({ where: { studentId: studentId.toUpperCase() } });
-      if (sExists) return res.status(409).json({ success: false, error: 'Student ID already registered' });
-    }
-
-    const passwordHash = await bcrypt.hash(password, 12);
-    const customer = await prisma.customer.create({
-      data: {
-        accountType: 'registered',
-        name: name.trim(),
-        email: email.toLowerCase().trim(),
-        passwordHash,
-        phone: phone?.trim(),
-        studentId: studentId ? studentId.trim().toUpperCase() : null,
-        year, department
-      }
-    });
-    const token = sign({ type: 'customer', id: customer.id });
-    const { passwordHash: _, ...safe } = customer;
-    res.status(201).json({ success: true, data: { token, customer: safe } });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
-});
 
 // ══════════════════════════════════════════════════════
 // CUSTOMER — LOGIN (email or student ID)
@@ -214,19 +181,10 @@ router.post('/restaurant/staff', authStaff, blockViewer, async (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════
-// RESTAURANT — change own password
+// RESTAURANT — change own email / password — see /api/verify/restaurant-email/* and
+// /api/verify/restaurant-password/*. Both require the current password AND a code emailed
+// to confirm, so there's no direct-change route here.
 // ══════════════════════════════════════════════════════
-router.put('/restaurant/password', authStaff, blockViewer, async (req, res) => {
-  try {
-    const { currentPassword, newPassword } = req.body;
-    if (newPassword?.length < 6) return res.status(400).json({ success: false, error: 'Min 6 characters' });
-    const restaurant = await prisma.restaurant.findUnique({ where: { id: req.restaurantId } });
-    const valid = await bcrypt.compare(currentPassword, restaurant.passwordHash);
-    if (!valid) return res.status(400).json({ success: false, error: 'Current password is incorrect' });
-    await prisma.restaurant.update({ where: { id: req.restaurantId }, data: { passwordHash: await bcrypt.hash(newPassword, 12) } });
-    res.json({ success: true, data: { message: 'Password updated' } });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
-});
 
 // ══════════════════════════════════════════════════════
 // SUPER ADMIN — login

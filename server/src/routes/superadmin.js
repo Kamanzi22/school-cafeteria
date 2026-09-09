@@ -1,8 +1,7 @@
 const router = require('express').Router();
 const jwt = require('jsonwebtoken');
-const { PrismaClient } = require('@prisma/client');
 const { authSuperAdmin, authDelivery } = require('../middleware/auth');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 router.get('/restaurants', authSuperAdmin, async (req, res) => {
   try {
@@ -65,6 +64,30 @@ router.post('/restaurants/:id/view-token', authSuperAdmin, async (req, res) => {
     const token = jwt.sign({ type: 'viewer', restaurantId: r.id }, process.env.JWT_SECRET, { expiresIn: '2h' });
     const { passwordHash, ...safe } = r;
     res.json({ success: true, data: { token, restaurant: safe } });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// Sender identity used on outgoing verification emails (see lib/mailer.js) — lets the
+// business address move off the founder's personal Gmail without a code change. The
+// actual SMTP mailbox is still whatever EMAIL_USER is set to in the environment; this only
+// controls the display name and reply-to shown to recipients.
+router.get('/settings', authSuperAdmin, async (req, res) => {
+  try {
+    const s = await prisma.platformSettings.upsert({ where: { id: 'default' }, update: {}, create: { id: 'default' } });
+    res.json({ success: true, data: s });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+router.put('/settings', authSuperAdmin, async (req, res) => {
+  try {
+    const { senderEmail, senderName } = req.body;
+    if (senderEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(senderEmail))
+      return res.status(400).json({ success: false, error: 'Invalid email address' });
+    const data = {};
+    if (senderEmail) data.senderEmail = senderEmail.trim();
+    if (senderName) data.senderName = senderName.trim();
+    const s = await prisma.platformSettings.upsert({ where: { id: 'default' }, update: data, create: { id: 'default', ...data } });
+    res.json({ success: true, data: s });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 

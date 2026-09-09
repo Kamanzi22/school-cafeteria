@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { Link, useNavigate, Navigate } from 'react-router-dom'
 import { ArrowLeft, LogOut, ShoppingBag, Star, User, Mail, Phone, Hash, UserPlus } from 'lucide-react'
 import { useCustomerStore } from '../../store'
-import { authAPI, customerAPI } from '../../services/api'
+import { customerAPI, verifyAPI } from '../../services/api'
 import { useBackNavigate } from '../../hooks/useBackNavigate'
+import VerifyCodeStep from '../../components/shared/VerifyCodeStep'
 import toast from 'react-hot-toast'
 
 export default function CustomerProfilePage() {
@@ -11,6 +12,7 @@ export default function CustomerProfilePage() {
   const navigate = useNavigate()
   const goBack = useBackNavigate()
   const [showUpgrade, setShowUpgrade] = useState(false)
+  const [upgradeStep, setUpgradeStep] = useState('form') // form | code
   const [upgradeForm, setUpgradeForm] = useState({ name:'', email:'', password:'' })
   const [upgrading, setUpgrading] = useState(false)
 
@@ -26,15 +28,24 @@ export default function CustomerProfilePage() {
     toast.success('Signed out')
   }
 
-  const handleUpgrade = async (e) => {
+  const requestUpgradeCode = async (e) => {
     e.preventDefault(); setUpgrading(true)
     try {
-      const res = await authAPI.customerRegister({ ...upgradeForm, name: upgradeForm.name || customer.name })
+      await verifyAPI.customerSignupRequest({ ...upgradeForm, name: upgradeForm.name || customer.name })
+      toast.success(`Code sent to ${upgradeForm.email} 📧`)
+      setUpgradeStep('code')
+    } catch (e) { toast.error(e.response?.data?.error || 'Could not send code') }
+    finally { setUpgrading(false) }
+  }
+
+  const confirmUpgradeCode = async (code) => {
+    try {
+      const res = await verifyAPI.customerSignupConfirm({ email: upgradeForm.email, code })
       login(res.data.data.customer, res.data.data.token)
       toast.success('Account created! You now have a full account 🎉')
       setShowUpgrade(false)
-    } catch (e) { toast.error(e.response?.data?.error || 'Failed') }
-    finally { setUpgrading(false) }
+      setUpgradeStep('form')
+    } catch (e) { toast.error(e.response?.data?.error || 'Verification failed') }
   }
 
   return (
@@ -74,16 +85,25 @@ export default function CustomerProfilePage() {
                 <p className="text-xs text-alu-muted mt-0.5">Save your order history, earn points, and access your orders from any device.</p>
                 {!showUpgrade ? (
                   <button onClick={() => setShowUpgrade(true)} className="btn btn-primary btn-sm mt-3">Upgrade Account</button>
-                ) : (
-                  <form onSubmit={handleUpgrade} className="mt-3 space-y-3">
+                ) : upgradeStep === 'form' ? (
+                  <form onSubmit={requestUpgradeCode} className="mt-3 space-y-3">
                     <input value={upgradeForm.name || customer.name} onChange={e => setUpgradeForm(p => ({ ...p, name:e.target.value }))} className="input text-sm" placeholder="Full name" required />
                     <input type="email" value={upgradeForm.email} onChange={e => setUpgradeForm(p => ({ ...p, email:e.target.value }))} className="input text-sm" placeholder="Email address" required />
                     <input type="password" value={upgradeForm.password} onChange={e => setUpgradeForm(p => ({ ...p, password:e.target.value }))} className="input text-sm" placeholder="Password (min 6 chars)" required minLength={6} />
                     <div className="flex gap-2">
                       <button type="button" onClick={() => setShowUpgrade(false)} className="btn btn-secondary btn-sm flex-1">Cancel</button>
-                      <button type="submit" disabled={upgrading} className="btn btn-primary btn-sm flex-1">{upgrading ? 'Creating…' : 'Create Account'}</button>
+                      <button type="submit" disabled={upgrading} className="btn btn-primary btn-sm flex-1">{upgrading ? 'Sending…' : 'Send Code'}</button>
                     </div>
                   </form>
+                ) : (
+                  <div className="mt-3">
+                    <VerifyCodeStep
+                      email={upgradeForm.email}
+                      onConfirm={confirmUpgradeCode}
+                      onBack={() => setUpgradeStep('form')}
+                      onResend={() => verifyAPI.customerSignupRequest({ ...upgradeForm, name: upgradeForm.name || customer.name }).then(() => toast.success('Code resent 📧'))}
+                    />
+                  </div>
                 )}
               </div>
             </div>
