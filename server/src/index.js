@@ -14,6 +14,7 @@ const allowedOrigins = (process.env.CLIENT_URL || '').split(',').map(s => s.trim
 const corsOrigin = (origin, cb) => cb(null, !origin || allowedOrigins.includes(origin));
 
 const app = express();
+app.set('trust proxy', 1);
 const httpServer = http.createServer(app);
 const io = new Server(httpServer, {
   cors: { origin: corsOrigin, methods: ['GET','POST','PUT','PATCH','DELETE'], credentials: true }
