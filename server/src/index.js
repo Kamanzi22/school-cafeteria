@@ -24,7 +24,9 @@ app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors({ origin: corsOrigin, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 if (process.env.NODE_ENV === 'development') app.use(morgan('dev'));
-app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, max: 1000 }));
+// Overridable via RATE_LIMIT_MAX so a staging env can be raised for load testing
+// (see load-tests/rush-hour.js) without changing the production default.
+app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, max: parseInt(process.env.RATE_LIMIT_MAX) || 1000 }));
 app.set('io', io);
 
 app.use('/api/auth', require('./routes/auth'));
