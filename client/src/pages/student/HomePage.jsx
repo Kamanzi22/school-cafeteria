@@ -5,6 +5,7 @@ import { restaurantAPI } from '../../services/api'
 import { useCartStore, useCustomerStore, useUIStore } from '../../store'
 import { useSocket } from '../../hooks/useSocket'
 import CartDrawer from '../../components/student/CartDrawer'
+import Seo from '../../components/Seo'
 import toast from 'react-hot-toast'
 
 function RestaurantCard({ r, index, matchedItems }) {
@@ -95,6 +96,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-alu-bg">
+      <Seo />
       {/* Top nav */}
       <header className="sticky top-0 z-30 bg-alu-bg/90 backdrop-blur-xl border-b border-alu-border">
         <div className="page-container py-3 flex items-center gap-3">

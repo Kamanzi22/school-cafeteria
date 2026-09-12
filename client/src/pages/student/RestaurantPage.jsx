@@ -4,6 +4,7 @@ import { ArrowLeft, Star, Clock, MapPin, Phone, Plus, Minus, ShoppingBag, Flame,
 import { restaurantAPI } from '../../services/api'
 import { useCartStore, useCustomerStore, useUIStore } from '../../store'
 import CartDrawer from '../../components/student/CartDrawer'
+import Seo from '../../components/Seo'
 import { useBackNavigate } from '../../hooks/useBackNavigate'
 import { useVisitTracking } from '../../hooks/useVisitTracking'
 import toast from 'react-hot-toast'
@@ -116,8 +117,28 @@ export default function RestaurantPage() {
   )
   if (!restaurant) return null
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Restaurant',
+    name: restaurant.name,
+    description: restaurant.description || undefined,
+    image: restaurant.logo || undefined,
+    servesCuisine: restaurant.category || undefined,
+    telephone: restaurant.phone || undefined,
+    address: restaurant.location ? { '@type': 'PostalAddress', addressLocality: restaurant.location } : undefined,
+    ...(restaurant.ratingCount > 0 && {
+      aggregateRating: { '@type': 'AggregateRating', ratingValue: restaurant.rating, reviewCount: restaurant.ratingCount }
+    })
+  }
+
   return (
     <div className="min-h-screen bg-ink-50">
+      <Seo
+        title={restaurant.name}
+        description={restaurant.description || `Order from ${restaurant.name} on CaféCampus — ${restaurant.category || 'campus food'}, pickup or delivery.`}
+        path={`/restaurant/${id}`}
+        jsonLd={jsonLd}
+      />
       {/* Hero */}
       <div className="relative text-white" style={{ background: `linear-gradient(160deg, ${restaurant.coverColor}dd, ${restaurant.coverColor}99)` }}>
         <div className="absolute inset-0 stripe-pattern opacity-30" />

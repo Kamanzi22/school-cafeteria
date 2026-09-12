@@ -3,7 +3,20 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Static baseline for crawlers/link-preview bots that don't execute JS (Bing, WhatsApp,
+       iMessage, Twitter, Facebook). Helmet (see src/components/Seo.jsx) overrides these per
+       route for JS-capable crawlers like Googlebot — this tag is what everyone else sees. -->
   <title>CaféCampus — Order. Track. Eat.</title>
+  <meta name="description" content="Order food from campus restaurants, track your order live, and skip the line. Browse menus from campus eateries and pay on pickup or delivery." />
+  <link rel="canonical" href="https://cafecampus-client.onrender.com/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="CaféCampus" />
+  <meta property="og:title" content="CaféCampus — Order. Track. Eat." />
+  <meta property="og:description" content="Order food from campus restaurants, track your order live, and skip the line." />
+  <meta property="og:url" content="https://cafecampus-client.onrender.com/" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="CaféCampus — Order. Track. Eat." />
+  <meta name="twitter:description" content="Order food from campus restaurants, track your order live, and skip the line." />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍽️</text></svg>" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
