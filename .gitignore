@@ -27,3 +27,6 @@ server/uploads/*
 # Logs
 *.log
 npm-debug.log*
+
+# Local DB backups (contain real user/order data - never commit)
+*.dump
