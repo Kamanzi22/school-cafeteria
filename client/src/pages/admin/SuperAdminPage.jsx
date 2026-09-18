@@ -462,7 +462,7 @@ export default function SuperAdminPage() {
   }
 
   if (!authed) return (
-    <div className="min-h-screen bg-ink-950 flex items-center justify-center p-4">
+    <div className="min-h-dvh bg-ink-950 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <Shield size={40} className="text-brand-500 mx-auto mb-3" />
@@ -503,7 +503,7 @@ export default function SuperAdminPage() {
   const allDeliveryEnabled = restaurants.length > 0 && restaurants.every(r => r.offersCampusDelivery)
 
   return (
-    <div className="min-h-screen bg-ink-50">
+    <div className="min-h-dvh bg-ink-50">
       <div className="gradient-dark text-white px-6 py-5">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">

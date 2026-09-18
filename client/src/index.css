@@ -4,14 +4,24 @@
 
 @layer base {
   * { font-family: 'DM Sans', system-ui, sans-serif; }
-  body { @apply bg-alu-bg text-alu-cream antialiased; }
+  /* Stop iOS/Android from re-scaling text on rotate, and keep stray overflow from widening the page. */
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
+  /* `clip` (not `hidden`) so position:sticky headers keep working. */
+  html, body { overflow-x: clip; }
+  /* Disables double-tap-to-zoom only; pinch zoom stays available for accessibility. */
+  body { @apply bg-alu-bg text-alu-cream antialiased; touch-action: manipulation; }
+  /* iOS Safari zooms the whole page when focusing a field whose font-size is under 16px. */
+  @media (max-width: 767px) {
+    input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']),
+    select, textarea { font-size: 16px !important; }
+  }
   h1,h2,h3,h4 { font-weight: 700; letter-spacing: -0.02em; }
   ::-webkit-scrollbar { width: 3px; }
   ::-webkit-scrollbar-thumb { background: #2C2C2C; border-radius: 99px; }
 }
 
 @layer components {
-  .btn { @apply inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition-all duration-150 active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed select-none; }
+  .btn { @apply inline-flex items-center justify-center gap-2 whitespace-nowrap font-semibold rounded-xl transition-all duration-150 active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed select-none; }
   .btn-primary { @apply btn bg-alu-red hover:bg-alu-red-hover text-white px-5 py-2.5 text-sm shadow-sm; }
   .btn-secondary { @apply btn bg-alu-surface hover:bg-alu-card text-alu-cream border border-alu-border px-5 py-2.5 text-sm; }
   .btn-ghost { @apply btn hover:bg-alu-surface text-alu-muted px-3 py-2 text-sm; }

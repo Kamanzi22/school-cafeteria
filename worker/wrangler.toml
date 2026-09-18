@@ -1,0 +1,29 @@
+name = "cafecampus-api"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Bound via `wrangler hyperdrive create cafecampus-db --connection-string=<supabase-direct-url>`
+# Point at Supabase's DIRECT connection (port 5432), not its own pgbouncer pooler.
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = "REPLACE_WITH_HYPERDRIVE_ID"
+
+[vars]
+ENVIRONMENT = "production"
+JWT_EXPIRES_IN = "7d"
+RATE_LIMIT_PER_MINUTE = "67"
+# CLIENT_URL, JWT_SECRET, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY
+# are set as secrets via `wrangler secret put <NAME>` — never committed here.
+
+[env.staging]
+name = "cafecampus-api-staging"
+vars = { ENVIRONMENT = "staging", JWT_EXPIRES_IN = "7d", RATE_LIMIT_PER_MINUTE = "1000" }
+
+[[env.staging.hyperdrive]]
+binding = "HYPERDRIVE"
+id = "REPLACE_WITH_STAGING_HYPERDRIVE_ID"
+
+# Durable Objects (BroadcastRoom) and the REALTIME_TICKETS KV namespace are added in Stage 7,
+# once worker/src/durable-objects/broadcastRoom.js actually exists — a binding to a
+# not-yet-exported class fails to build.

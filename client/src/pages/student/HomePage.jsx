@@ -95,12 +95,12 @@ export default function HomePage() {
   const displayed = restaurants
 
   return (
-    <div className="min-h-screen bg-alu-bg">
+    <div className="min-h-dvh bg-alu-bg">
       <Seo />
       {/* Top nav */}
       <header className="sticky top-0 z-30 bg-alu-bg/90 backdrop-blur-xl border-b border-alu-border">
-        <div className="page-container py-3 flex items-center gap-3">
-          <Link to="/" className="flex items-center gap-2 mr-1">
+        <div className="page-container py-3 flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-2.5">
+          <Link to="/" className="flex items-center gap-2 mr-1 shrink-0">
             <span className="text-2xl">🍽️</span>
             <div>
               <p className="font-bold text-alu-cream leading-none text-base">CaféCampus</p>
@@ -108,16 +108,16 @@ export default function HomePage() {
             </div>
           </Link>
 
-          {/* Search — navigates to dedicated search page */}
+          {/* Search — navigates to dedicated search page. Own row on phones, inline from sm up. */}
           <button
             onClick={() => navigate('/search')}
-            className="flex-1 flex items-center gap-2 bg-alu-surface border border-alu-border rounded-xl px-3.5 py-2 text-sm text-alu-muted hover:bg-alu-card transition-colors"
+            className="order-last sm:order-none basis-full sm:basis-0 flex-1 min-w-0 flex items-center gap-2 bg-alu-surface border border-alu-border rounded-xl px-3.5 py-2.5 sm:py-2 text-sm text-alu-muted text-left hover:bg-alu-card transition-colors"
           >
             <Search size={15} className="shrink-0" />
-            Search restaurants or meals…
+            <span className="truncate">Search restaurants or meals…</span>
           </button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0 ml-auto sm:ml-0">
             {student ? (
               <Link to="/profile" className="btn btn-ghost btn-icon">
                 <User size={18} />

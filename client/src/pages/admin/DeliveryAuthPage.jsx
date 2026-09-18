@@ -22,7 +22,7 @@ export default function DeliveryAuthPage() {
   }
 
   return (
-    <div className="min-h-screen bg-ink-950 flex items-center justify-center p-4">
+    <div className="min-h-dvh bg-ink-950 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <Backpack size={40} className="text-brand-500 mx-auto mb-3" />

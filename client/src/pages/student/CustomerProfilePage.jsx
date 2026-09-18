@@ -49,7 +49,7 @@ export default function CustomerProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-alu-bg">
+    <div className="min-h-dvh bg-alu-bg">
       <div className="bg-alu-surface border-b border-alu-border sticky top-0 z-10">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
           <button onClick={goBack} className="btn btn-ghost btn-icon"><ArrowLeft size={18}/></button>

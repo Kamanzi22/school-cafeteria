@@ -79,7 +79,7 @@ export default function CustomerAuthPage() {
   }
 
   return (
-    <div className="min-h-screen bg-ink-50 flex items-center justify-center p-4">
+    <div className="min-h-dvh bg-ink-50 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <button onClick={goBack} className="btn btn-ghost btn-sm mb-6 -ml-2 text-ink-500">
           <ArrowLeft size={15} /> Back

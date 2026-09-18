@@ -216,19 +216,19 @@ export default function SearchPage() {
   const totalCount = shownRestaurants.length + shownProducts.length
 
   return (
-    <div className="min-h-screen bg-alu-bg">
+    <div className="min-h-dvh bg-alu-bg">
       {/* Top nav — matches HomePage */}
       <header className="sticky top-0 z-30 bg-alu-bg/90 backdrop-blur-xl border-b border-alu-border">
         <div className="page-container py-3 flex items-center gap-3">
-          <Link to="/" className="flex items-center gap-2 mr-1">
+          <Link to="/" className="flex items-center gap-2 mr-1 shrink-0" aria-label="CaféCampus home">
             <span className="text-2xl">🍽️</span>
-            <div>
+            <div className="hidden sm:block">
               <p className="font-bold text-alu-cream leading-none text-base">CaféCampus</p>
               <p className="text-[10px] text-alu-muted leading-none">School Cafeteria</p>
             </div>
           </Link>
 
-          <div className="flex-1 relative">
+          <div className="flex-1 min-w-0 relative">
             <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-alu-muted pointer-events-none shrink-0" />
             <input
               ref={inputRef}
@@ -247,7 +247,7 @@ export default function SearchPage() {
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {student ? (
               <Link to="/profile" className="btn btn-ghost btn-icon">
                 <User size={18} />

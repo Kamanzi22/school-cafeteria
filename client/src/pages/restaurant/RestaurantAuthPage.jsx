@@ -57,7 +57,7 @@ export default function RestaurantAuthPage() {
   }
 
   return (
-    <div className="min-h-screen bg-ink-950 flex items-center justify-center p-4">
+    <div className="min-h-dvh bg-ink-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <Link to="/" className="btn text-ink-400 hover:text-white btn-sm mb-6 inline-flex gap-2">
           <ArrowLeft size={15} /> Back to student app

@@ -195,7 +195,7 @@ export default function DeliveryPage({ standalone = false }) {
   if (!token) return null
 
   return (
-    <div className="min-h-screen bg-ink-50">
+    <div className="min-h-dvh bg-ink-50">
       <div className="gradient-dark text-white px-6 py-5">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">

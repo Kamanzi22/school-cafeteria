@@ -7,7 +7,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 
-// Comma-separated list, e.g. "https://app.onrender.com,https://app.vercel.app". An empty/unset
+// Comma-separated list, e.g. "https://cafecampus-client.onrender.com". An empty/unset
 // CLIENT_URL denies all cross-origin requests instead of falling back to the cors package's
 // wildcard default for a falsy origin.
 const allowedOrigins = (process.env.CLIENT_URL || '').split(',').map(s => s.trim()).filter(Boolean);

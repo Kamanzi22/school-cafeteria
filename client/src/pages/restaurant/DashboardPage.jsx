@@ -188,12 +188,12 @@ export default function DashboardPage() {
     <AdminLayout newOrderCount={newCount}>
       <div className="p-6">
         {/* Page header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
+        <div className="flex items-center justify-between gap-3 mb-6">
+          <div className="min-w-0">
             <h1 className="text-2xl font-black text-ink-900">Live Orders</h1>
             <p className="text-ink-400 text-sm">{format(new Date(), 'EEEE, d MMMM yyyy')} · auto-refreshes</p>
           </div>
-          <button onClick={() => fetch(true)} disabled={refreshing} className="btn btn-secondary btn-sm">
+          <button onClick={() => fetch(true)} disabled={refreshing} className="btn btn-secondary btn-sm shrink-0">
             <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
             Refresh
           </button>
@@ -215,7 +215,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Status tabs */}
-        <div className="flex gap-1 overflow-x-auto scrollbar-hide mb-5 bg-ink-100 rounded-xl p-1 w-fit">
+        <div className="flex gap-1 overflow-x-auto scrollbar-hide mb-5 bg-ink-100 rounded-xl p-1 w-fit max-w-full">
           {TABS.map(t => (
             <button key={t.key} onClick={() => setActiveTab(t.key)}
               className={`flex items-center gap-1.5 whitespace-nowrap px-3.5 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === t.key ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-700'}`}>
