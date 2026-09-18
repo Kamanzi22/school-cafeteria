@@ -13,7 +13,6 @@ const STEPS = [
   { key: 'preparing', emoji: '👨‍🍳', label: 'Being Prepared', sub: 'Your food is cooking right now' },
   { key: 'ready', emoji: '🎉', label: 'Ready!', sub: 'Go pick up at the counter' },
 ]
-const DELIVERY_STEP = { key: 'on_the_way', emoji: '🚴', label: 'Out for Delivery', sub: '' }
 const STATUS_IDX = { pending: 0, confirmed: 1, preparing: 2, ready: 3, on_the_way: 4, picked_up: 5 }
 
 export default function TrackOrderPage() {
@@ -55,22 +54,14 @@ export default function TrackOrderPage() {
     finally { setSubmitting(false) }
   }
 
-  if (!order) return <div className="min-h-screen flex items-center justify-center bg-alu-bg"><Loader size={24} className="animate-spin text-alu-red" /></div>
+  if (!order) return <div className="min-h-dvh flex items-center justify-center bg-alu-bg"><Loader size={24} className="animate-spin text-alu-red" /></div>
 
   const currentIdx = STATUS_IDX[order.status] ?? 0
   const isCancelled = order.status === 'cancelled'
   const isDone = order.status === 'picked_up'
-  const isDelivery = order.fulfillmentType === 'delivery'
-  const deliveryLabel = order.deliveryScope === 'off_campus' ? 'off campus' : 'on campus'
-  const steps = [
-    ...STEPS.map(s => s.key === 'ready'
-      ? { ...s, label: isDelivery ? 'Packed & Ready' : 'Ready!', sub: isDelivery ? 'Waiting for a delivery runner to pick it up' : 'Go pick up at the counter' }
-      : s),
-    ...(isDelivery ? [{ ...DELIVERY_STEP, sub: `Delivering ${deliveryLabel} to ${order.deliveryLocation}` }] : []),
-  ]
 
   return (
-    <div className="min-h-screen bg-alu-bg">
+    <div className="min-h-dvh bg-alu-bg">
       {/* Header */}
       <div className="gradient-dark text-white px-4 pt-4 pb-8">
         <div className="max-w-lg mx-auto">
@@ -99,8 +90,8 @@ export default function TrackOrderPage() {
             </div>
           ) : isDone ? (
             <div className="text-center py-4">
-              <div className="text-4xl mb-2">{isDelivery ? '🚚' : '🍽️'}</div>
-              <h2 className="font-bold text-xl text-alu-success-fg">{isDelivery ? 'Delivered!' : 'Picked Up!'}</h2>
+              <div className="text-4xl mb-2">🍽️</div>
+              <h2 className="font-bold text-xl text-alu-success-fg">Picked Up!</h2>
               <p className="text-alu-muted text-sm">Enjoy!</p>
               {!order.review && student && (
                 <button onClick={() => setShowReview(true)} className="btn btn-primary mt-4">
@@ -112,18 +103,12 @@ export default function TrackOrderPage() {
             <>
               {order.status === 'ready' && (
                 <div className="bg-alu-success/10 border border-alu-success/25 rounded-xl p-4 mb-4 text-center">
-                  <p className="font-bold text-alu-success-fg text-lg">{isDelivery ? '📦 Ready!' : '🎉 Ready for pickup!'}</p>
-                  <p className="text-alu-success-fg/70 text-sm">{isDelivery ? 'Waiting for a delivery runner to pick it up' : `Head to ${order.restaurant?.location} now`}</p>
-                </div>
-              )}
-              {order.status === 'on_the_way' && (
-                <div className="bg-alu-success/10 border border-alu-success/25 rounded-xl p-4 mb-4 text-center">
-                  <p className="font-bold text-alu-success-fg text-lg">🚚 On its way!</p>
-                  <p className="text-alu-success-fg/70 text-sm">Delivering {deliveryLabel} to {order.deliveryLocation}</p>
+                  <p className="font-bold text-alu-success-fg text-lg">🎉 Ready for pickup!</p>
+                  <p className="text-alu-success-fg/70 text-sm">Head to {order.restaurant?.location} now</p>
                 </div>
               )}
               <div className="space-y-2">
-                {steps.map((step, i) => {
+                {STEPS.map((step, i) => {
                   const done = i <= currentIdx
                   const current = i === currentIdx
                   return (

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Star, Clock, MapPin, Phone, Plus, Minus, ShoppingBag, Flame, Leaf, Zap, AlertCircle, Heart, Search, X, PackageX, Backpack } from 'lucide-react'
+import { ArrowLeft, Star, Clock, MapPin, Phone, Plus, Minus, ShoppingBag, Flame, Leaf, Zap, AlertCircle, Heart, Search, X, PackageX } from 'lucide-react'
 import { restaurantAPI } from '../../services/api'
 import { useCartStore, useCustomerStore, useUIStore } from '../../store'
 import CartDrawer from '../../components/student/CartDrawer'
@@ -91,9 +91,7 @@ export default function RestaurantPage() {
       { id: item.id, name: item.name, price: item.price, emoji: item.emoji },
       {
         id: restaurant.id, name: restaurant.name, emoji: restaurant.emoji,
-        offersPickup: restaurant.offersPickup, offersDelivery: restaurant.offersDelivery, deliveryFee: restaurant.deliveryFee,
-        offersCampusDelivery: restaurant.offersCampusDelivery, offersOffCampusDelivery: restaurant.offersOffCampusDelivery,
-        campusDeliveryFee: restaurant.campusDeliveryFee, offCampusDeliveryFee: restaurant.offCampusDeliveryFee,
+        offersPickup: restaurant.offersPickup,
       },
       variant
     )
@@ -111,7 +109,7 @@ export default function RestaurantPage() {
   }) || []
 
   if (loading) return (
-    <div className="min-h-screen bg-ink-50 flex items-center justify-center">
+    <div className="min-h-dvh bg-ink-50 flex items-center justify-center">
       <div className="text-center animate-pulse"><div className="text-5xl mb-3">🍽️</div><p className="text-ink-400">Loading menu…</p></div>
     </div>
   )
@@ -132,7 +130,7 @@ export default function RestaurantPage() {
   }
 
   return (
-    <div className="min-h-screen bg-ink-50">
+    <div className="min-h-dvh bg-ink-50">
       <Seo
         title={restaurant.name}
         description={restaurant.description || `Order from ${restaurant.name} on CaféCampus — ${restaurant.category || 'campus food'}, pickup or delivery.`}
@@ -174,9 +172,6 @@ export default function RestaurantPage() {
                 {restaurant.ratingCount > 0 && <span className="flex items-center gap-1"><Star size={11} className="fill-amber-300 text-amber-300" />{restaurant.rating} ({restaurant.ratingCount})</span>}
                 <span className="flex items-center gap-1"><Clock size={11} />{restaurant.prepTimeMin}–{restaurant.prepTimeMax} min</span>
                 <span className="flex items-center gap-1"><MapPin size={11} />{restaurant.location}</span>
-                {restaurant.offersDelivery && restaurant.offersCampusDelivery && (
-                  <span className="flex items-center gap-1"><Backpack size={11} />Delivery {restaurant.campusDeliveryFee > 0 ? `+${restaurant.campusDeliveryFee.toLocaleString()} RWF` : 'free'}</span>
-                )}
               </div>
             </div>
           </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { CheckCircle, MapPin, Backpack, Receipt, Home, Radar } from 'lucide-react'
+import { CheckCircle, MapPin, Receipt, Home, Radar } from 'lucide-react'
 import { orderAPI } from '../../services/api'
 
 export default function OrderConfirmPageImpl() {
@@ -9,12 +9,10 @@ export default function OrderConfirmPageImpl() {
 
   useEffect(() => { orderAPI.get(id).then(r => setOrder(r.data.data)) }, [id])
 
-  if (!order) return <div className="min-h-screen flex items-center justify-center"><div className="text-4xl animate-pulse">🎉</div></div>
-
-  const isDelivery = order.fulfillmentType === 'delivery'
+  if (!order) return <div className="min-h-dvh flex items-center justify-center"><div className="text-4xl animate-pulse">🎉</div></div>
 
   return (
-    <div className="min-h-screen bg-alu-bg flex items-center justify-center p-4">
+    <div className="min-h-dvh bg-alu-bg flex items-center justify-center p-4">
       <div className="w-full max-w-md animate-fade-up">
         {/* Success */}
         <div className="text-center mb-6">
@@ -22,7 +20,7 @@ export default function OrderConfirmPageImpl() {
             <CheckCircle size={40} className="text-alu-success-fg" />
           </div>
           <h1 className="text-2xl font-black text-alu-cream">Order Placed!</h1>
-          <p className="text-alu-muted mt-1">{isDelivery ? 'Your order is being prepared for delivery' : 'Your order is being prepared'}</p>
+          <p className="text-alu-muted mt-1">Your order is being prepared</p>
         </div>
 
         {/* Order number */}
@@ -47,11 +45,6 @@ export default function OrderConfirmPageImpl() {
                 <span>Discount</span><span>−{order.discountAmount.toLocaleString()} RWF</span>
               </div>
             )}
-            {order.deliveryFee > 0 && (
-              <div className="flex justify-between text-sm text-alu-muted border-t border-alu-border pt-2">
-                <span>Delivery fee</span><span>{order.deliveryFee.toLocaleString()} RWF</span>
-              </div>
-            )}
             <div className="flex justify-between font-bold text-alu-cream border-t border-alu-border pt-2">
               <span>Total</span><span className="text-alu-red">{order.totalPrice.toLocaleString()} RWF</span>
             </div>
@@ -64,15 +57,15 @@ export default function OrderConfirmPageImpl() {
         {/* Info grid */}
         <div className="grid grid-cols-1 gap-3 mb-5">
           <div className="card p-4 text-center">
-            {isDelivery ? <Backpack size={20} className="text-alu-red mx-auto mb-1" /> : <MapPin size={20} className="text-alu-red mx-auto mb-1" />}
-            <p className="text-xs text-alu-muted">{isDelivery ? `Delivering ${order.deliveryScope === 'off_campus' ? 'off campus' : 'on campus'} to` : 'Pickup at'}</p>
-            <p className="font-bold text-sm text-alu-cream">{isDelivery ? order.deliveryLocation : order.restaurant?.location}</p>
+            <MapPin size={20} className="text-alu-red mx-auto mb-1" />
+            <p className="text-xs text-alu-muted">Pickup at</p>
+            <p className="font-bold text-sm text-alu-cream">{order.restaurant?.location}</p>
           </div>
         </div>
 
         <div className="bg-alu-surface border border-alu-border rounded-2xl p-4 text-center mb-5">
           <Receipt size={18} className="text-alu-gold mx-auto mb-1" />
-          <p className="font-semibold text-alu-gold text-sm">{isDelivery ? 'Show this order number when it arrives' : 'Show this order number at pickup'}</p>
+          <p className="font-semibold text-alu-gold text-sm">Show this order number at pickup</p>
         </div>
 
         <div className="flex gap-3">
