@@ -142,7 +142,7 @@ export default function HomePage() {
         <div className="absolute inset-0 dot-pattern opacity-20" />
         <div className="page-container py-10 relative z-10">
           <h1 className="text-4xl md:text-5xl font-black leading-tight mb-2">
-            Skip the line,<br /><span className="text-gradient">order ahead</span>
+            Skip the line,<span className="text-gradient">order ahead</span>
           </h1>
         </div>
         {/* Decorative blobs */}
