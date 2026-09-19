@@ -57,7 +57,6 @@ export default function RestaurantPage() {
   const { id } = useParams()
   const [searchParams] = useSearchParams()
   const focusItemId = searchParams.get('item')
-  const [highlightId, setHighlightId] = useState(null)
   const navigate = useNavigate()
   const goBack = useBackNavigate()
   const [restaurant, setRestaurant] = useState(null)
@@ -89,9 +88,6 @@ export default function RestaurantPage() {
     const el = document.getElementById(`item-${focusItemId}`)
     if (!el) return
     el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    setHighlightId(focusItemId)
-    const t = setTimeout(() => setHighlightId(null), 2500)
-    return () => clearTimeout(t)
   }, [loading, restaurant, focusItemId])
 
   const getQty = (itemId) => items.filter(i => i.id === itemId).reduce((s, i) => s + i.qty, 0)
@@ -255,16 +251,18 @@ export default function RestaurantPage() {
         <div className="space-y-3">
           {displayItems.map(item => {
             const qty = getQty(item.id)
+            const isFocus = focusItemId === item.id
+            const mutedText = isFocus ? 'text-ink-600' : 'text-ink-400'
             const outOfStock = item.hasVariants
               ? item.variants?.every(v => v.stock <= 0 || !v.isAvailable)
               : item.trackStock && item.stock <= 0
             const canOrder = restaurant.isOpen && restaurant.isAccepting && item.isAvailable && !outOfStock
             const lowStock = !item.hasVariants && item.trackStock && item.stock > 0 && item.stock <= 5
             return (
-              <div key={item.id} id={`item-${item.id}`} className={`card flex gap-4 p-4 transition-all ${!item.isAvailable ? 'opacity-50' : ''} ${highlightId === item.id ? 'ring-2 ring-flame-500' : ''}`}>
+              <div key={item.id} id={`item-${item.id}`} className={`card flex gap-4 p-4 transition-all ${!item.isAvailable ? 'opacity-50' : ''} ${isFocus ? 'bg-white border-white text-ink-900' : ''}`}>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start gap-2 flex-wrap mb-0.5">
-                    <h3 className="font-semibold text-alu-cream text-sm">{item.name}</h3>
+                    <h3 className={`font-semibold text-sm ${isFocus ? 'text-ink-900' : 'text-alu-cream'}`}>{item.name}</h3>
                     {item.isFeatured && <span className="badge bg-flame-100 text-flame-600 text-[10px]">★ Featured</span>}
                     {item.isPopular && <span className="badge bg-purple-100 text-purple-600 text-[10px]">🔥 Popular</span>}
                     {item.isVegan && <span className="tag-vegan text-[10px]">Vegan</span>}
@@ -273,12 +271,12 @@ export default function RestaurantPage() {
                     {lowStock && <span className="badge bg-amber-100 text-amber-600 text-[10px]">Only {item.stock} left</span>}
                     {outOfStock && <span className="badge bg-ink-100 text-ink-400 text-[10px]">Out of stock</span>}
                   </div>
-                  {item.description && <p className="text-xs text-ink-400 mt-0.5 line-clamp-2">{item.description}</p>}
+                  {item.description && <p className={`text-xs ${mutedText} mt-0.5 line-clamp-2`}>{item.description}</p>}
                   <div className="flex items-center gap-3 mt-2 flex-wrap">
                     <span className="font-bold text-flame-500">{item.price.toLocaleString()} RWF{item.hasVariants ? '+' : ''}</span>
-                    {item.originalPrice && <span className="text-xs text-ink-400 line-through">{item.originalPrice.toLocaleString()}</span>}
-                    {item.calories && <span className="text-xs text-ink-400 flex items-center gap-0.5"><Flame size={10} />{item.calories} cal</span>}
-                    <span className="text-xs text-ink-400 flex items-center gap-0.5"><Clock size={10} />{item.prepTime} min</span>
+                    {item.originalPrice && <span className={`text-xs ${mutedText} line-through`}>{item.originalPrice.toLocaleString()}</span>}
+                    {item.calories && <span className={`text-xs ${mutedText} flex items-center gap-0.5`}><Flame size={10} />{item.calories} cal</span>}
+                    <span className={`text-xs ${mutedText} flex items-center gap-0.5`}><Clock size={10} />{item.prepTime} min</span>
                   </div>
                   {item.allergens && JSON.parse(item.allergens).length > 0 && (
                     <p className="text-[10px] text-amber-600 mt-1 flex items-center gap-1">
@@ -303,7 +301,7 @@ export default function RestaurantPage() {
                         <button onClick={() => setQty(`${item.id}:`, qty - 1)} className="w-7 h-7 rounded-lg border border-ink-200 flex items-center justify-center text-ink-600 hover:bg-red-50 hover:border-red-200 transition">
                           <Minus size={12} />
                         </button>
-                        <span className="font-bold text-sm text-alu-cream w-4 text-center">{qty}</span>
+                        <span className={`font-bold text-sm w-4 text-center ${isFocus ? 'text-ink-900' : 'text-alu-cream'}`}>{qty}</span>
                         <button onClick={() => handleAdd(item)} className="w-7 h-7 rounded-lg bg-flame-500 flex items-center justify-center text-white hover:bg-flame-600 transition">
                           <Plus size={12} />
                         </button>
