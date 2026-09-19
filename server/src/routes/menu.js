@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const { authStaff, blockViewer, requireManager } = require('../middleware/auth');
 const prisma = require('../lib/prisma');
+const { pickAutoFeatured } = require('../lib/featured');
 
 // Replace all variants for a menu item inside the given transaction client
 async function syncVariants(tx, menuItemId, variants) {
@@ -42,6 +43,11 @@ router.get('/search', async (req, res) => {
 router.get('/admin', authStaff, async (req, res) => {
   try {
     const items = await prisma.menuItem.findMany({ where:{ restaurantId: req.restaurantId }, include:{ category:true, variants:{ orderBy:{ sortOrder:'asc' } } }, orderBy:[{ category:{ sortOrder:'asc' } }, { sortOrder:'asc' }, { name:'asc' }] });
+    const restaurant = await prisma.restaurant.findUnique({ where:{ id: req.restaurantId }, select:{ featuredMode:true } });
+    if (restaurant?.featuredMode === 'auto') {
+      const picked = new Set(pickAutoFeatured(items));
+      return res.json({ success:true, data: items.map(i => ({ ...i, isFeatured: picked.has(i.id) })) });
+    }
     res.json({ success:true, data: items });
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
@@ -100,6 +106,8 @@ router.patch('/:id/toggle-featured', authStaff, blockViewer, requireManager, asy
   try {
     const item = await prisma.menuItem.findFirst({ where:{ id:req.params.id, restaurantId:req.restaurantId } });
     if (!item) return res.status(404).json({ success:false, error:'Not found' });
+    const restaurant = await prisma.restaurant.findUnique({ where:{ id: req.restaurantId }, select:{ featuredMode:true } });
+    if (restaurant?.featuredMode === 'auto') return res.status(409).json({ success:false, error:'Featured meals are set to Automatic. Switch to Manual to choose them yourself.' });
     const updated = await prisma.menuItem.update({ where:{ id:req.params.id }, data:{ isFeatured:!item.isFeatured } });
     res.json({ success:true, data: updated });
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }

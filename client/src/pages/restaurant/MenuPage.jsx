@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Plus, Edit2, Trash2, Search, X, Loader, ImagePlus, ShoppingBag, PackageX } from 'lucide-react'
+import { Plus, Edit2, Trash2, Search, X, Loader, ImagePlus, ShoppingBag, PackageX, Star, Sparkles, Hand } from 'lucide-react'
 import { menuAPI, restaurantAPI, uploadAPI } from '../../services/api'
 import { useAdminStore } from '../../store'
 import AdminLayout from '../../components/restaurant/AdminLayout'
@@ -191,22 +191,56 @@ export default function MenuPage() {
   const [editItem, setEditItem] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [search, setSearch] = useState('')
+  const [featuredMode, setFeaturedMode] = useState('manual')
+  const [modeSaving, setModeSaving] = useState(false)
   const { role } = useAdminStore()
   const isViewer = role === 'viewer'
 
   useEffect(() => {
-    menuAPI.list()
-      .then(r => { setItems(r.data.data); setLoading(false) })
+    Promise.all([menuAPI.list(), restaurantAPI.getFeaturedMode().catch(() => null)])
+      .then(([menu, mode]) => {
+        setItems(menu.data.data)
+        if (mode) setFeaturedMode(mode.data.data.featuredMode)
+        setLoading(false)
+      })
       .catch(() => setLoading(false))
   }, [])
 
-  const saveItem = (item, isEdit) =>
+  const changeFeaturedMode = async (mode) => {
+    if (mode === featuredMode || modeSaving) return
+    setModeSaving(true)
+    try {
+      await restaurantAPI.setFeaturedMode(mode)
+      setFeaturedMode(mode)
+      const menu = await menuAPI.list()
+      setItems(menu.data.data)
+      toast.success(mode === 'auto' ? 'Featured meals are now picked automatically' : 'You now choose the featured meals')
+    } catch (e) { toast.error(e.response?.data?.error || 'Failed to update') }
+    finally { setModeSaving(false) }
+  }
+
+  const toggleFeatured = async (item) => {
+    try {
+      const res = await menuAPI.toggleFeatured(item.id)
+      setItems(prev => prev.map(i => i.id === item.id ? { ...i, isFeatured: res.data.data.isFeatured } : i))
+    } catch (e) { toast.error(e.response?.data?.error || 'Failed to update') }
+  }
+
+  // In automatic mode any change can alter which meals are the top picks, so re-read the list.
+  const refreshIfAuto = () => {
+    if (featuredMode === 'auto') menuAPI.list().then(r => setItems(r.data.data)).catch(() => {})
+  }
+
+  const saveItem = (item, isEdit) => {
     setItems(prev => isEdit ? prev.map(i => i.id === item.id ? item : i) : [...prev, item])
+    refreshIfAuto()
+  }
 
   const toggleSoldOut = async (item) => {
     try {
       const res = await menuAPI.update(item.id, { isAvailable: !item.isAvailable })
       setItems(prev => prev.map(i => i.id === item.id ? res.data.data : i))
+      refreshIfAuto()
     } catch { toast.error('Failed to update') }
   }
 
@@ -214,6 +248,7 @@ export default function MenuPage() {
     if (!window.confirm('Delete this item permanently?')) return
     await menuAPI.delete(id)
     setItems(prev => prev.filter(i => i.id !== id))
+    refreshIfAuto()
     toast.success('Deleted')
   }
 
@@ -242,6 +277,30 @@ export default function MenuPage() {
               <Plus size={14} /> Add Item
             </button>
           )}
+        </div>
+
+        {/* Featured meals: who picks the strip customers see at the top of the menu */}
+        <div className="card p-4 mb-5">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="min-w-0 flex-1" style={{ minWidth: '14rem' }}>
+              <p className="font-bold text-sm text-white flex items-center gap-1.5">
+                <Star size={14} className="text-brand-500 fill-brand-500" /> Featured meals
+              </p>
+              <p className="text-xs text-ink-400 mt-0.5">
+                {featuredMode === 'auto'
+                  ? 'Your top 4 best sellers are featured automatically and update as orders come in.'
+                  : 'Tap the star on the meals you want customers to see first.'}
+              </p>
+            </div>
+            <div className="inline-flex rounded-xl border border-ink-800 p-0.5 shrink-0">
+              {[['auto', 'Automatic', Sparkles], ['manual', 'I choose', Hand]].map(([mode, label, Icon]) => (
+                <button key={mode} type="button" disabled={isViewer || modeSaving} onClick={() => changeFeaturedMode(mode)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-xs font-semibold transition disabled:opacity-60 ${featuredMode === mode ? 'bg-brand-500 text-white' : 'text-ink-400 hover:text-white'}`}>
+                  <Icon size={13} /> {label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Search */}
@@ -278,6 +337,11 @@ export default function MenuPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-sm text-white truncate">{item.name}</span>
+                    {item.isFeatured && (
+                      <span className="badge bg-brand-500/15 text-brand-500 text-[10px] shrink-0">
+                        ★ {featuredMode === 'auto' ? 'Auto-featured' : 'Featured'}
+                      </span>
+                    )}
                     {!item.isAvailable && (
                       <span className="badge bg-red-100 text-red-500 text-[10px] shrink-0">Sold Out</span>
                     )}
@@ -299,6 +363,13 @@ export default function MenuPage() {
                 {/* Actions — hidden for a read-only viewer, since the server rejects these anyway */}
                 {!isViewer && (
                   <div className="flex items-center gap-1 shrink-0">
+                    {featuredMode === 'manual' && (
+                      <button onClick={() => toggleFeatured(item)}
+                        title={item.isFeatured ? 'Remove from featured' : 'Feature this meal'}
+                        className="btn btn-ghost btn-icon text-ink-400 hover:text-brand-500">
+                        <Star size={15} className={item.isFeatured ? 'text-brand-500 fill-brand-500' : ''} />
+                      </button>
+                    )}
                     <button onClick={() => toggleSoldOut(item)}
                       title={item.isAvailable ? 'Mark sold out' : 'Mark available'}
                       className={`btn btn-ghost btn-sm text-xs font-semibold px-2.5 ${!item.isAvailable ? 'text-emerald-600 hover:bg-emerald-50' : 'text-red-400 hover:bg-red-50'}`}>

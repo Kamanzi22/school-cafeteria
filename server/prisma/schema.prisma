@@ -53,6 +53,7 @@ model Restaurant {
   minOrder      Float    @default(0)
   taxRate       Float    @default(0)
   notice        String?
+  featuredMode  String   @default("manual") // manual | auto — who picks the featured meals
   // Stats
   rating        Float    @default(0)
   ratingCount   Int      @default(0)

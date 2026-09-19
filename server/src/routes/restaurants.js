@@ -2,6 +2,7 @@ const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const { authOwner, authStaff, optionalCustomer, blockViewer, requireManager } = require('../middleware/auth');
 const prisma = require('../lib/prisma');
+const { applyAutoFeatured } = require('../lib/featured');
 
 router.get('/', optionalCustomer, async (req, res) => {
   try {
@@ -72,7 +73,24 @@ router.get('/:id', optionalCustomer, async (req, res) => {
       isFavorited = !!fav;
     }
     const { passwordHash, ...safe } = r;
+    if (safe.featuredMode === 'auto') safe.items = applyAutoFeatured(safe.items);
     res.json({ success: true, data: { ...safe, isFavorited } });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+router.get('/admin/featured-mode', authStaff, async (req, res) => {
+  try {
+    const r = await prisma.restaurant.findUnique({ where: { id: req.restaurantId }, select: { featuredMode: true } });
+    res.json({ success: true, data: { featuredMode: r.featuredMode } });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+router.patch('/admin/featured-mode', authStaff, blockViewer, requireManager, async (req, res) => {
+  try {
+    const { mode } = req.body;
+    if (mode !== 'auto' && mode !== 'manual') return res.status(400).json({ success: false, error: 'mode must be "auto" or "manual"' });
+    const updated = await prisma.restaurant.update({ where: { id: req.restaurantId }, data: { featuredMode: mode }, select: { featuredMode: true } });
+    res.json({ success: true, data: { featuredMode: updated.featuredMode } });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
