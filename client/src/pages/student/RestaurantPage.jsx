@@ -15,7 +15,7 @@ function VariantPickerModal({ item, onPick, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-ink-950/60 z-50 flex items-end sm:items-center justify-center sm:p-4 backdrop-blur-sm">
-      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[85vh] overflow-y-auto animate-scale-in">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[85vh] overflow-y-auto overscroll-contain animate-scale-in">
         <div className="flex items-center justify-between p-5 border-b border-ink-100 sticky top-0 bg-white z-10">
           <div>
             <h2 className="font-bold text-lg text-ink-900">{item.name}</h2>

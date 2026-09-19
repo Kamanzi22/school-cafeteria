@@ -2,6 +2,8 @@ export default {
   content: ['./index.html','./src/**/*.{js,jsx}'],
   theme: {
     extend: {
+      // Array = fallback: browsers without dvh support (older Android WebViews/Samsung Internet) use 100vh.
+      minHeight: { dvh: ['100vh', '100dvh'] },
       fontFamily: { body: ['"DM Sans"','system-ui','sans-serif'] },
       colors: {
         brand: { 50:'#fff5ed',100:'#ffead5',200:'#ffd2aa',300:'#ffb07b',400:'#ff8347',500:'#ff5c1a',600:'#f04010',700:'#c72e0e',800:'#9e2613',900:'#7f2014' },
