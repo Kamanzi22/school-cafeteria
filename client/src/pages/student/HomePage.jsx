@@ -142,7 +142,7 @@ export default function HomePage() {
         <div className="absolute inset-0 dot-pattern opacity-20" />
         <div className="page-container py-10 relative z-10">
           <h1 className="text-4xl md:text-5xl font-black leading-tight mb-2">
-            <span className="block whitespace-nowrap">Skip the line,</span>
+            <span className="block whitespace-nowrap">Skip the line</span>
             <span className="block whitespace-nowrap text-gradient">order ahead</span>
           </h1>
         </div>
