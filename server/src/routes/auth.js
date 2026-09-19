@@ -192,7 +192,7 @@ router.post('/restaurant/staff', authStaff, blockViewer, async (req, res) => {
 router.post('/superadmin/login', async (req, res) => {
   try {
     const { username, password } = req.body;
-    const admin = await prisma.superAdmin.findUnique({ where: { username } });
+    const admin = await prisma.superAdmin.findFirst({ where: { username: { equals: String(username || '').trim(), mode: 'insensitive' } } });
     if (!admin) return res.status(401).json({ success: false, error: 'Invalid credentials' });
     const valid = await bcrypt.compare(password, admin.passwordHash);
     if (!valid) return res.status(401).json({ success: false, error: 'Invalid credentials' });
@@ -222,7 +222,7 @@ router.put('/superadmin/password', authSuperAdmin, async (req, res) => {
 router.post('/delivery/login', async (req, res) => {
   try {
     const { username, password } = req.body;
-    const staff = await prisma.deliveryStaff.findUnique({ where: { username } });
+    const staff = await prisma.deliveryStaff.findFirst({ where: { username: { equals: String(username || '').trim(), mode: 'insensitive' } } });
     if (!staff || !staff.isActive) return res.status(401).json({ success: false, error: 'Invalid credentials' });
     const valid = await bcrypt.compare(password, staff.passwordHash);
     if (!valid) return res.status(401).json({ success: false, error: 'Invalid credentials' });

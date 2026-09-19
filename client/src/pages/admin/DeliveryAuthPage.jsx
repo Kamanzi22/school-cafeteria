@@ -37,6 +37,10 @@ export default function DeliveryAuthPage() {
                 <div className="relative">
                   <input
                     type={k === 'password' && !showPw ? 'password' : 'text'}
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    autoComplete={k === 'password' ? 'current-password' : 'username'}
                     value={form[k]}
                     onChange={e => setForm(p => ({ ...p, [k]: e.target.value }))}
                     className="w-full bg-ink-800 border border-ink-700 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 pr-10"
