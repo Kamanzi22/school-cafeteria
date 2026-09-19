@@ -171,21 +171,24 @@ export default function SearchPage() {
 
   useEffect(() => {
     clearTimeout(debounceRef.current)
-    if (!query.trim()) { setRestaurants([]); setProducts([]); return }
+    if (!query.trim()) { setRestaurants([]); setProducts([]); setLoading(false); return }
 
     setLoading(true)
     const q = query.trim()
-
-    const fetchMerchants = (filter === 'all' || filter === 'merchants')
-      ? restaurantAPI.search(q).then(r => r.data.data || [])
-      : Promise.resolve([])
-
-    const fetchProducts = (filter === 'all' || filter === 'products')
-      ? menuAPI.search(q).then(r => r.data.data || [])
-      : Promise.resolve([])
+    // Set by the cleanup below so a slow response for an older query can't overwrite newer results.
+    let stale = false
 
     debounceRef.current = setTimeout(() => {
+      const fetchMerchants = (filter === 'all' || filter === 'merchants')
+        ? restaurantAPI.search(q).then(r => r.data.data || [])
+        : Promise.resolve([])
+
+      const fetchProducts = (filter === 'all' || filter === 'products')
+        ? menuAPI.search(q).then(r => r.data.data || [])
+        : Promise.resolve([])
+
       Promise.all([fetchMerchants, fetchProducts]).then(([rests, items]) => {
+        if (stale) return
         setRestaurants(rests)
         setProducts(items)
         setLoading(false)
@@ -193,10 +196,10 @@ export default function SearchPage() {
           saveToHistory(q)
           setHistory(getHistory())
         }
-      }).catch(() => setLoading(false))
+      }).catch(() => { if (!stale) setLoading(false) })
     }, 350)
 
-    return () => clearTimeout(debounceRef.current)
+    return () => { stale = true; clearTimeout(debounceRef.current) }
   }, [query, filter])
 
   const handleHistoryClick = (term) => {

@@ -23,10 +23,10 @@ router.get('/search', async (req, res) => {
       where: {
         isDeleted: false, isApproved: true,
         OR: [
-          { name: { contains: q } },
-          { description: { contains: q } },
-          { category: { contains: q } },
-          { items: { some: { isAvailable: true, OR: [{ name: { contains: q } }, { description: { contains: q } }] } } }
+          { name: { contains: q, mode: 'insensitive' } },
+          { description: { contains: q, mode: 'insensitive' } },
+          { category: { contains: q, mode: 'insensitive' } },
+          { items: { some: { isAvailable: true, OR: [{ name: { contains: q, mode: 'insensitive' } }, { description: { contains: q, mode: 'insensitive' } }] } } }
         ]
       },
       select: {
@@ -35,7 +35,7 @@ router.get('/search', async (req, res) => {
         rating: true, ratingCount: true, prepTimeMin: true, prepTimeMax: true,
         _count: { select: { orders: true } },
         items: {
-          where: { isAvailable: true, OR: [{ name: { contains: q } }, { description: { contains: q } }] },
+          where: { isAvailable: true, OR: [{ name: { contains: q, mode: 'insensitive' } }, { description: { contains: q, mode: 'insensitive' } }] },
           select: { id: true, name: true, emoji: true, price: true },
           take: 4
         }

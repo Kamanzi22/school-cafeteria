@@ -25,7 +25,7 @@ router.get('/search', async (req, res) => {
     const q = (req.query.q || '').trim();
     if (!q) return res.json({ success: true, data: [] });
     const items = await prisma.menuItem.findMany({
-      where: { isAvailable: true, OR: [{ name: { contains: q } }, { description: { contains: q } }] },
+      where: { isAvailable: true, OR: [{ name: { contains: q, mode: 'insensitive' } }, { description: { contains: q, mode: 'insensitive' } }] },
       select: {
         id: true, name: true, description: true, price: true, emoji: true, image: true,
         prepTime: true, isFeatured: true, isVeg: true, isSpicy: true,
