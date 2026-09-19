@@ -45,7 +45,7 @@ function ProductCard({ item }) {
   const navigate = useNavigate()
   return (
     <div
-      onClick={() => navigate(`/restaurant/${item.restaurant.id}`)}
+      onClick={() => navigate(`/restaurant/${item.restaurant.id}?item=${item.id}`)}
       className="flex items-start gap-3 py-4 cursor-pointer hover:bg-alu-card px-4 -mx-4 transition-colors"
     >
       <div className="flex-1 min-w-0">

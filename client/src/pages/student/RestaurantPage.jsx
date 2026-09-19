@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Star, Clock, MapPin, Phone, Plus, Minus, ShoppingBag, Flame, Leaf, Zap, AlertCircle, Heart, Search, X, PackageX } from 'lucide-react'
 import { restaurantAPI } from '../../services/api'
 import { useCartStore, useCustomerStore, useUIStore } from '../../store'
@@ -55,6 +55,9 @@ function VariantPickerModal({ item, onPick, onClose }) {
 
 export default function RestaurantPage() {
   const { id } = useParams()
+  const [searchParams] = useSearchParams()
+  const focusItemId = searchParams.get('item')
+  const [highlightId, setHighlightId] = useState(null)
   const navigate = useNavigate()
   const goBack = useBackNavigate()
   const [restaurant, setRestaurant] = useState(null)
@@ -75,10 +78,21 @@ export default function RestaurantPage() {
       setRestaurant(r.data.data)
       setFavorited(r.data.data.isFavorited)
       const cats = [...new Set(r.data.data.items.map(i => i.category?.name).filter(Boolean))]
-      setActiveCategory(cats[0] || null)
+      const target = focusItemId && r.data.data.items.find(i => i.id === focusItemId)
+      setActiveCategory(target ? (target.category?.name || null) : (cats[0] || null))
       setLoading(false)
     }).catch(() => { setLoading(false); navigate('/') })
   }, [id])
+
+  useEffect(() => {
+    if (loading || !restaurant || !focusItemId) return
+    const el = document.getElementById(`item-${focusItemId}`)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setHighlightId(focusItemId)
+    const t = setTimeout(() => setHighlightId(null), 2500)
+    return () => clearTimeout(t)
+  }, [loading, restaurant, focusItemId])
 
   const getQty = (itemId) => items.filter(i => i.id === itemId).reduce((s, i) => s + i.qty, 0)
 
@@ -247,7 +261,7 @@ export default function RestaurantPage() {
             const canOrder = restaurant.isOpen && restaurant.isAccepting && item.isAvailable && !outOfStock
             const lowStock = !item.hasVariants && item.trackStock && item.stock > 0 && item.stock <= 5
             return (
-              <div key={item.id} className={`card flex gap-4 p-4 transition-opacity ${!item.isAvailable ? 'opacity-50' : ''}`}>
+              <div key={item.id} id={`item-${item.id}`} className={`card flex gap-4 p-4 transition-all ${!item.isAvailable ? 'opacity-50' : ''} ${highlightId === item.id ? 'ring-2 ring-flame-500' : ''}`}>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start gap-2 flex-wrap mb-0.5">
                     <h3 className="font-semibold text-alu-cream text-sm">{item.name}</h3>
