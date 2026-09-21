@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react'
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
-const GSI_SRC = 'https://accounts.google.com/gsi/client'
+// hl=en + the button's `locale` keep Google's own text in English instead of following the
+// browser language; the app itself is English-only.
+const GSI_SRC = 'https://accounts.google.com/gsi/client?hl=en'
 
 let gsiPromise
 const loadGsi = () => {
@@ -31,7 +33,7 @@ export default function GoogleSignInButton({ onCredential, text = 'continue_with
       if (cancelled || !ref.current) return
       window.google.accounts.id.initialize({ client_id: CLIENT_ID, callback: (r) => cb.current(r.credential) })
       window.google.accounts.id.renderButton(ref.current, {
-        type: 'standard', theme: 'outline', size: 'large', shape: 'pill', text,
+        type: 'standard', theme: 'outline', size: 'large', shape: 'pill', text, locale: 'en',
         width: Math.min(400, Math.floor(ref.current.offsetWidth)) || 300,
       })
     }).catch(() => {})
