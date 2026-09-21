@@ -241,7 +241,7 @@ export default function DeliveryPage({ standalone = false }) {
                 </button>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full min-w-[640px] text-sm">
                   <thead><tr className="border-b border-ink-100 text-xs text-ink-400 uppercase tracking-wider">
                     {['Customer','Restaurant','Meal','Location','Pickup','Delivered'].map(h => <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>)}
                   </tr></thead>
@@ -350,7 +350,7 @@ export default function DeliveryPage({ standalone = false }) {
                 </button>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full min-w-[640px] text-sm">
                   <thead><tr className="border-b border-ink-100 text-xs text-ink-400 uppercase tracking-wider">
                     {['Customer','Restaurant','Meal','Location','Delivered'].map(h => <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>)}
                   </tr></thead>
