@@ -10,6 +10,7 @@ import OrderHistoryPage from './pages/student/OrderHistoryPage'
 import CustomerAuthPage from './pages/student/CustomerAuthPage'
 import CustomerProfilePage from './pages/student/CustomerProfilePage'
 import SearchPage from './pages/student/SearchPage'
+import PrivacyPage from './pages/PrivacyPage'
 
 // Restaurant admin
 import RestaurantAuthPage from './pages/restaurant/RestaurantAuthPage'
@@ -37,6 +38,7 @@ export default function App() {
       <Route path="/" element={<HomePage />} />
       <Route path="/search" element={<SearchPage />} />
       <Route path="/auth" element={<CustomerAuthPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/profile" element={<CustomerProfilePage />} />
       <Route path="/restaurant/:id" element={<RestaurantPage />} />
       <Route path="/order/confirm/:id" element={<OrderConfirmPage />} />

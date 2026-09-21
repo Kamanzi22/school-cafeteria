@@ -38,6 +38,7 @@ export const authAPI = {
   restaurantStaffLogin: (d) => api.post('/auth/restaurant/staff/login', d),
   // Customer
   customerLogin: (d) => api.post('/auth/customer/login', d),
+  customerGoogle: (d) => api.post('/auth/customer/google', d),
   guestSession: (d) => api.post('/auth/guest/session', d),
   // Super admin
   superAdminLogin: (d) => api.post('/auth/superadmin/login', d),

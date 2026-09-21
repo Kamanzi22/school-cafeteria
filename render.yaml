@@ -25,6 +25,10 @@ services:
         value: production
       - key: CLIENT_URL
         sync: false
+      # OAuth 2.0 Web client ID from Google Cloud Console — same value as VITE_GOOGLE_CLIENT_ID
+      # on the client. Without it "Continue with Google" is unavailable.
+      - key: GOOGLE_CLIENT_ID
+        sync: false
       - key: EMAIL_USER
         sync: false
       - key: EMAIL_APP_PASSWORD
@@ -43,3 +47,5 @@ services:
     envVars:
       - key: VITE_BACKEND_URL
         value: https://cafecampus-api-feu3.onrender.com
+      - key: VITE_GOOGLE_CLIENT_ID
+        sync: false

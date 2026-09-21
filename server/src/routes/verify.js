@@ -5,6 +5,8 @@ const rateLimit = require('express-rate-limit');
 const { authStaff, blockViewer } = require('../middleware/auth');
 const { sendVerificationEmail } = require('../lib/mailer');
 const { createVerification, consumeVerification, VERIFY_ERROR_MESSAGES } = require('../lib/verification');
+const { isSchoolEmail, SCHOOL_EMAIL_ERROR } = require('../lib/schoolEmail');
+const { normalizePhone } = require('../lib/phone');
 const prisma = require('../lib/prisma');
 
 const sign = (payload, expiresIn = process.env.JWT_EXPIRES_IN) =>
@@ -30,10 +32,16 @@ const verifyErr = (code) => VERIFY_ERROR_MESSAGES[code] || 'Verification failed'
 router.post('/customer-signup/request', requestLimiter, async (req, res) => {
   try {
     const { name, email, password, phone } = req.body;
-    if (!name || !email || !password)
-      return res.status(400).json({ success: false, error: 'Name, email and password are required' });
+    if (!name || !email || !password || !phone?.trim())
+      return res.status(400).json({ success: false, error: 'Name, email, phone number and password are required' });
     if (password.length < 6)
       return res.status(400).json({ success: false, error: 'Password must be at least 6 characters' });
+    const cleanPhone = normalizePhone(phone);
+    if (!cleanPhone)
+      return res.status(400).json({ success: false, error: 'Enter a valid phone number, e.g. +250 788 123 456' });
+
+    if (!isSchoolEmail(email))
+      return res.status(400).json({ success: false, error: SCHOOL_EMAIL_ERROR });
 
     const exists = await prisma.customer.findUnique({ where: { email: email.toLowerCase() } });
     if (exists) return res.status(409).json({ success: false, error: 'Email already registered' });
@@ -41,7 +49,7 @@ router.post('/customer-signup/request', requestLimiter, async (req, res) => {
     const passwordHash = await bcrypt.hash(password, 12);
     const { code } = await createVerification({
       email, purpose: 'customer_signup',
-      payload: { name: name.trim(), email: email.toLowerCase().trim(), passwordHash, phone: phone?.trim() || null },
+      payload: { name: name.trim(), email: email.toLowerCase().trim(), passwordHash, phone: cleanPhone },
     });
     const link = CLIENT_URL ? `${CLIENT_URL}/auth?verifyEmail=${encodeURIComponent(email.toLowerCase().trim())}&verifyCode=${code}` : null;
     await sendVerificationEmail({ to: email, code, link, purpose: 'customer_signup' });

@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Mail, Lock, User, Loader, UserCheck, Ghost, Eye, EyeOff } from 'lucide-react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { ArrowLeft, Mail, Lock, User, Phone, Loader, UserCheck, Ghost, Eye, EyeOff } from 'lucide-react'
 import { authAPI, verifyAPI } from '../../services/api'
 import { useCustomerStore } from '../../store'
 import { getGuestToken } from '../../hooks/useGuestToken'
 import { useBackNavigate } from '../../hooks/useBackNavigate'
 import VerifyCodeStep from '../../components/shared/VerifyCodeStep'
+import GoogleSignInButton from '../../components/shared/GoogleSignInButton'
 import toast from 'react-hot-toast'
+
+const GOOGLE_ENABLED = !!import.meta.env.VITE_GOOGLE_CLIENT_ID
 
 export default function CustomerAuthPage() {
   const [tab, setTab] = useState('login') // login | register | guest
@@ -78,6 +81,37 @@ export default function CustomerAuthPage() {
     finally { setLoading(false) }
   }
 
+  // First-time Google users are asked for a phone number before the account is created
+  // (`googlePending` holds their verified Google token until then).
+  const [googlePending, setGooglePending] = useState(null) // { credential, name, email }
+  const [gPhone, setGPhone] = useState('')
+
+  const googleAuth = async (credential, phone) => {
+    setLoading(true)
+    try {
+      const res = await authAPI.customerGoogle({ credential, phone })
+      const data = res.data.data
+      if (data.needsPhone) { setGooglePending({ credential, name: data.name, email: data.email }); return }
+      login(data.customer, data.token)
+      toast.success(`Welcome, ${data.customer.name}! 👋`)
+      navigate('/')
+    } catch (e) {
+      toast.error(e.response?.data?.error || 'Google sign-in failed')
+      if (e.response?.status === 401) setGooglePending(null)
+    } finally { setLoading(false) }
+  }
+
+  const googleBlock = (
+    <>
+      <GoogleSignInButton onCredential={(c) => googleAuth(c)} />
+      {GOOGLE_ENABLED && (
+        <div className="flex items-center gap-3 my-4 text-xs text-ink-400">
+          <div className="flex-1 h-px bg-ink-100" />or<div className="flex-1 h-px bg-ink-100" />
+        </div>
+      )}
+    </>
+  )
+
   return (
     <div className="min-h-dvh bg-ink-50 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
@@ -102,6 +136,28 @@ export default function CustomerAuthPage() {
         </div>
 
         <div className="card p-5">
+          {googlePending ? (
+            <form onSubmit={(e) => { e.preventDefault(); googleAuth(googlePending.credential, gPhone) }} className="space-y-3">
+              <p className="text-sm text-ink-700">Hi <strong>{googlePending.name}</strong> 👋 — your Google account <strong>{googlePending.email}</strong> is verified. Add your phone number to finish creating your account.</p>
+              <div>
+                <label className="label">Phone Number *</label>
+                <div className="relative"><Phone size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" /><input type="tel" inputMode="tel" autoComplete="tel" value={gPhone} onChange={e => setGPhone(e.target.value)} className="input pl-9" placeholder="+250 78..." required minLength={9} autoFocus /></div>
+              </div>
+              <button type="submit" disabled={loading} className="btn btn-primary w-full btn-lg">
+                {loading ? <Loader size={16} className="animate-spin" /> : null}
+                {loading ? 'Creating account…' : 'Create Account'}
+              </button>
+              <button type="button" onClick={() => setGooglePending(null)} className="btn btn-ghost btn-sm w-full text-ink-500">Cancel</button>
+            </form>
+          ) : (<>
+          {(tab === 'login' || (tab === 'register' && regStep === 'form')) && (
+            <p className="text-xs text-ink-600 bg-ink-50 rounded-xl px-3 py-2 mb-4 text-center">
+              🎓 Only school emails are allowed — use your <strong>@alustudent.com</strong> or <strong>@alueducation.com</strong> address.
+            </p>
+          )}
+
+          {(tab === 'login' || (tab === 'register' && regStep === 'form')) && googleBlock}
+
           {/* ── LOGIN ── */}
           {tab === 'login' && (
             <form onSubmit={handleLogin} className="space-y-4">
@@ -114,7 +170,7 @@ export default function CustomerAuthPage() {
                     const v = e.target.value
                     if (v.includes('@')) setForm(p => ({ ...p, email:v, studentId:'' }))
                     else setForm(p => ({ ...p, studentId:v, email:'' }))
-                  }} className="input pl-9" placeholder="alice@school.ac.rw or STU001" required />
+                  }} className="input pl-9" placeholder="you@alustudent.com or STU001" required />
                 </div>
               </div>
               <div>
@@ -142,15 +198,15 @@ export default function CustomerAuthPage() {
                 </div>
                 <div className="col-span-2">
                   <label className="label">Email *</label>
-                  <div className="relative"><Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" /><input type="email" value={form.email} onChange={f('email')} className="input pl-9" placeholder="you@school.ac.rw" required /></div>
+                  <div className="relative"><Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" /><input type="email" value={form.email} onChange={f('email')} className="input pl-9" placeholder="you@alustudent.com" required /></div>
                 </div>
                 <div className="col-span-2">
                   <label className="label">Password * (min 6 chars)</label>
                   <div className="relative"><Lock size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" /><input type={showPw?'text':'password'} value={form.password} onChange={f('password')} className="input pl-9 pr-10" placeholder="••••••••" required minLength={6} /><button type="button" onClick={() => setShowPw(s=>!s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400">{showPw?<EyeOff size={14}/>:<Eye size={14}/>}</button></div>
                 </div>
                 <div className="col-span-2">
-                  <label className="label">Phone</label>
-                  <input value={form.phone} onChange={f('phone')} className="input" placeholder="+250 78..." />
+                  <label className="label">Phone Number *</label>
+                  <div className="relative"><Phone size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" /><input type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={f('phone')} className="input pl-9" placeholder="+250 78..." required minLength={9} /></div>
                 </div>
               </div>
               <button type="submit" disabled={loading} className="btn btn-primary w-full btn-lg mt-1">
@@ -188,8 +244,12 @@ export default function CustomerAuthPage() {
               <p className="text-xs text-ink-400 text-center">You can create a full account later to unlock order history and rewards.</p>
             </div>
           )}
+          </>)}
         </div>
 
+        <p className="text-center text-xs text-ink-400 mt-4">
+          By continuing you agree to our <Link to="/privacy" className="underline">Privacy Policy</Link>.
+        </p>
       </div>
     </div>
   )

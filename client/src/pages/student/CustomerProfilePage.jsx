@@ -13,7 +13,7 @@ export default function CustomerProfilePage() {
   const goBack = useBackNavigate()
   const [showUpgrade, setShowUpgrade] = useState(false)
   const [upgradeStep, setUpgradeStep] = useState('form') // form | code
-  const [upgradeForm, setUpgradeForm] = useState({ name:'', email:'', password:'' })
+  const [upgradeForm, setUpgradeForm] = useState({ name:'', email:'', password:'', phone:'' })
   const [upgrading, setUpgrading] = useState(false)
 
   if (!customer) return <Navigate to="/auth" replace />
@@ -87,8 +87,10 @@ export default function CustomerProfilePage() {
                   <button onClick={() => setShowUpgrade(true)} className="btn btn-primary btn-sm mt-3">Upgrade Account</button>
                 ) : upgradeStep === 'form' ? (
                   <form onSubmit={requestUpgradeCode} className="mt-3 space-y-3">
+                    <p className="text-xs text-alu-muted">🎓 Only school emails are allowed (@alustudent.com or @alueducation.com).</p>
                     <input value={upgradeForm.name || customer.name} onChange={e => setUpgradeForm(p => ({ ...p, name:e.target.value }))} className="input text-sm" placeholder="Full name" required />
-                    <input type="email" value={upgradeForm.email} onChange={e => setUpgradeForm(p => ({ ...p, email:e.target.value }))} className="input text-sm" placeholder="Email address" required />
+                    <input type="email" value={upgradeForm.email} onChange={e => setUpgradeForm(p => ({ ...p, email:e.target.value }))} className="input text-sm" placeholder="School email (@alustudent.com)" required />
+                    <input type="tel" inputMode="tel" autoComplete="tel" value={upgradeForm.phone} onChange={e => setUpgradeForm(p => ({ ...p, phone:e.target.value }))} className="input text-sm" placeholder="Phone number (+250 78...)" required minLength={9} />
                     <input type="password" value={upgradeForm.password} onChange={e => setUpgradeForm(p => ({ ...p, password:e.target.value }))} className="input text-sm" placeholder="Password (min 6 chars)" required minLength={6} />
                     <div className="flex gap-2">
                       <button type="button" onClick={() => setShowUpgrade(false)} className="btn btn-secondary btn-sm flex-1">Cancel</button>

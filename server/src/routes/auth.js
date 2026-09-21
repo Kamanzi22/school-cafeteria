@@ -2,8 +2,12 @@ const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
+const rateLimit = require('express-rate-limit');
+const { OAuth2Client } = require('google-auth-library');
 const { authStaff, authSuperAdmin, blockViewer } = require('../middleware/auth');
 const { uploadImage } = require('../lib/supabaseStorage');
+const { isSchoolEmail, SCHOOL_EMAIL_ERROR } = require('../lib/schoolEmail');
+const { normalizePhone } = require('../lib/phone');
 const prisma = require('../lib/prisma');
 
 const logoUpload = multer({
@@ -130,10 +134,68 @@ router.post('/customer/login', async (req, res) => {
     if (!customer || customer.accountType === 'guest')
       return res.status(401).json({ success: false, error: 'No account found' });
     if (!customer.passwordHash)
-      return res.status(400).json({ success: false, error: 'Account has no password set' });
+      return res.status(400).json({ success: false, error: 'This account signs in with Google — use "Continue with Google"' });
 
     const valid = await bcrypt.compare(password, customer.passwordHash);
     if (!valid) return res.status(401).json({ success: false, error: 'Incorrect password' });
+
+    const token = sign({ type: 'customer', id: customer.id });
+    const { passwordHash: _, ...safe } = customer;
+    res.json({ success: true, data: { token, customer: safe } });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// ══════════════════════════════════════════════════════
+// CUSTOMER — GOOGLE SIGN-IN / SIGN-UP
+// The browser gets a signed ID token from Google; we verify it here. Google has already
+// proven the person owns that email (email_verified), so no emailed code is needed.
+// An existing account with that email is signed in straight away. A first-time user has no
+// phone number yet, so the first call answers { needsPhone: true } (nothing is created) and
+// the client re-sends the same credential with a phone to finish creating the account —
+// keeping the phone-required rule that email signup has.
+// ══════════════════════════════════════════════════════
+const googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID) : null;
+const googleLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many sign-in attempts — try again later' },
+});
+
+router.post('/customer/google', googleLimiter, async (req, res) => {
+  try {
+    if (!googleClient) return res.status(503).json({ success: false, error: 'Google sign-in is not configured' });
+    const { credential, phone } = req.body;
+    if (!credential) return res.status(400).json({ success: false, error: 'Google credential required' });
+
+    let profile;
+    try {
+      const ticket = await googleClient.verifyIdToken({ idToken: credential, audience: process.env.GOOGLE_CLIENT_ID });
+      profile = ticket.getPayload();
+    } catch {
+      return res.status(401).json({ success: false, error: 'Google sign-in expired — please try again' });
+    }
+    if (!profile?.email || !profile.email_verified)
+      return res.status(400).json({ success: false, error: 'Your Google email is not verified' });
+
+    const email = profile.email.toLowerCase();
+    if (!isSchoolEmail(email))
+      return res.status(400).json({ success: false, error: SCHOOL_EMAIL_ERROR });
+
+    let customer = await prisma.customer.findUnique({ where: { email } });
+    if (!customer) {
+      const name = (profile.name || email.split('@')[0]).trim();
+      if (!phone?.trim()) return res.json({ success: true, data: { needsPhone: true, name, email } });
+      const cleanPhone = normalizePhone(phone);
+      if (!cleanPhone)
+        return res.status(400).json({ success: false, error: 'Enter a valid phone number, e.g. +250 788 123 456' });
+      // upsert so two simultaneous requests can't trip the unique-email constraint
+      customer = await prisma.customer.upsert({
+        where: { email }, update: {},
+        create: { accountType: 'registered', name, email, phone: cleanPhone },
+      });
+    }
 
     const token = sign({ type: 'customer', id: customer.id });
     const { passwordHash: _, ...safe } = customer;
