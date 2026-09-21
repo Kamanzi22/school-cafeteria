@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Shield, Store, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, EyeOff, Radio, History, MapPin, RefreshCw, Clock, Globe, RotateCcw, Backpack, Download, ToggleRight, ToggleLeft, Lock, Mail } from 'lucide-react'
+import { Shield, Store, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, EyeOff, Radio, History, MapPin, RefreshCw, Clock, Globe, RotateCcw, Backpack, Download, ToggleRight, ToggleLeft, Lock, Mail, LogOut } from 'lucide-react'
 import { superAdminAPI, authAPI } from '../../services/api'
 import { useAdminStore } from '../../store'
 import { useSocket, getSocket } from '../../hooks/useSocket'
@@ -181,7 +181,14 @@ export default function SuperAdminPage() {
   const [emailSettingsSaving, setEmailSettingsSaving] = useState(false)
   const [smtpResetting, setSmtpResetting] = useState(null) // null | 'noreply' | 'info'
   const navigate = useNavigate()
-  const { loginViewer, logout: exitAdminSession } = useAdminStore()
+  const { loginViewer, logout: exitAdminSession, role: adminRole } = useAdminStore()
+
+  // Full reload so in-memory state and the live socket connection are dropped along with the saved token.
+  const signOut = () => {
+    localStorage.removeItem('cc-superadmin-v1')
+    if (adminRole === 'viewer') exitAdminSession()
+    window.location.replace('/superadmin')
+  }
 
   const handleLogin = async (e) => {
     e.preventDefault(); setLoginLoading(true)
@@ -509,16 +516,17 @@ export default function SuperAdminPage() {
   return (
     <div className="min-h-dvh bg-ink-50">
       <div className="gradient-dark text-white px-6 py-5">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
+        <div className="max-w-5xl mx-auto flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <Shield size={24} className="text-brand-400" />
             <div><p className="font-black text-lg">Super Admin Panel</p><p className="text-ink-400 text-xs">CaféCampus Platform</p></div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Link to="/superadmin/delivery" className="btn btn-ghost text-ink-400 text-sm"><Backpack size={14} /> Delivery</Link>
             <button onClick={() => setPwModal(true)} className="btn btn-ghost text-ink-400 text-sm"><Lock size={14} /> Change Password</button>
             <button onClick={openEmailSettings} className="btn btn-ghost text-ink-400 text-sm"><Mail size={14} /> Email Settings</button>
             <a href="/" className="btn btn-ghost text-ink-400 text-sm">← Student App</a>
+            <button onClick={signOut} className="btn btn-ghost text-red-400 text-sm"><LogOut size={14} /> Sign out</button>
           </div>
         </div>
       </div>
@@ -549,7 +557,7 @@ export default function SuperAdminPage() {
           {loading ? <div className="p-8 text-center"><Loader className="animate-spin text-brand-500 mx-auto" /></div>
           : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[640px] text-sm">
                 <thead><tr className="border-b border-ink-100 text-xs text-ink-400 uppercase tracking-wider">
                   {['Restaurant','Owner','Status','Approved','Actions'].map(h => <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>)}
                 </tr></thead>
@@ -696,7 +704,7 @@ export default function SuperAdminPage() {
 
                   {historyStats.perRestaurant.length > 0 && (
                     <div className="overflow-x-auto">
-                      <table className="w-full text-xs">
+                      <table className="w-full min-w-[520px] text-xs">
                         <thead><tr className="text-ink-400 uppercase tracking-wider">
                           <th className="px-2 py-1.5 text-left font-semibold">Store</th>
                           <th className="px-2 py-1.5 text-left font-semibold">Visitors</th>
@@ -720,7 +728,7 @@ export default function SuperAdminPage() {
           )}
 
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[640px] text-sm">
               <thead><tr className="border-b border-ink-100 text-xs text-ink-400 uppercase tracking-wider">
                 {['Visitor','Restaurant','Time Spent','Ordered','Payment','Pickup/Delivery'].map(h => <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>)}
               </tr></thead>
