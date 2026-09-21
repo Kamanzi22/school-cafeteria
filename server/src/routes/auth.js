@@ -204,26 +204,6 @@ router.post('/customer/google', googleLimiter, async (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════
-// GUEST — get or create session
-// ══════════════════════════════════════════════════════
-router.post('/guest/session', async (req, res) => {
-  try {
-    const { guestToken, name } = req.body;
-    if (!guestToken) return res.status(400).json({ success: false, error: 'Guest token required' });
-
-    let customer = await prisma.customer.findUnique({ where: { guestToken } });
-    if (!customer) {
-      customer = await prisma.customer.create({
-        data: { accountType: 'guest', name: name || 'Guest', guestToken }
-      });
-    }
-    const token = sign({ type: 'guest', id: customer.id }, '30d');
-    const { passwordHash, ...safe } = customer;
-    res.json({ success: true, data: { token, customer: safe } });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
-});
-
-// ══════════════════════════════════════════════════════
 // RESTAURANT — add staff (owner only)
 // ══════════════════════════════════════════════════════
 router.post('/restaurant/staff', authStaff, blockViewer, async (req, res) => {

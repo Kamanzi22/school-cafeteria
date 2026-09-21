@@ -39,7 +39,6 @@ export const authAPI = {
   // Customer
   customerLogin: (d) => api.post('/auth/customer/login', d),
   customerGoogle: (d) => api.post('/auth/customer/google', d),
-  guestSession: (d) => api.post('/auth/guest/session', d),
   // Super admin
   superAdminLogin: (d) => api.post('/auth/superadmin/login', d),
   superAdminChangePassword: (d) => api.put('/auth/superadmin/password', d),

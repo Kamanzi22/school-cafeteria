@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Mail, Lock, User, Phone, Loader, UserCheck, Ghost, Eye, EyeOff } from 'lucide-react'
+import { ArrowLeft, Mail, Lock, User, Phone, Loader, UserCheck, Eye, EyeOff } from 'lucide-react'
 import { authAPI } from '../../services/api'
 import { useCustomerStore } from '../../store'
-import { getGuestToken } from '../../hooks/useGuestToken'
 import { useBackNavigate } from '../../hooks/useBackNavigate'
 import GoogleSignInButton from '../../components/shared/GoogleSignInButton'
 import toast from 'react-hot-toast'
@@ -16,8 +15,7 @@ export default function CustomerAuthPage() {
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({ name:'', email:'', password:'', phone:'' })
-  const [guestName, setGuestName] = useState('')
-  const { login, setGuest } = useCustomerStore()
+  const { login } = useCustomerStore()
   const navigate = useNavigate()
   const goBack = useBackNavigate()
   const f = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
@@ -31,18 +29,6 @@ export default function CustomerAuthPage() {
       toast.success(`Welcome back, ${res.data.data.customer.name}! 👋`)
       navigate('/')
     } catch (e) { toast.error(e.response?.data?.error || 'Login failed') }
-    finally { setLoading(false) }
-  }
-
-  const handleGuest = async () => {
-    setLoading(true)
-    try {
-      const guestToken = getGuestToken()
-      const res = await authAPI.guestSession({ guestToken, name: guestName || 'Guest' })
-      setGuest(res.data.data.customer, res.data.data.token, guestToken)
-      toast.success('Continuing as guest 👤')
-      navigate('/')
-    } catch (e) { toast.error('Something went wrong') }
     finally { setLoading(false) }
   }
 
@@ -92,7 +78,7 @@ export default function CustomerAuthPage() {
 
         {/* Tab switcher */}
         <div className="flex bg-ink-100 rounded-2xl p-1 mb-5">
-          {[['login','Sign In'], ['register','Create Account'], ['guest','Sign in as Guest']].map(([t, label]) => (
+          {[['login','Sign In'], ['register','Create Account']].map(([t, label]) => (
             <button key={t} onClick={() => setTab(t)}
               className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all ${tab===t ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-700'}`}>
               {label}
@@ -121,9 +107,9 @@ export default function CustomerAuthPage() {
             </p>
           )}
 
+          {/* ── LOGIN ── */}
           {(tab === 'login' || tab === 'register') && googleBlock}
 
-          {/* ── LOGIN ── */}
           {tab === 'login' && (
             <form onSubmit={handleLogin} className="space-y-4">
               <p className="text-sm text-ink-500 mb-1">Sign in with email <strong>or</strong> student ID</p>
@@ -162,24 +148,6 @@ export default function CustomerAuthPage() {
             </p>
           )}
 
-          {/* ── GUEST ── */}
-          {tab === 'guest' && (
-            <div className="space-y-4">
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-700">
-                <p className="font-semibold mb-1">👤 Order as a Guest</p>
-                <p className="text-xs">No account needed. Your order history will be saved on this device only.</p>
-              </div>
-              <div>
-                <label className="label">Your Name (optional)</label>
-                <div className="relative"><User size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" /><input value={guestName} onChange={e => setGuestName(e.target.value)} className="input pl-9" placeholder="e.g. Alice" /></div>
-              </div>
-              <button onClick={handleGuest} disabled={loading} className="btn btn-dark w-full btn-lg">
-                {loading ? <Loader size={16} className="animate-spin" /> : <Ghost size={16} />}
-                {loading ? 'Setting up…' : 'Continue as Guest'}
-              </button>
-              <p className="text-xs text-ink-400 text-center">You can create a full account later to unlock order history and rewards.</p>
-            </div>
-          )}
           </>)}
         </div>
 

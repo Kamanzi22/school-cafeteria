@@ -38,13 +38,12 @@ export const useCartStore = create(persist((set, get) => ({
   },
 }), { name: 'cc-cart-v6' }))
 
-// Customer (registered or guest)
+// Customer
 export const useCustomerStore = create(persist((set) => ({
-  customer: null, token: null, guestToken: null,
+  customer: null, token: null,
   login: (customer, token) => set({ customer, token }),
-  setGuest: (customer, token, guestToken) => set({ customer, token, guestToken }),
   update: (data) => set(s => ({ customer: { ...s.customer, ...data } })),
-  logout: () => set({ customer: null, token: null, guestToken: null }),
+  logout: () => set({ customer: null, token: null }),
 }), { name: 'cc-customer-v4' }))
 
 // Restaurant Admin (owner or staff) — or a super-admin's read-only 'viewer' mirror session
