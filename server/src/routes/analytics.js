@@ -28,11 +28,14 @@ router.get('/sales-report', authStaff, async (req, res) => {
       end = now;
     }
 
-    const orders = await prisma.order.findMany({
-      where: { restaurantId: rId, createdAt: { gte: start, lt: end }, status: { not: 'cancelled' } },
-      include: { items: true },
-      orderBy: { createdAt: 'desc' }
-    });
+    // Revenue is money actually collected: only picked-up orders count, on the day (and hour) they were
+    // picked up. Orders picked up before pickup times were recorded fall back to when they were placed.
+    const window = { gte: start, lt: end };
+    const soldAt = o => o.pickedUpAt || o.createdAt;
+    const orders = (await prisma.order.findMany({
+      where: { restaurantId: rId, status: 'picked_up', OR: [{ pickedUpAt: window }, { pickedUpAt: null, createdAt: window }] },
+      include: { items: true }
+    })).sort((a, b) => soldAt(b) - soldAt(a));
 
     const rows = [];
     const productTotals = {};
@@ -41,7 +44,7 @@ router.get('/sales-report', authStaff, async (req, res) => {
 
     orders.forEach(o => {
       revenue += o.totalPrice;
-      const hour = new Date(o.createdAt).getHours();
+      const hour = new Date(soldAt(o)).getHours();
       hourTotals[hour].revenue += o.totalPrice;
       hourTotals[hour].orders += 1;
 
@@ -55,7 +58,7 @@ router.get('/sales-report', authStaff, async (req, res) => {
           quantity: it.quantity,
           unitPrice: it.unitPrice,
           subtotal: it.subtotal,
-          time: o.createdAt,
+          time: soldAt(o),
           fulfillmentType: o.fulfillmentType
         });
         const key = it.menuItemName;

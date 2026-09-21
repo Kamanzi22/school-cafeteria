@@ -8,7 +8,7 @@ import toast from 'react-hot-toast'
 const EMPTY = { name: '', categoryId: '', description: '', price: '', prepTime: '', image: '', soldOut: false, trackStock: false, stock: '', sku: '', hasVariants: false, variants: [] }
 const EMPTY_VARIANT = { name: '', priceDelta: '0', stock: '0', sku: '' }
 
-function ItemModal({ item, categories, onSave, onClose }) {
+function ItemModal({ item, categories, onCategoryAdded, onSave, onClose }) {
   const [form, setForm] = useState(
     item ? {
       name: item.name, categoryId: item.categoryId || '', description: item.description || '', price: item.price, prepTime: item.prepTime || '', image: item.image || '', soldOut: !item.isAvailable,
@@ -19,8 +19,9 @@ function ItemModal({ item, categories, onSave, onClose }) {
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const imgRef = useRef(null)
-  // An item from before Food/Drinks may sit in another category; keep it as a third choice so an edit doesn't wipe it
-  const categoryChoices = item?.category && !categories.some(c => c.id === item.categoryId) ? [...categories, item.category] : categories
+  // null = plain dropdown; a string = the name being typed for a new category
+  const [newCat, setNewCat] = useState(null)
+  const [addingCat, setAddingCat] = useState(false)
   const f = k => e => setForm(p => ({ ...p, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }))
   const setVariant = (i, k, val) => setForm(p => ({ ...p, variants: p.variants.map((v, idx) => idx === i ? { ...v, [k]: val } : v) }))
   const addVariant = () => setForm(p => ({ ...p, variants: [...p.variants, { ...EMPTY_VARIANT }] }))
@@ -37,10 +38,24 @@ function ItemModal({ item, categories, onSave, onClose }) {
     finally { setUploading(false) }
   }
 
+  const addCategory = async () => {
+    const name = (newCat || '').trim()
+    if (!name) { toast.error('Type a category name'); return }
+    setAddingCat(true)
+    try {
+      const res = await menuAPI.createCategory({ name })
+      onCategoryAdded(res.data.data)
+      setForm(p => ({ ...p, categoryId: res.data.data.id }))
+      setNewCat(null)
+    } catch (e) { toast.error(e.response?.data?.error || 'Could not add category') }
+    finally { setAddingCat(false) }
+  }
+
   const save = async (e) => {
     e.preventDefault()
+    if (newCat !== null && newCat.trim()) { toast.error('Tap "Add" to save the new category first'); return }
     if (!form.name.trim() || form.price === '' || form.price === null) { toast.error('Name and price are required'); return }
-    if (!form.categoryId) { toast.error('Choose a category: Food or Drinks'); return }
+    if (!form.categoryId) { toast.error('Choose a category for this item'); return }
     if (form.trackStock && !form.hasVariants && form.stock === '') { toast.error('Enter how many are in stock, or turn off "Track stock"'); return }
     if (form.hasVariants && form.variants.length === 0) { toast.error('Add at least one option, or turn off "Has options"'); return }
     if (form.hasVariants && form.variants.some(v => !v.name.trim())) { toast.error('Every option needs a name'); return }
@@ -113,16 +128,32 @@ function ItemModal({ item, categories, onSave, onClose }) {
             <textarea value={form.description} onChange={f('description')} className="input resize-none h-20 text-sm" placeholder="Describe this dish…" />
           </div>
 
-          {/* Category: every item is either Food or Drinks */}
+          {/* Category: Food, Drinks, or one the owner adds */}
           <div>
             <label className="label">Category *</label>
-            {categoryChoices.length === 0 ? (
+            {categories.length === 0 ? (
               <p className="text-xs text-red-500">Couldn't load categories. Close this and refresh the page.</p>
             ) : (
-              <select value={form.categoryId} onChange={f('categoryId')} className="input text-sm">
-                <option value="" disabled>Choose a category…</option>
-                {categoryChoices.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
-              </select>
+              <>
+                <select value={newCat !== null ? '__new' : form.categoryId}
+                  onChange={e => e.target.value === '__new' ? setNewCat('') : (setNewCat(null), setForm(p => ({ ...p, categoryId: e.target.value })))}
+                  className="input text-sm">
+                  <option value="" disabled>Choose a category…</option>
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
+                  <option value="__new">＋ Add category…</option>
+                </select>
+                {newCat !== null && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <input autoFocus value={newCat} onChange={e => setNewCat(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCategory() } }}
+                      placeholder="Category name, e.g. Snacks" maxLength={40} className="input text-sm flex-1" />
+                    <button type="button" onClick={addCategory} disabled={addingCat} className="btn btn-primary btn-sm">
+                      {addingCat ? <Loader size={12} className="animate-spin" /> : 'Add'}
+                    </button>
+                    <button type="button" onClick={() => setNewCat(null)} className="btn btn-ghost btn-sm">Cancel</button>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -192,7 +223,7 @@ function ItemModal({ item, categories, onSave, onClose }) {
 
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={onClose} className="btn btn-secondary flex-1">Cancel</button>
-            <button type="submit" disabled={saving || uploading} className="btn btn-primary flex-1">
+            <button type="submit" disabled={saving || uploading || addingCat} className="btn btn-primary flex-1">
               {saving ? <Loader size={14} className="animate-spin" /> : null}
               {saving ? 'Saving…' : 'Save Item'}
             </button>
@@ -419,6 +450,7 @@ export default function MenuPage() {
         <ItemModal
           item={editItem}
           categories={categories}
+          onCategoryAdded={cat => setCategories(prev => prev.some(c => c.id === cat.id) ? prev : [...prev, cat])}
           onSave={saveItem}
           onClose={() => { setShowModal(false); setEditItem(null) }}
         />

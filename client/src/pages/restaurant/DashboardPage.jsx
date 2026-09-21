@@ -4,7 +4,7 @@ import { orderAPI } from '../../services/api'
 import { useAdminStore } from '../../store'
 import { useSocket, getSocket } from '../../hooks/useSocket'
 import AdminLayout from '../../components/restaurant/AdminLayout'
-import { format, formatDistanceToNow } from 'date-fns'
+import { format, formatDistanceToNow, isToday } from 'date-fns'
 import toast from 'react-hot-toast'
 
 const STATUS_NEXT = { pending: 'confirmed', confirmed: 'preparing', preparing: 'ready', ready: 'picked_up' }
@@ -14,6 +14,7 @@ const TABS = [
   { key: 'received', statuses: ['pending', 'confirmed'], label: 'Received', color: 'text-amber-600 bg-amber-100' },
   { key: 'preparing', statuses: ['preparing'], label: 'Cooking', color: 'text-orange-600 bg-orange-100' },
   { key: 'ready', statuses: ['ready'], label: 'Ready', color: 'text-emerald-600 bg-emerald-100' },
+  { key: 'picked_up', statuses: ['picked_up'], label: 'Picked Up', color: 'text-sky-600 bg-sky-100' },
   { key: 'all', statuses: null, label: 'All Today', color: 'text-ink-600 bg-ink-100' },
 ]
 
@@ -173,8 +174,11 @@ export default function DashboardPage() {
 
   const updateOrder = (updated) => setOrders(prev => prev.map(o => o.id === updated.id ? updated : o))
 
-  const todayOrders = orders.filter(o => o.status !== 'cancelled')
-  const revenue = todayOrders.reduce((s, o) => s + o.totalPrice, 0)
+  // Orders placed today that are still standing
+  const todayOrders = orders.filter(o => o.status !== 'cancelled' && isToday(new Date(o.createdAt)))
+  // Revenue is money actually collected: an order only counts once it's marked picked up, on the day that happens
+  const pickedUpToday = orders.filter(o => o.status === 'picked_up' && isToday(new Date(o.pickedUpAt || o.createdAt)))
+  const revenue = pickedUpToday.reduce((s, o) => s + o.totalPrice, 0)
   const newCount = orders.filter(o => o.status === 'pending').length
 
   const filtered = activeTab === 'all' ? orders : orders.filter(o => TABS.find(t => t.key === activeTab).statuses.includes(o.status))
@@ -203,7 +207,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
           {[
             { label: "Today's Orders", val: todayOrders.length, sub: 'not cancelled' },
-            { label: "Today's Revenue", val: `${revenue.toLocaleString()} RWF`, sub: 'total' },
+            { label: "Today's Revenue", val: `${revenue.toLocaleString()} RWF`, sub: `from ${pickedUpToday.length} picked up ${pickedUpToday.length === 1 ? 'order' : 'orders'}` },
             { label: 'In Progress', val: orders.filter(o => !['ready', 'picked_up', 'cancelled'].includes(o.status)).length, sub: 'not yet ready', alert: newCount > 0 },
           ].map(s => (
             <div key={s.label} className={`card p-4 ${s.alert && s.val > 0 ? 'border-amber-300 bg-amber-50' : ''}`}>
@@ -237,7 +241,7 @@ export default function DashboardPage() {
         ) : filtered.length === 0 ? (
           <div className="py-24 text-center">
             <p className="text-5xl mb-4">{activeTab === 'received' ? '🎉' : '📋'}</p>
-            <p className="font-bold text-ink-400 text-lg">{activeTab === 'received' ? 'No new orders right now' : `No ${activeTab} orders`}</p>
+            <p className="font-bold text-ink-400 text-lg">{activeTab === 'received' ? 'No new orders right now' : activeTab === 'all' ? 'No orders yet today' : `No ${TABS.find(t => t.key === activeTab).label.toLowerCase()} orders`}</p>
             <p className="text-ink-300 text-sm mt-1">New orders appear here instantly</p>
           </div>
         ) : (

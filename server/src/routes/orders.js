@@ -185,8 +185,9 @@ router.get('/restaurant/:restaurantId/all', authStaff, async (req, res) => {
       const d = new Date(date); const ds = new Date(d); ds.setHours(0,0,0,0); const de = new Date(d); de.setHours(23,59,59,999);
       where.createdAt = { gte:ds, lte:de };
     } else {
+      // Today's list = orders placed today plus any picked up today, so revenue counted at pickup is never missing an order
       const today = new Date(); today.setHours(0,0,0,0);
-      where.createdAt = { gte:today };
+      where.OR = [{ createdAt:{ gte:today } }, { pickedUpAt:{ gte:today } }];
     }
     const orders = await prisma.order.findMany({ where, include:ORDER_INCLUDE, orderBy:{ createdAt:'desc' }, take:200 });
     res.json({ success:true, data:orders });
@@ -202,7 +203,8 @@ router.patch('/:id/status', authStaff, blockViewer, async (req, res) => {
     const order = await prisma.order.findUnique({ where:{ id:req.params.id } });
     if (!order || order.restaurantId !== req.restaurantId) return res.status(403).json({ success:false, error:'Forbidden' });
     const data = { status };
-    if (STATUS_TIMES[status]) data[STATUS_TIMES[status]] = new Date();
+    // Stamp the time only when the status actually changes, so re-sending 'picked_up' can't move an order's revenue to another day
+    if (STATUS_TIMES[status] && order.status !== status) data[STATUS_TIMES[status]] = new Date();
     if (cancelReason) { data.cancelReason = cancelReason; data.cancelledBy = 'restaurant'; }
     if (estimatedReadyAt) data.estimatedReadyAt = new Date(estimatedReadyAt);
     const updated = await prisma.$transaction(async (tx) => {

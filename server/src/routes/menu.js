@@ -54,17 +54,19 @@ router.get('/search', async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-// Every restaurant sorts its menu into the same two categories. They're created on first use;
-// an existing category with the same name (any case) is reused rather than duplicated. The
-// advisory lock stops two simultaneous first loads from each creating their own pair.
+// Every restaurant starts with Food and Drinks, created on first use; owners can add more.
+// An existing category with the same name (any case) is reused rather than duplicated. The
+// advisory lock stops two simultaneous requests from each creating their own copy.
+const categoryLock = (tx, restaurantId) => tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'menu-categories:' + restaurantId}))`;
+const sameName = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
 const DEFAULT_CATEGORIES = [{ name:'Food', emoji:'🍽️' }, { name:'Drinks', emoji:'🥤' }];
 async function ensureDefaultCategories(restaurantId) {
   return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'menu-categories:' + restaurantId}))`;
+    await categoryLock(tx, restaurantId);
     const existing = await tx.menuCategory.findMany({ where:{ restaurantId }, orderBy:{ createdAt:'asc' } });
     const result = [];
     for (const [i, def] of DEFAULT_CATEGORIES.entries()) {
-      let cat = existing.find(c => c.name.trim().toLowerCase() === def.name.toLowerCase());
+      let cat = existing.find(c => sameName(c.name, def.name));
       if (!cat) cat = await tx.menuCategory.create({ data:{ restaurantId, name:def.name, emoji:def.emoji, sortOrder:i } });
       result.push(cat);
     }
@@ -72,13 +74,13 @@ async function ensureDefaultCategories(restaurantId) {
   });
 }
 
+const listCategories = (restaurantId) => prisma.menuCategory.findMany({ where:{ restaurantId }, orderBy:[{ sortOrder:'asc' }, { createdAt:'asc' }] });
+
 router.get('/categories', authStaff, async (req, res) => {
   try {
-    // Read-only roles never create anything; they just see whichever of the two already exist
-    const readOnly = req.role === 'viewer' || req.role === 'staff';
-    const cats = readOnly
-      ? (await prisma.menuCategory.findMany({ where:{ restaurantId: req.restaurantId }, orderBy:[{ sortOrder:'asc' }, { name:'asc' }] })).filter(c => DEFAULT_CATEGORIES.some(d => d.name.toLowerCase() === c.name.trim().toLowerCase()))
-      : await ensureDefaultCategories(req.restaurantId);
+    // Read-only roles never create anything; they just see what already exists
+    if (req.role !== 'viewer' && req.role !== 'staff') await ensureDefaultCategories(req.restaurantId);
+    const cats = await listCategories(req.restaurantId);
     res.json({ success:true, data: cats });
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
@@ -176,8 +178,19 @@ router.delete('/:id', authStaff, blockViewer, requireManager, async (req, res) =
 
 router.post('/categories', authStaff, blockViewer, requireManager, async (req, res) => {
   try {
-    if (!req.body.name?.trim()) return res.status(400).json({ success:false, error:'Category name required' });
-    const cat = await prisma.menuCategory.create({ data:{ restaurantId:req.restaurantId, name:req.body.name.trim(), emoji:req.body.emoji||'🍴', sortOrder:parseInt(req.body.sortOrder)||0 } });
+    const name = String(req.body.name ?? '').trim().replace(/\s+/g, ' ');
+    if (!name) return res.status(400).json({ success:false, error:'Category name required' });
+    if (name.length > 40) return res.status(400).json({ success:false, error:'Category name must be 40 characters or less' });
+    // Typing a name that already exists (any case) hands back the existing category instead of a duplicate.
+    // A new one goes after everything already there (Food and Drinks are 0 and 1).
+    const cat = await prisma.$transaction(async (tx) => {
+      await categoryLock(tx, req.restaurantId);
+      const existing = await tx.menuCategory.findMany({ where:{ restaurantId:req.restaurantId } });
+      const match = existing.find(c => sameName(c.name, name));
+      if (match) return match;
+      const sortOrder = Math.max(1, ...existing.map(c => c.sortOrder)) + 1;
+      return tx.menuCategory.create({ data:{ restaurantId:req.restaurantId, name, emoji:req.body.emoji||'🍴', sortOrder } });
+    });
     res.json({ success:true, data:cat });
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
