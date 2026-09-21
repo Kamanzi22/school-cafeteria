@@ -73,6 +73,7 @@ export const restaurantAPI = {
 export const menuAPI = {
   search: (q) => api.get('/menu/search', { params: { q } }),
   list: () => api.get('/menu/admin'),
+  categories: () => api.get('/menu/categories'),
   create: (d) => api.post('/menu', d),
   update: (id, d) => api.put(`/menu/${id}`, d),
   delete: (id) => api.delete(`/menu/${id}`),

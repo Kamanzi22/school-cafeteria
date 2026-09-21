@@ -9,6 +9,15 @@ import { useBackNavigate } from '../../hooks/useBackNavigate'
 import { useVisitTracking } from '../../hooks/useVisitTracking'
 import toast from 'react-hot-toast'
 
+// Category names that actually have meals, in the restaurant's own category order (Food, then Drinks)
+const usedCategoryNames = (r) => {
+  const used = new Set(r.items.map(i => i.category?.name).filter(Boolean))
+  return [...new Set((r.categories || []).map(c => c.name).filter(n => used.has(n)))]
+}
+
+// Internal id for the catch-all tab; never clashes with a category the owner names "Other"
+const OTHER_TAB = '__other__'
+
 function VariantPickerModal({ item, onPick, onClose }) {
   const [selected, setSelected] = useState(null)
   const variants = item.variants || []
@@ -76,9 +85,9 @@ export default function RestaurantPage() {
     restaurantAPI.get(id).then(r => {
       setRestaurant(r.data.data)
       setFavorited(r.data.data.isFavorited)
-      const cats = [...new Set(r.data.data.items.map(i => i.category?.name).filter(Boolean))]
+      const cats = usedCategoryNames(r.data.data)
       const target = focusItemId && r.data.data.items.find(i => i.id === focusItemId)
-      setActiveCategory(target ? (target.category?.name || null) : (cats[0] || null))
+      setActiveCategory(target ? (target.category?.name || (cats.length > 0 ? OTHER_TAB : null)) : (cats[0] || null))
       setLoading(false)
     }).catch(() => { setLoading(false); navigate('/') })
   }, [id])
@@ -109,11 +118,15 @@ export default function RestaurantPage() {
     setVariantItem(null)
   }
 
-  const categories = restaurant ? [...new Set(restaurant.items.map(i => i.category?.name).filter(Boolean))] : []
+  // Once a menu has any categories, meals without one go under an "Other" tab so they don't disappear
+  const categoryNames = restaurant ? usedCategoryNames(restaurant) : []
+  const hasUncategorised = restaurant ? restaurant.items.some(i => !i.category) : false
+  const categories = categoryNames.length > 0 && hasUncategorised ? [...categoryNames, OTHER_TAB] : categoryNames
+  const categoryTabOf = (item) => item.category?.name || (categoryNames.length > 0 ? OTHER_TAB : null)
   const featuredItems = restaurant?.items.filter(i => i.isFeatured) || []
 
   const displayItems = restaurant?.items.filter(i => {
-    const matchCat = !activeCategory || i.category?.name === activeCategory
+    const matchCat = !activeCategory || categoryTabOf(i) === activeCategory
     const matchSearch = !search || i.name.toLowerCase().includes(search.toLowerCase()) || i.description?.toLowerCase().includes(search.toLowerCase())
     return matchCat && matchSearch
   }) || []
@@ -211,7 +224,7 @@ export default function RestaurantPage() {
             </p>
             <div className="flex gap-3 overflow-x-auto scrollbar-hide -mx-1 px-1 pb-1">
               {featuredItems.map(item => (
-                <button key={item.id} onClick={() => setActiveCategory(item.category?.name)}
+                <button key={item.id} onClick={() => setActiveCategory(categoryTabOf(item))}
                   className="flex-none flex flex-col items-center gap-1.5 w-24 group">
                   <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl transition group-hover:scale-105"
                     style={{ background: `${restaurant.coverColor}18` }}>
@@ -233,7 +246,7 @@ export default function RestaurantPage() {
             {categories.map(c => (
               <button key={c} onClick={() => setActiveCategory(c)}
                 className={`whitespace-nowrap px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${activeCategory === c ? 'border-flame-500 text-flame-600' : 'border-transparent text-ink-400 hover:text-ink-700'}`}>
-                {c}
+                {c === OTHER_TAB ? 'Other' : c}
               </button>
             ))}
           </div>

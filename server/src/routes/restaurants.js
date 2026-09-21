@@ -73,6 +73,10 @@ router.get('/:id', optionalCustomer, async (req, res) => {
       isFavorited = !!fav;
     }
     const { passwordHash, ...safe } = r;
+    // Items only carry a categoryId; attach the visible category so the menu page can build its tabs.
+    // Meals in a hidden (or missing) category get null and show under "Other" rather than vanishing.
+    const catById = new Map(safe.categories.map(c => [c.id, c]));
+    safe.items = safe.items.map(i => ({ ...i, category: catById.get(i.categoryId) || null }));
     if (safe.featuredMode === 'auto') safe.items = applyAutoFeatured(safe.items);
     res.json({ success: true, data: { ...safe, isFavorited } });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }

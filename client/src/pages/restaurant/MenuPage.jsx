@@ -5,20 +5,22 @@ import { useAdminStore } from '../../store'
 import AdminLayout from '../../components/restaurant/AdminLayout'
 import toast from 'react-hot-toast'
 
-const EMPTY = { name: '', description: '', price: '', prepTime: '', image: '', soldOut: false, trackStock: false, stock: '', sku: '', hasVariants: false, variants: [] }
+const EMPTY = { name: '', categoryId: '', description: '', price: '', prepTime: '', image: '', soldOut: false, trackStock: false, stock: '', sku: '', hasVariants: false, variants: [] }
 const EMPTY_VARIANT = { name: '', priceDelta: '0', stock: '0', sku: '' }
 
-function ItemModal({ item, onSave, onClose }) {
+function ItemModal({ item, categories, onSave, onClose }) {
   const [form, setForm] = useState(
     item ? {
-      name: item.name, description: item.description || '', price: item.price, prepTime: item.prepTime || '', image: item.image || '', soldOut: !item.isAvailable,
+      name: item.name, categoryId: item.categoryId || '', description: item.description || '', price: item.price, prepTime: item.prepTime || '', image: item.image || '', soldOut: !item.isAvailable,
       trackStock: item.trackStock || false, stock: item.stock ?? '', sku: item.sku || '', hasVariants: item.hasVariants || false,
-      variants: (item.variants || []).map(v => ({ name: v.name, priceDelta: v.priceDelta, stock: v.stock, sku: v.sku || '' })),
+      variants: (item.variants || []).map(v => ({ id: v.id, name: v.name, priceDelta: v.priceDelta, stock: v.stock, sku: v.sku || '', isAvailable: v.isAvailable, options: v.options })),
     } : EMPTY
   )
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const imgRef = useRef(null)
+  // An item from before Food/Drinks may sit in another category; keep it as a third choice so an edit doesn't wipe it
+  const categoryChoices = item?.category && !categories.some(c => c.id === item.categoryId) ? [...categories, item.category] : categories
   const f = k => e => setForm(p => ({ ...p, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }))
   const setVariant = (i, k, val) => setForm(p => ({ ...p, variants: p.variants.map((v, idx) => idx === i ? { ...v, [k]: val } : v) }))
   const addVariant = () => setForm(p => ({ ...p, variants: [...p.variants, { ...EMPTY_VARIANT }] }))
@@ -31,19 +33,22 @@ function ItemModal({ item, onSave, onClose }) {
     try {
       const res = await uploadAPI.logo(file)
       setForm(p => ({ ...p, image: res.data.data.url }))
-    } catch { toast.error('Image upload failed') }
+    } catch (e) { toast.error(e.response?.data?.error || 'Image upload failed') }
     finally { setUploading(false) }
   }
 
   const save = async (e) => {
     e.preventDefault()
-    if (!form.name || !form.price) { toast.error('Name and price are required'); return }
+    if (!form.name.trim() || form.price === '' || form.price === null) { toast.error('Name and price are required'); return }
+    if (!form.categoryId) { toast.error('Choose a category: Food or Drinks'); return }
+    if (form.trackStock && !form.hasVariants && form.stock === '') { toast.error('Enter how many are in stock, or turn off "Track stock"'); return }
     if (form.hasVariants && form.variants.length === 0) { toast.error('Add at least one option, or turn off "Has options"'); return }
     if (form.hasVariants && form.variants.some(v => !v.name.trim())) { toast.error('Every option needs a name'); return }
     setSaving(true)
     try {
       const payload = {
         name: form.name,
+        categoryId: form.categoryId || null,
         description: form.description,
         price: form.price,
         prepTime: form.prepTime,
@@ -106,6 +111,19 @@ function ItemModal({ item, onSave, onClose }) {
           <div>
             <label className="label">Description</label>
             <textarea value={form.description} onChange={f('description')} className="input resize-none h-20 text-sm" placeholder="Describe this dish…" />
+          </div>
+
+          {/* Category: every item is either Food or Drinks */}
+          <div>
+            <label className="label">Category *</label>
+            {categoryChoices.length === 0 ? (
+              <p className="text-xs text-red-500">Couldn't load categories. Close this and refresh the page.</p>
+            ) : (
+              <select value={form.categoryId} onChange={f('categoryId')} className="input text-sm">
+                <option value="" disabled>Choose a category…</option>
+                {categoryChoices.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
+              </select>
+            )}
           </div>
 
           {/* Price & Prep time */}
@@ -187,6 +205,7 @@ function ItemModal({ item, onSave, onClose }) {
 
 export default function MenuPage() {
   const [items, setItems] = useState([])
+  const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [editItem, setEditItem] = useState(null)
   const [showModal, setShowModal] = useState(false)
@@ -194,12 +213,14 @@ export default function MenuPage() {
   const [featuredMode, setFeaturedMode] = useState('manual')
   const [modeSaving, setModeSaving] = useState(false)
   const { role } = useAdminStore()
-  const isViewer = role === 'viewer'
+  // Viewers and staff can see the menu; the server only lets owners and managers change it
+  const isViewer = role === 'viewer' || role === 'staff'
 
   useEffect(() => {
-    Promise.all([menuAPI.list(), restaurantAPI.getFeaturedMode().catch(() => null)])
-      .then(([menu, mode]) => {
+    Promise.all([menuAPI.list(), restaurantAPI.getFeaturedMode().catch(() => null), menuAPI.categories().catch(() => null)])
+      .then(([menu, mode, cats]) => {
         setItems(menu.data.data)
+        if (cats) setCategories(cats.data.data)
         if (mode) setFeaturedMode(mode.data.data.featuredMode)
         setLoading(false)
       })
@@ -241,15 +262,17 @@ export default function MenuPage() {
       const res = await menuAPI.update(item.id, { isAvailable: !item.isAvailable })
       setItems(prev => prev.map(i => i.id === item.id ? res.data.data : i))
       refreshIfAuto()
-    } catch { toast.error('Failed to update') }
+    } catch (e) { toast.error(e.response?.data?.error || 'Failed to update') }
   }
 
   const deleteItem = async (id) => {
     if (!window.confirm('Delete this item permanently?')) return
-    await menuAPI.delete(id)
-    setItems(prev => prev.filter(i => i.id !== id))
-    refreshIfAuto()
-    toast.success('Deleted')
+    try {
+      await menuAPI.delete(id)
+      setItems(prev => prev.filter(i => i.id !== id))
+      refreshIfAuto()
+      toast.success('Deleted')
+    } catch (e) { toast.error(e.response?.data?.error || 'Failed to delete') }
   }
 
   const filtered = items.filter(i => {
@@ -357,6 +380,7 @@ export default function MenuPage() {
                   <div className="flex items-center gap-2 text-xs text-ink-400 mt-0.5">
                     <span className="font-semibold text-brand-500">{item.price.toLocaleString()} RWF</span>
                     {item.prepTime && <span>· {item.prepTime} min</span>}
+                    {item.category && <span>· {item.category.name}</span>}
                   </div>
                 </div>
 
@@ -394,6 +418,7 @@ export default function MenuPage() {
       {showModal && (
         <ItemModal
           item={editItem}
+          categories={categories}
           onSave={saveItem}
           onClose={() => { setShowModal(false); setEditItem(null) }}
         />

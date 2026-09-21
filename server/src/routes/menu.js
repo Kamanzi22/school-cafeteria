@@ -3,23 +3,37 @@ const { authStaff, blockViewer, requireManager } = require('../middleware/auth')
 const prisma = require('../lib/prisma');
 const { pickAutoFeatured } = require('../lib/featured');
 
-// Replace all variants for a menu item inside the given transaction client
+// Make the item's variants match the submitted list inside the given transaction client.
+// Variants that come back with their id are updated in place — never recreated — so order
+// history, stock restores and customers' carts keep pointing at a real variant. Rows that are
+// missing from the list are deleted; rows without a known id are created.
 async function syncVariants(tx, menuItemId, variants) {
-  await tx.itemVariant.deleteMany({ where: { menuItemId } });
-  if (!Array.isArray(variants) || variants.length === 0) return;
-  await tx.itemVariant.createMany({
-    data: variants.map((v, i) => ({
-      menuItemId,
+  const list = Array.isArray(variants) ? variants : [];
+  const existing = await tx.itemVariant.findMany({ where: { menuItemId }, select: { id: true } });
+  const existingIds = new Set(existing.map(v => v.id));
+  const keepIds = new Set(list.map(v => v.id).filter(id => existingIds.has(id)));
+  const removed = [...existingIds].filter(id => !keepIds.has(id));
+  if (removed.length) await tx.itemVariant.deleteMany({ where: { id: { in: removed } } });
+  for (const [i, v] of list.entries()) {
+    const data = {
       name: v.name?.trim() || `Variant ${i + 1}`,
-      options: JSON.stringify(v.options || {}),
       priceDelta: parseFloat(v.priceDelta) || 0,
-      stock: parseInt(v.stock) || 0,
+      stock: Math.max(0, parseInt(v.stock) || 0),
       sku: v.sku || null,
-      isAvailable: v.isAvailable !== false,
       sortOrder: i,
-    }))
-  });
+    };
+    if (v.options !== undefined) data.options = typeof v.options === 'string' ? v.options : JSON.stringify(v.options || {});
+    if (v.isAvailable !== undefined) data.isAvailable = v.isAvailable !== false;
+    if (keepIds.has(v.id)) await tx.itemVariant.update({ where: { id: v.id }, data });
+    else await tx.itemVariant.create({ data: { menuItemId, isAvailable: true, ...data } });
+  }
 }
+
+// null when blank, otherwise a whole number that is never negative
+const parseStock = (v) => (v === undefined || v === null || v === '' ? null : Math.max(0, parseInt(v) || 0));
+// A category id is only usable if it belongs to the caller's own restaurant
+const ownsCategory = async (restaurantId, categoryId) => !!(await prisma.menuCategory.findFirst({ where:{ id:categoryId, restaurantId }, select:{ id:true } }));
+const validPrice = (v) => v !== undefined && v !== null && v !== '' && Number.isFinite(parseFloat(v)) && parseFloat(v) >= 0;
 
 router.get('/search', async (req, res) => {
   try {
@@ -40,6 +54,35 @@ router.get('/search', async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// Every restaurant sorts its menu into the same two categories. They're created on first use;
+// an existing category with the same name (any case) is reused rather than duplicated. The
+// advisory lock stops two simultaneous first loads from each creating their own pair.
+const DEFAULT_CATEGORIES = [{ name:'Food', emoji:'🍽️' }, { name:'Drinks', emoji:'🥤' }];
+async function ensureDefaultCategories(restaurantId) {
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'menu-categories:' + restaurantId}))`;
+    const existing = await tx.menuCategory.findMany({ where:{ restaurantId }, orderBy:{ createdAt:'asc' } });
+    const result = [];
+    for (const [i, def] of DEFAULT_CATEGORIES.entries()) {
+      let cat = existing.find(c => c.name.trim().toLowerCase() === def.name.toLowerCase());
+      if (!cat) cat = await tx.menuCategory.create({ data:{ restaurantId, name:def.name, emoji:def.emoji, sortOrder:i } });
+      result.push(cat);
+    }
+    return result;
+  });
+}
+
+router.get('/categories', authStaff, async (req, res) => {
+  try {
+    // Read-only roles never create anything; they just see whichever of the two already exist
+    const readOnly = req.role === 'viewer' || req.role === 'staff';
+    const cats = readOnly
+      ? (await prisma.menuCategory.findMany({ where:{ restaurantId: req.restaurantId }, orderBy:[{ sortOrder:'asc' }, { name:'asc' }] })).filter(c => DEFAULT_CATEGORIES.some(d => d.name.toLowerCase() === c.name.trim().toLowerCase()))
+      : await ensureDefaultCategories(req.restaurantId);
+    res.json({ success:true, data: cats });
+  } catch(e){ res.status(500).json({ success:false, error:e.message }); }
+});
+
 router.get('/admin', authStaff, async (req, res) => {
   try {
     const items = await prisma.menuItem.findMany({ where:{ restaurantId: req.restaurantId }, include:{ category:true, variants:{ orderBy:{ sortOrder:'asc' } } }, orderBy:[{ category:{ sortOrder:'asc' } }, { sortOrder:'asc' }, { name:'asc' }] });
@@ -54,13 +97,15 @@ router.get('/admin', authStaff, async (req, res) => {
 
 router.post('/', authStaff, blockViewer, requireManager, async (req, res) => {
   try {
-    const { name, description, price, image, isAvailable, prepTime, sortOrder, trackStock, stock, hasVariants, sku, variants } = req.body;
-    if (!name || !price) return res.status(400).json({ success:false, error:'Name and price required' });
+    const { name, description, price, image, isAvailable, prepTime, sortOrder, trackStock, stock, hasVariants, sku, variants, categoryId } = req.body;
+    if (!name?.trim() || price === undefined || price === null || price === '') return res.status(400).json({ success:false, error:'Name and price required' });
+    if (!validPrice(price)) return res.status(400).json({ success:false, error:'Price must be a number, 0 or more' });
+    if (categoryId && !(await ownsCategory(req.restaurantId, categoryId))) return res.status(400).json({ success:false, error:'Category not found' });
     const item = await prisma.$transaction(async (tx) => {
       const created = await tx.menuItem.create({ data:{
-        restaurantId: req.restaurantId, name:name.trim(), description:description?.trim(), price:parseFloat(price),
+        restaurantId: req.restaurantId, categoryId: categoryId || null, name:name.trim(), description:description?.trim(), price:parseFloat(price),
         image:image||null, isAvailable:isAvailable!==false&&isAvailable!=='false', prepTime:parseInt(prepTime)||10, sortOrder:parseInt(sortOrder)||0,
-        trackStock: !!trackStock, stock: stock!==undefined && stock!=='' ? parseInt(stock) : null,
+        trackStock: !!trackStock, stock: parseStock(stock),
         hasVariants: !!hasVariants, sku: sku || null,
       } });
       if (hasVariants) await syncVariants(tx, created.id, variants);
@@ -74,15 +119,19 @@ router.put('/:id', authStaff, blockViewer, requireManager, async (req, res) => {
   try {
     const item = await prisma.menuItem.findFirst({ where:{ id:req.params.id, restaurantId:req.restaurantId } });
     if (!item) return res.status(404).json({ success:false, error:'Not found' });
-    const { name, description, price, image, isAvailable, prepTime, sortOrder, trackStock, stock, hasVariants, sku, variants } = req.body;
+    const { name, description, price, image, isAvailable, prepTime, sortOrder, trackStock, stock, hasVariants, sku, variants, categoryId } = req.body;
+    if (name !== undefined && !String(name).trim()) return res.status(400).json({ success:false, error:'Name can\'t be empty' });
+    if (price !== undefined && !validPrice(price)) return res.status(400).json({ success:false, error:'Price must be a number, 0 or more' });
+    if (categoryId && !(await ownsCategory(req.restaurantId, categoryId))) return res.status(400).json({ success:false, error:'Category not found' });
     const updated = await prisma.$transaction(async (tx) => {
       const saved = await tx.menuItem.update({ where:{ id:req.params.id }, data:{
-        name, description, price:price?parseFloat(price):undefined,
+        categoryId: categoryId!==undefined ? (categoryId || null) : undefined,
+        name:name!==undefined?String(name).trim():undefined, description:description!==undefined?description?.trim():undefined, price:price!==undefined?parseFloat(price):undefined,
         image:image!==undefined?(image||null):undefined,
         isAvailable:isAvailable!==undefined?(isAvailable!==false&&isAvailable!=='false'):undefined,
         prepTime:prepTime?parseInt(prepTime):undefined, sortOrder:sortOrder!==undefined?parseInt(sortOrder):undefined,
         trackStock: trackStock!==undefined ? !!trackStock : undefined,
-        stock: stock!==undefined ? (stock==='' ? null : parseInt(stock)) : undefined,
+        stock: stock!==undefined ? parseStock(stock) : undefined,
         hasVariants: hasVariants!==undefined ? !!hasVariants : undefined,
         sku: sku!==undefined ? (sku || null) : undefined,
       } });
@@ -127,6 +176,7 @@ router.delete('/:id', authStaff, blockViewer, requireManager, async (req, res) =
 
 router.post('/categories', authStaff, blockViewer, requireManager, async (req, res) => {
   try {
+    if (!req.body.name?.trim()) return res.status(400).json({ success:false, error:'Category name required' });
     const cat = await prisma.menuCategory.create({ data:{ restaurantId:req.restaurantId, name:req.body.name.trim(), emoji:req.body.emoji||'🍴', sortOrder:parseInt(req.body.sortOrder)||0 } });
     res.json({ success:true, data:cat });
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
