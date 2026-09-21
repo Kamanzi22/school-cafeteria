@@ -112,8 +112,8 @@ router.post('/restaurant/staff/login', async (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════
-// CUSTOMER — REGISTER — see /api/verify/customer-signup/request + /confirm. Registration
-// only completes after the entered email is verified, so there's no direct-create route here.
+// CUSTOMER — REGISTER — accounts are created only via Google sign-in (POST /customer/google
+// below), where Google has already verified the school email. There is no manual signup route.
 // ══════════════════════════════════════════════════════
 
 // ══════════════════════════════════════════════════════

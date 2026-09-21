@@ -1,42 +1,26 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Mail, Lock, User, Phone, Loader, UserCheck, Ghost, Eye, EyeOff } from 'lucide-react'
-import { authAPI, verifyAPI } from '../../services/api'
+import { authAPI } from '../../services/api'
 import { useCustomerStore } from '../../store'
 import { getGuestToken } from '../../hooks/useGuestToken'
 import { useBackNavigate } from '../../hooks/useBackNavigate'
-import VerifyCodeStep from '../../components/shared/VerifyCodeStep'
 import GoogleSignInButton from '../../components/shared/GoogleSignInButton'
 import toast from 'react-hot-toast'
 
 const GOOGLE_ENABLED = !!import.meta.env.VITE_GOOGLE_CLIENT_ID
 
 export default function CustomerAuthPage() {
-  const [tab, setTab] = useState('login') // login | register | guest
-  const [regStep, setRegStep] = useState('form') // form | code
+  const [searchParams] = useSearchParams()
+  const [tab, setTab] = useState(searchParams.get('tab') === 'register' ? 'register' : 'login') // login | register (| guest)
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({ name:'', email:'', password:'', phone:'' })
   const [guestName, setGuestName] = useState('')
-  const [searchParams] = useSearchParams()
   const { login, setGuest } = useCustomerStore()
   const navigate = useNavigate()
   const goBack = useBackNavigate()
   const f = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
-
-  // Landing here from the "Verify Email" link in the signup email — jump straight to the
-  // code step, pre-filled. Confirming only needs email+code (the rest was saved server-side
-  // when the code was requested), so this works even if opened on a different device.
-  const linkEmail = searchParams.get('verifyEmail')
-  const linkCode = searchParams.get('verifyCode')
-  useEffect(() => {
-    if (linkEmail && linkCode) {
-      setTab('register')
-      setForm(p => ({ ...p, email: linkEmail }))
-      setRegStep('code')
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   const handleLogin = async (e) => {
     e.preventDefault(); setLoading(true)
@@ -48,25 +32,6 @@ export default function CustomerAuthPage() {
       navigate('/')
     } catch (e) { toast.error(e.response?.data?.error || 'Login failed') }
     finally { setLoading(false) }
-  }
-
-  const requestCode = async (e) => {
-    e.preventDefault(); setLoading(true)
-    try {
-      await verifyAPI.customerSignupRequest(form)
-      toast.success(`Code sent to ${form.email} 📧`)
-      setRegStep('code')
-    } catch (e) { toast.error(e.response?.data?.error || 'Could not send code') }
-    finally { setLoading(false) }
-  }
-
-  const confirmCode = async (code) => {
-    try {
-      const res = await verifyAPI.customerSignupConfirm({ email: form.email, code })
-      login(res.data.data.customer, res.data.data.token)
-      toast.success(`Account created! Welcome, ${res.data.data.customer.name} 🎉`)
-      navigate('/')
-    } catch (e) { toast.error(e.response?.data?.error || 'Verification failed') }
   }
 
   const handleGuest = async () => {
@@ -104,7 +69,7 @@ export default function CustomerAuthPage() {
   const googleBlock = (
     <>
       <GoogleSignInButton onCredential={(c) => googleAuth(c)} />
-      {GOOGLE_ENABLED && (
+      {GOOGLE_ENABLED && tab === 'login' && (
         <div className="flex items-center gap-3 my-4 text-xs text-ink-400">
           <div className="flex-1 h-px bg-ink-100" />or<div className="flex-1 h-px bg-ink-100" />
         </div>
@@ -150,13 +115,13 @@ export default function CustomerAuthPage() {
               <button type="button" onClick={() => setGooglePending(null)} className="btn btn-ghost btn-sm w-full text-ink-500">Cancel</button>
             </form>
           ) : (<>
-          {(tab === 'login' || (tab === 'register' && regStep === 'form')) && (
+          {(tab === 'login' || tab === 'register') && (
             <p className="text-xs text-ink-600 bg-ink-50 rounded-xl px-3 py-2 mb-4 text-center">
               🎓 Only school emails are allowed — use your <strong>@alustudent.com</strong> or <strong>@alueducation.com</strong> address.
             </p>
           )}
 
-          {(tab === 'login' || (tab === 'register' && regStep === 'form')) && googleBlock}
+          {(tab === 'login' || tab === 'register') && googleBlock}
 
           {/* ── LOGIN ── */}
           {tab === 'login' && (
@@ -188,42 +153,13 @@ export default function CustomerAuthPage() {
             </form>
           )}
 
-          {/* ── REGISTER ── */}
-          {tab === 'register' && regStep === 'form' && (
-            <form onSubmit={requestCode} className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="col-span-2">
-                  <label className="label">Full Name *</label>
-                  <div className="relative"><User size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" /><input value={form.name} onChange={f('name')} className="input pl-9" placeholder="Alice Uwimana" required /></div>
-                </div>
-                <div className="col-span-2">
-                  <label className="label">Email *</label>
-                  <div className="relative"><Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" /><input type="email" value={form.email} onChange={f('email')} className="input pl-9" placeholder="you@alustudent.com" required /></div>
-                </div>
-                <div className="col-span-2">
-                  <label className="label">Password * (min 6 chars)</label>
-                  <div className="relative"><Lock size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" /><input type={showPw?'text':'password'} value={form.password} onChange={f('password')} className="input pl-9 pr-10" placeholder="••••••••" required minLength={6} /><button type="button" onClick={() => setShowPw(s=>!s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400">{showPw?<EyeOff size={14}/>:<Eye size={14}/>}</button></div>
-                </div>
-                <div className="col-span-2">
-                  <label className="label">Phone Number *</label>
-                  <div className="relative"><Phone size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" /><input type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={f('phone')} className="input pl-9" placeholder="+250 78..." required minLength={9} /></div>
-                </div>
-              </div>
-              <button type="submit" disabled={loading} className="btn btn-primary w-full btn-lg mt-1">
-                {loading ? <Loader size={16} className="animate-spin" /> : null}
-                {loading ? 'Sending code…' : 'Send Verification Code'}
-              </button>
-            </form>
-          )}
-
-          {tab === 'register' && regStep === 'code' && (
-            <VerifyCodeStep
-              email={form.email}
-              initialCode={linkCode || ''}
-              onConfirm={confirmCode}
-              onBack={() => setRegStep('form')}
-              onResend={() => verifyAPI.customerSignupRequest(form).then(() => toast.success('Code resent 📧'))}
-            />
+          {/* ── REGISTER — accounts are created only with Google (email verified by Google) ── */}
+          {tab === 'register' && (
+            <p className="text-sm text-ink-500 text-center">
+              {GOOGLE_ENABLED
+                ? 'Create your account with your school Google account. Google verifies your email, so there is no code to type.'
+                : 'Creating accounts is temporarily unavailable. Please try again later.'}
+            </p>
           )}
 
           {/* ── GUEST ── */}

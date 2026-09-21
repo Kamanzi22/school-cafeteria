@@ -47,11 +47,10 @@ export const authAPI = {
   deliveryLogin: (d) => api.post('/auth/delivery/login', d),
 }
 
-// Email-verification-gated actions: customer signup, and a restaurant owner changing their
-// login email or password. Each is request (send code) then confirm (apply the change).
+// Email-verification-gated actions: a restaurant owner changing their login email or password.
+// Each is request (send code) then confirm (apply the change). Customer accounts are created via
+// Google sign-in (authAPI.customerGoogle) instead.
 export const verifyAPI = {
-  customerSignupRequest: (d) => api.post('/verify/customer-signup/request', d),
-  customerSignupConfirm: (d) => api.post('/verify/customer-signup/confirm', d),
   restaurantEmailRequest: (d) => api.post('/verify/restaurant-email/request', d),
   restaurantEmailConfirm: (d) => api.post('/verify/restaurant-email/confirm', d),
   restaurantPasswordRequest: (d) => api.post('/verify/restaurant-password/request', d),
