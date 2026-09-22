@@ -87,7 +87,7 @@ router.get('/settings', authSuperAdmin, async (req, res) => {
 
 router.put('/settings', authSuperAdmin, async (req, res) => {
   try {
-    const { noreplyName, noreplyEmail, noreplyAppPassword, infoName, infoEmail, infoAppPassword, supportName, supportEmail } = req.body;
+    const { noreplyName, noreplyEmail, noreplyAppPassword, infoName, infoEmail, infoAppPassword, supportName, supportEmail, supportPhone } = req.body;
     for (const [label, email] of [['Noreply', noreplyEmail], ['Info', infoEmail], ['Support', supportEmail]]) {
       if (email && !EMAIL_RE.test(email)) return res.status(400).json({ success: false, error: `Invalid ${label} email address` });
     }
@@ -100,8 +100,18 @@ router.put('/settings', authSuperAdmin, async (req, res) => {
     if (infoAppPassword) data.infoAppPasswordEnc = encrypt(infoAppPassword.replace(/\s+/g, ''));
     if (supportName) data.supportName = supportName.trim();
     if (supportEmail) data.supportEmail = supportEmail.trim();
+    if (supportPhone !== undefined) data.supportPhone = supportPhone.trim() || null;
     const s = await prisma.platformSettings.upsert({ where: { id: 'default' }, update: data, create: { id: 'default', ...data } });
     res.json({ success: true, data: stripEncFields(s) });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// Public — the phone/email shown to customers and restaurant owners on their profile/settings
+// pages when they need to reach a human. No auth: it's meant to be visible before login too.
+router.get('/contact', async (req, res) => {
+  try {
+    const s = await prisma.platformSettings.findUnique({ where: { id: 'default' } });
+    res.json({ success: true, data: { supportName: s?.supportName || null, supportEmail: s?.supportEmail || null, supportPhone: s?.supportPhone || null } });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 

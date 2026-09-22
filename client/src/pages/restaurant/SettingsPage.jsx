@@ -8,6 +8,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import VerifyCodeStep from '../../components/shared/VerifyCodeStep'
 import InstallApp from '../../components/shared/InstallApp'
 import NotificationSettings from '../../components/shared/NotificationSettings'
+import SupportContact from '../../components/shared/SupportContact'
 import toast from 'react-hot-toast'
 
 export default function SettingsPage() {
@@ -177,6 +178,7 @@ export default function SettingsPage() {
             offDescription="Get an alert on this device the moment a customer places an order, even if the app is closed."
             appName="the CaféCampus restaurant app"
           />
+          <SupportContact title="Need help running your store?" />
         </div>
 
         {/* Profile */}

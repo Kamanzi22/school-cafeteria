@@ -7,6 +7,7 @@ import { useBackNavigate } from '../../hooks/useBackNavigate'
 import { disablePush } from '../../services/push'
 import NotificationSettings from '../../components/shared/NotificationSettings'
 import InstallApp from '../../components/shared/InstallApp'
+import SupportContact from '../../components/shared/SupportContact'
 import toast from 'react-hot-toast'
 
 export default function CustomerProfilePage() {
@@ -84,6 +85,7 @@ export default function CustomerProfilePage() {
 
         <InstallApp />
         <NotificationSettings />
+        <SupportContact />
 
         <Link to="/orders" className="btn btn-secondary w-full"><ShoppingBag size={16}/>My Orders</Link>
         <button onClick={handleLogout} className="btn btn-danger w-full"><LogOut size={16}/>Sign Out</button>

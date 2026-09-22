@@ -147,6 +147,11 @@ export const superAdminAPI = {
   resetSmtp: (purpose) => api.delete(`/superadmin/settings/smtp/${purpose}`),
 }
 
+// Public support contact (phone/email) shown on the customer and restaurant apps — no auth needed.
+export const contactAPI = {
+  get: () => api.get('/superadmin/contact'),
+}
+
 export const visitAPI = {
   start: (d) => api.post('/visits/start', d),
   heartbeat: (id) => api.post(`/visits/${id}/heartbeat`),

@@ -175,7 +175,7 @@ export default function SuperAdminPage() {
   const [emailSettingsForm, setEmailSettingsForm] = useState({
     noreplyName:'', noreplyEmail:'', noreplyAppPassword:'',
     infoName:'', infoEmail:'', infoAppPassword:'',
-    supportName:'', supportEmail:'',
+    supportName:'', supportEmail:'', supportPhone:'',
   })
   const [smtpConfigured, setSmtpConfigured] = useState({ noreply:false, info:false })
   const [emailSettingsLoading, setEmailSettingsLoading] = useState(false)
@@ -427,7 +427,7 @@ export default function SuperAdminPage() {
       setEmailSettingsForm({
         noreplyName: d.noreplyName || '', noreplyEmail: d.noreplyEmail || '', noreplyAppPassword: '',
         infoName: d.infoName || '', infoEmail: d.infoEmail || '', infoAppPassword: '',
-        supportName: d.supportName || '', supportEmail: d.supportEmail || '',
+        supportName: d.supportName || '', supportEmail: d.supportEmail || '', supportPhone: d.supportPhone || '',
       })
       setSmtpConfigured({ noreply: d.noreplySmtpConfigured, info: d.infoSmtpConfigured })
     } catch { toast.error('Could not load settings') }
@@ -859,10 +859,11 @@ export default function SuperAdminPage() {
                 <div className="border border-ink-100 rounded-xl p-4 space-y-3">
                   <div>
                     <p className="font-semibold text-sm text-ink-900">Support</p>
-                    <p className="text-xs text-ink-400">A contact address for users needing help — receives mail, doesn't need an App Password. Not yet shown anywhere in the app.</p>
+                    <p className="text-xs text-ink-400">Shown to customers and restaurant owners on their profile/settings page when they need to reach you. Doesn't need an App Password.</p>
                   </div>
                   <div><label className="label">Display Name</label><input value={emailSettingsForm.supportName} onChange={e => setEmailSettingsForm(p => ({ ...p, supportName:e.target.value }))} className="input" placeholder="CaféCampus Support" /></div>
                   <div><label className="label">Email</label><input type="email" value={emailSettingsForm.supportEmail} onChange={e => setEmailSettingsForm(p => ({ ...p, supportEmail:e.target.value }))} className="input" placeholder="support@yourbusiness.com" /></div>
+                  <div><label className="label">Phone</label><input type="tel" value={emailSettingsForm.supportPhone} onChange={e => setEmailSettingsForm(p => ({ ...p, supportPhone:e.target.value }))} className="input" placeholder="+250 7xx xxx xxx" /></div>
                 </div>
 
                 <div className="flex gap-3 pt-1">
