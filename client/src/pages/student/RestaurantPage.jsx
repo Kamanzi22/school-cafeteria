@@ -102,6 +102,17 @@ export default function RestaurantPage() {
     }
   })
 
+  // Phones drop the socket while the tab/app is backgrounded (locked screen, app-switch), so a
+  // menu:updated sent during that window is missed. Catch up the moment it's foregrounded again
+  // instead of relying on the customer to leave and come back.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') restaurantAPI.get(id).then(r => setRestaurant(r.data.data)).catch(() => {})
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [id])
+
   useEffect(() => {
     if (loading || !restaurant || !focusItemId) return
     const el = document.getElementById(`item-${focusItemId}`)
@@ -335,7 +346,7 @@ export default function RestaurantPage() {
                       </button>
                     )
                   ) : (
-                    <span className="text-[10px] text-ink-400 text-center">{outOfStock ? <PackageX size={16} className="mx-auto" /> : !item.isAvailable ? '86\'d' : 'Closed'}</span>
+                    <span className="text-[10px] text-ink-400 text-center">{outOfStock ? <PackageX size={16} className="mx-auto" /> : !item.isAvailable ? 'Sold Out' : 'Closed'}</span>
                   )}
                 </div>
               </div>
