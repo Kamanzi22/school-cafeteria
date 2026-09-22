@@ -169,58 +169,6 @@ function ItemModal({ item, categories, onCategoryAdded, onSave, onClose }) {
             </div>
           </div>
 
-          {/* Sold Out */}
-          <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-ink-100 hover:bg-ink-50 transition">
-            <input type="checkbox" checked={!!form.soldOut} onChange={f('soldOut')} className="w-4 h-4 rounded accent-red-500" />
-            <div>
-              <p className="text-sm font-semibold text-ink-800">Mark as Sold Out</p>
-              <p className="text-xs text-ink-400">Customers will see this item is unavailable</p>
-            </div>
-          </label>
-
-          {/* Stock & variants */}
-          <div className="space-y-3 border border-ink-100 rounded-xl p-3.5">
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input type="checkbox" checked={form.hasVariants} onChange={e => setForm(p => ({ ...p, hasVariants: e.target.checked }))} className="w-4 h-4 rounded accent-brand-500" />
-              <div>
-                <p className="text-sm font-semibold text-ink-800">Has options (size, color…)</p>
-                <p className="text-xs text-ink-400">Each option tracks its own stock</p>
-              </div>
-            </label>
-
-            {form.hasVariants ? (
-              <div className="space-y-2 pl-1">
-                {form.variants.map((v, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <input value={v.name} onChange={e => setVariant(i, 'name', e.target.value)} placeholder="e.g. Medium / Blue" className="input text-sm flex-1" />
-                    <input type="number" value={v.priceDelta} onChange={e => setVariant(i, 'priceDelta', e.target.value)} placeholder="+RWF" className="input text-sm w-16" title="Price adjustment" />
-                    <input type="number" value={v.stock} onChange={e => setVariant(i, 'stock', e.target.value)} placeholder="Stock" min="0" className="input text-sm w-16" />
-                    <input value={v.sku} onChange={e => setVariant(i, 'sku', e.target.value)} placeholder="SKU" className="input text-sm w-20" title="Stock keeping unit" />
-                    <button type="button" onClick={() => removeVariant(i)} className="btn btn-ghost btn-icon text-ink-400 hover:text-red-500 shrink-0"><X size={14} /></button>
-                  </div>
-                ))}
-                <button type="button" onClick={addVariant} className="btn btn-secondary btn-sm text-xs"><Plus size={12} /> Add option</button>
-              </div>
-            ) : (
-              <>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input type="checkbox" checked={form.trackStock} onChange={e => setForm(p => ({ ...p, trackStock: e.target.checked }))} className="w-4 h-4 rounded accent-brand-500" />
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-ink-800">Track stock</p>
-                    <p className="text-xs text-ink-400">Auto-marks out of stock at zero</p>
-                  </div>
-                  {form.trackStock && (
-                    <input type="number" value={form.stock} onChange={f('stock')} placeholder="Qty" min="0" className="input text-sm w-20" />
-                  )}
-                </label>
-                <div className="pl-7">
-                  <label className="label">SKU (optional)</label>
-                  <input value={form.sku} onChange={f('sku')} placeholder="e.g. BRC-001" className="input text-sm" />
-                </div>
-              </>
-            )}
-          </div>
-
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={onClose} className="btn btn-secondary flex-1">Cancel</button>
             <button type="submit" disabled={saving || uploading || addingCat} className="btn btn-primary flex-1">
@@ -288,9 +236,10 @@ export default function MenuPage() {
     refreshIfAuto()
   }
 
-  const toggleSoldOut = async (item) => {
+  const setAvailability = async (item, isAvailable) => {
+    if (isAvailable === item.isAvailable) return
     try {
-      const res = await menuAPI.update(item.id, { isAvailable: !item.isAvailable })
+      const res = await menuAPI.update(item.id, { isAvailable })
       setItems(prev => prev.map(i => i.id === item.id ? res.data.data : i))
       refreshIfAuto()
     } catch (e) { toast.error(e.response?.data?.error || 'Failed to update') }
@@ -425,11 +374,13 @@ export default function MenuPage() {
                         <Star size={15} className={item.isFeatured ? 'text-brand-500 fill-brand-500' : ''} />
                       </button>
                     )}
-                    <button onClick={() => toggleSoldOut(item)}
-                      title={item.isAvailable ? 'Mark sold out' : 'Mark available'}
-                      className={`btn btn-ghost btn-sm text-xs font-semibold px-2.5 ${!item.isAvailable ? 'text-emerald-600 hover:bg-emerald-50' : 'text-red-400 hover:bg-red-50'}`}>
-                      {item.isAvailable ? 'Sold Out' : 'Available'}
-                    </button>
+                    <select value={item.isAvailable ? 'available' : 'soldout'}
+                      onChange={e => setAvailability(item, e.target.value === 'available')}
+                      title="Available or sold out"
+                      className={`input text-xs font-semibold py-1.5 pl-2 pr-6 w-auto ${item.isAvailable ? 'text-emerald-600' : 'text-red-400'}`}>
+                      <option value="available">Available</option>
+                      <option value="soldout">Sold Out</option>
+                    </select>
                     <button onClick={() => { setEditItem(item); setShowModal(true) }}
                       className="btn btn-ghost btn-icon text-ink-400 hover:text-blue-500">
                       <Edit2 size={15} />
