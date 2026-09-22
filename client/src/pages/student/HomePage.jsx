@@ -5,6 +5,7 @@ import { restaurantAPI } from '../../services/api'
 import { useCartStore, useCustomerStore, useUIStore } from '../../store'
 import { useSocket } from '../../hooks/useSocket'
 import CartDrawer from '../../components/student/CartDrawer'
+import InstallApp from '../../components/student/InstallApp'
 import Seo from '../../components/Seo'
 import toast from 'react-hot-toast'
 
@@ -153,6 +154,7 @@ export default function HomePage() {
 
       {/* Restaurant grid */}
       <main className="page-container py-6 pb-16">
+        <div className="mb-5"><InstallApp variant="banner" /></div>
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {Array(6).fill(0).map((_, i) => (

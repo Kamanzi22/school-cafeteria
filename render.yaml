@@ -33,6 +33,13 @@ services:
         sync: false
       - key: EMAIL_APP_PASSWORD
         sync: false
+      # Phone/browser push notifications ("your order is ready" with the app closed). Generate a
+      # pair once with `npx web-push generate-vapid-keys` — they can't be auto-generated values.
+      # Without them push is simply off; in-app toasts and email still work.
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
 
   - type: web
     name: cafecampus-client

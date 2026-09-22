@@ -174,9 +174,8 @@ export default function DashboardPage() {
 
   const updateOrder = (updated) => setOrders(prev => prev.map(o => o.id === updated.id ? updated : o))
 
-  // Orders placed today that are still standing
-  const todayOrders = orders.filter(o => o.status !== 'cancelled' && isToday(new Date(o.createdAt)))
-  // Revenue is money actually collected: an order only counts once it's marked picked up, on the day that happens
+  // An order only counts once it's marked picked up, on the day that happens: that drives both
+  // Today's Orders and Today's Revenue (money actually collected)
   const pickedUpToday = orders.filter(o => o.status === 'picked_up' && isToday(new Date(o.pickedUpAt || o.createdAt)))
   const revenue = pickedUpToday.reduce((s, o) => s + o.totalPrice, 0)
   const newCount = orders.filter(o => o.status === 'pending').length
@@ -206,8 +205,8 @@ export default function DashboardPage() {
         {/* Stats row */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
           {[
-            { label: "Today's Orders", val: todayOrders.length, sub: 'not cancelled' },
-            { label: "Today's Revenue", val: `${revenue.toLocaleString()} RWF`, sub: `from ${pickedUpToday.length} picked up ${pickedUpToday.length === 1 ? 'order' : 'orders'}` },
+            { label: "Today's Orders", val: pickedUpToday.length, sub: 'picked up' },
+            { label: "Today's Revenue", val: `${revenue.toLocaleString()} RWF`, sub: 'collected at pickup' },
             { label: 'In Progress', val: orders.filter(o => !['ready', 'picked_up', 'cancelled'].includes(o.status)).length, sub: 'not yet ready', alert: newCount > 0 },
           ].map(s => (
             <div key={s.label} className={`card p-4 ${s.alert && s.val > 0 ? 'border-amber-300 bg-amber-50' : ''}`}>

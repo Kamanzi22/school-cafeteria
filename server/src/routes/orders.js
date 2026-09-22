@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const { authStaff, optionalCustomer, blockViewer } = require('../middleware/auth');
 const prisma = require('../lib/prisma');
+const { notifyOrderReady } = require('../lib/notifications');
 
 const genNum = () => 'CC-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2,5).toUpperCase();
 
@@ -221,6 +222,9 @@ router.patch('/:id/status', authStaff, blockViewer, async (req, res) => {
     req.app.get('io').to(`order:${req.params.id}`).emit('order:updated', updated);
     req.app.get('io').to(`restaurant:${order.restaurantId}`).emit('order:statusChanged', updated);
     if (updated.fulfillmentType === 'delivery') req.app.get('io').to('superadmin').to('delivery').emit('delivery:order', updated);
+    // Only on the transition into 'ready' — re-sending 'ready' (or touching a cancelled order)
+    // must not notify the customer a second time. Fire-and-forget: the email shouldn't hold up the response.
+    if (status === 'ready' && order.status !== 'ready' && order.status !== 'cancelled') notifyOrderReady(req.app.get('io'), updated);
     res.json({ success:true, data:updated });
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });

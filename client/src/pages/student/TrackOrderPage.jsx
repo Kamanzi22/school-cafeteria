@@ -25,7 +25,7 @@ export default function TrackOrderPage() {
   const { customer: student } = useCustomerStore()
 
   const socket = useSocket({
-    'order:updated': (updated) => { if (updated.id === id) { setOrder(updated); toast.success(`Order status: ${updated.status.replace('_', ' ')} 🔔`) } }
+    'order:updated': (updated) => { if (updated.id === id) { setOrder(updated); if (updated.status !== 'ready') toast.success(`Order status: ${updated.status.replace('_', ' ')} 🔔`) } }
   })
 
   useEffect(() => {

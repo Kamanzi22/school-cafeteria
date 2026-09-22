@@ -25,6 +25,15 @@ module.exports = (io) => {
     // secret, matching how GET /api/orders/:id already works for guest/anonymous tracking.
     socket.on('join:order', (id) => socket.join(`order:${id}`));
     socket.on('leave:order', (id) => socket.leave(`order:${id}`));
+    // A customer's personal notification channel ("your order is ready"). Unlike order tracking
+    // this is tied to the account, so it needs a valid customer token, and a customer can only
+    // ever join their own room.
+    socket.on('join:customer', ({ token } = {}) => {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (decoded.type === 'customer' || decoded.type === 'guest') socket.join(`customer:${decoded.id}`);
+      } catch {}
+    });
     // Live visitor feed — only a verified super-admin token can join this room.
     socket.on('join:superadmin', ({ token } = {}) => {
       try {

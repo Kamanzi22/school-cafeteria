@@ -26,6 +26,8 @@ const COPY = {
   restaurant_password_change: { subject: 'Confirm your password change — CaféCampus', heading: "Confirm it's you before we change your password." },
 };
 
+const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
 async function sendVerificationEmail({ to, code, link, purpose }) {
   const { subject, heading } = COPY[purpose] || { subject: 'Verify your email', heading: 'Confirm your email address.' };
   const creds = await getEffectiveCredentials();
@@ -52,4 +54,29 @@ async function sendVerificationEmail({ to, code, link, purpose }) {
   });
 }
 
-module.exports = { sendVerificationEmail };
+// "Your order is ready" — sent when a restaurant marks an order ready. Unlike the verification
+// email this is best-effort: with no email account configured it just logs and returns.
+async function sendOrderReadyEmail({ to, title, body, orderNumber, link }) {
+  const creds = await getEffectiveCredentials();
+  if (!creds) {
+    console.log(`\n📧 [email not configured] ${title} — ${body} (${orderNumber}) → ${to}\n`);
+    return;
+  }
+
+  const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user: creds.user, pass: creds.pass } });
+  await transporter.sendMail({
+    from: `"${creds.name}" <${creds.user}>`,
+    to,
+    subject: `${title} — CaféCampus`,
+    html: `
+      <div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:420px;margin:0 auto;padding:28px 24px">
+        <p style="font-size:20px;font-weight:700;color:#111;margin:0 0 8px">${escapeHtml(title)}</p>
+        <p style="font-size:15px;color:#333;margin:0 0 16px">${escapeHtml(body)}</p>
+        <p style="font-size:13px;color:#666;margin:0 0 4px">Order number</p>
+        <p style="font-size:22px;font-weight:700;font-family:monospace;color:#111;margin:0 0 20px">${escapeHtml(orderNumber)}</p>
+        ${link ? `<p style="margin:0"><a href="${link}" style="display:inline-block;background:#f97316;color:#fff;padding:11px 22px;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px">View Order</a></p>` : ''}
+      </div>`,
+  });
+}
+
+module.exports = { sendVerificationEmail, sendOrderReadyEmail };

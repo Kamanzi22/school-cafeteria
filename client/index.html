@@ -4,6 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#121212" />
+  <!-- Lets phones install the site to the home screen — required for push notifications on iPhone. -->
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-title" content="CaféCampus" />
   <!-- Static baseline for crawlers/link-preview bots that don't execute JS (Bing, WhatsApp,
        iMessage, Twitter, Facebook). Helmet (see src/components/Seo.jsx) overrides these per
        route for JS-capable crawlers like Googlebot — this tag is what everyone else sees. -->

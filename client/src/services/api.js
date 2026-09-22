@@ -101,6 +101,12 @@ export const customerAPI = {
   favorite: (customerId, restaurantId) => api.post(`/customers/${customerId}/favorite/${restaurantId}`),
 }
 
+export const pushAPI = {
+  publicKey: () => api.get('/push/public-key'),
+  subscribe: (subscription) => api.post('/push/subscribe', subscription),
+  unsubscribe: (endpoint) => api.post('/push/unsubscribe', { endpoint }),
+}
+
 export const analyticsAPI = { salesReport: (range, params = {}) => api.get('/analytics/sales-report', { params: { range, ...params } }) }
 
 export const promoAPI = {

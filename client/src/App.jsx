@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAdminStore } from './store'
+import { useOrderNotifications } from './hooks/useOrderNotifications'
 
 // Customer-facing
 import HomePage from './pages/student/HomePage'
@@ -32,6 +33,7 @@ function AdminGuard({ children }) {
 }
 
 export default function App() {
+  useOrderNotifications()
   return (
     <Routes>
       {/* ── Customer side ──────────────────────────────── */}

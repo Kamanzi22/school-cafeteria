@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { X, Plus, Minus, Trash2, ShoppingBag, ChevronRight, Loader } from 'lucide-react'
 import { useCartStore, useCustomerStore, useUIStore } from '../../store'
 import { orderAPI } from '../../services/api'
+import { enableNotifications } from '../../services/push'
 import toast from 'react-hot-toast'
 
 export default function CartDrawer() {
@@ -19,6 +20,8 @@ export default function CartDrawer() {
   const placeOrder = async () => {
     if (!customer) { closeCart(); navigate('/auth'); return }
     if (items.length === 0) return
+    // Straight from the click, so the browser lets the permission prompt show.
+    enableNotifications().catch(() => {})
     setPlacing(true)
     try {
       const results = await Promise.all(groups.map(group => {

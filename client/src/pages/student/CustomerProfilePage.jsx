@@ -4,6 +4,9 @@ import { ArrowLeft, LogOut, ShoppingBag, Star, User, Mail, Phone, Hash, UserPlus
 import { useCustomerStore } from '../../store'
 import { customerAPI } from '../../services/api'
 import { useBackNavigate } from '../../hooks/useBackNavigate'
+import { disablePush } from '../../services/push'
+import NotificationSettings from '../../components/student/NotificationSettings'
+import InstallApp from '../../components/student/InstallApp'
 import toast from 'react-hot-toast'
 
 export default function CustomerProfilePage() {
@@ -18,6 +21,9 @@ export default function CustomerProfilePage() {
     if (isGuest) {
       try { await customerAPI.deleteGuest(customer.id) } catch {}
     }
+    // Before logout() clears the token — the server call needs it, and the next person on a
+    // shared phone shouldn't get this customer's order alerts.
+    await disablePush()
     logout()
     navigate('/')
     toast.success('Signed out')
@@ -75,6 +81,9 @@ export default function CustomerProfilePage() {
             ))}
           </div>
         )}
+
+        <InstallApp />
+        <NotificationSettings />
 
         <Link to="/orders" className="btn btn-secondary w-full"><ShoppingBag size={16}/>My Orders</Link>
         <button onClick={handleLogout} className="btn btn-danger w-full"><LogOut size={16}/>Sign Out</button>

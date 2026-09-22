@@ -178,6 +178,23 @@ model Customer {
   orders        Order[]
   reviews       Review[]
   favorites     Favorite[]
+  pushSubscriptions PushSubscription[]
+}
+
+// One row per browser/phone a customer has allowed notifications on. `endpoint` is the push
+// service URL the browser handed us and is unique to that device, so it's the natural key —
+// re-subscribing (or a different account signing in on the same device) just updates the row.
+model PushSubscription {
+  id         String   @id @default(uuid())
+  customerId String
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  createdAt  DateTime @default(now())
+
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
 }
 
 // ─── ORDERS ─────────────────────────────────────────────────────────────────
