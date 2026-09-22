@@ -34,6 +34,9 @@ const parseStock = (v) => (v === undefined || v === null || v === '' ? null : Ma
 // A category id is only usable if it belongs to the caller's own restaurant
 const ownsCategory = async (restaurantId, categoryId) => !!(await prisma.menuCategory.findFirst({ where:{ id:categoryId, restaurantId }, select:{ id:true } }));
 const validPrice = (v) => v !== undefined && v !== null && v !== '' && Number.isFinite(parseFloat(v)) && parseFloat(v) >= 0;
+// Tells any customer with this restaurant's menu open right now to refetch it — same
+// broadcast-and-filter-client-side pattern as 'restaurant:status' for open/closed.
+const notifyMenuChanged = (req) => req.app.get('io').emit('menu:updated', { restaurantId: req.restaurantId });
 
 router.get('/search', async (req, res) => {
   try {
@@ -113,6 +116,7 @@ router.post('/', authStaff, blockViewer, requireManager, async (req, res) => {
       if (hasVariants) await syncVariants(tx, created.id, variants);
       return tx.menuItem.findUnique({ where:{ id: created.id }, include:{ category:true, variants:{ orderBy:{ sortOrder:'asc' } } } });
     });
+    notifyMenuChanged(req);
     res.json({ success:true, data: item });
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
@@ -140,6 +144,7 @@ router.put('/:id', authStaff, blockViewer, requireManager, async (req, res) => {
       if (variants !== undefined) await syncVariants(tx, req.params.id, hasVariants ? variants : []);
       return tx.menuItem.findUnique({ where:{ id: req.params.id }, include:{ category:true, variants:{ orderBy:{ sortOrder:'asc' } } } });
     });
+    notifyMenuChanged(req);
     res.json({ success:true, data: updated });
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
@@ -149,6 +154,7 @@ router.patch('/:id/toggle-available', authStaff, blockViewer, requireManager, as
     const item = await prisma.menuItem.findFirst({ where:{ id:req.params.id, restaurantId:req.restaurantId } });
     if (!item) return res.status(404).json({ success:false, error:'Not found' });
     const updated = await prisma.menuItem.update({ where:{ id:req.params.id }, data:{ isAvailable:!item.isAvailable } });
+    notifyMenuChanged(req);
     res.json({ success:true, data: updated });
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
@@ -160,6 +166,7 @@ router.patch('/:id/toggle-featured', authStaff, blockViewer, requireManager, asy
     const restaurant = await prisma.restaurant.findUnique({ where:{ id: req.restaurantId }, select:{ featuredMode:true } });
     if (restaurant?.featuredMode === 'auto') return res.status(409).json({ success:false, error:'Featured meals are set to Automatic. Switch to Manual to choose them yourself.' });
     const updated = await prisma.menuItem.update({ where:{ id:req.params.id }, data:{ isFeatured:!item.isFeatured } });
+    notifyMenuChanged(req);
     res.json({ success:true, data: updated });
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
@@ -169,6 +176,7 @@ router.delete('/:id', authStaff, blockViewer, requireManager, async (req, res) =
     const item = await prisma.menuItem.findFirst({ where:{ id:req.params.id, restaurantId:req.restaurantId } });
     if (!item) return res.status(404).json({ success:false, error:'Not found' });
     await prisma.menuItem.delete({ where:{ id:req.params.id } });
+    notifyMenuChanged(req);
     res.json({ success:true, data:null });
   } catch(e){
     if (e.code === 'P2003') return res.status(400).json({ success:false, error:'This item has existing orders and can\'t be deleted — mark it unavailable instead.' });
@@ -191,6 +199,7 @@ router.post('/categories', authStaff, blockViewer, requireManager, async (req, r
       const sortOrder = Math.max(1, ...existing.map(c => c.sortOrder)) + 1;
       return tx.menuCategory.create({ data:{ restaurantId:req.restaurantId, name, emoji:req.body.emoji||'🍴', sortOrder } });
     });
+    notifyMenuChanged(req);
     res.json({ success:true, data:cat });
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
@@ -198,7 +207,10 @@ router.post('/categories', authStaff, blockViewer, requireManager, async (req, r
 router.put('/categories/:id', authStaff, blockViewer, requireManager, async (req, res) => {
   try {
     const { name, emoji, sortOrder, isVisible } = req.body;
-    await prisma.menuCategory.updateMany({ where:{ id:req.params.id, restaurantId:req.restaurantId }, data:{ name, emoji, sortOrder:parseInt(sortOrder), isVisible } });
+    // parseInt(undefined) is NaN, not undefined — guard it so an omitted sortOrder doesn't
+    // overwrite the stored value with NaN (same pattern as the menu-item PUT above).
+    await prisma.menuCategory.updateMany({ where:{ id:req.params.id, restaurantId:req.restaurantId }, data:{ name, emoji, sortOrder:sortOrder!==undefined?parseInt(sortOrder):undefined, isVisible } });
+    notifyMenuChanged(req);
     res.json({ success:true, data:null });
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
@@ -206,6 +218,7 @@ router.put('/categories/:id', authStaff, blockViewer, requireManager, async (req
 router.delete('/categories/:id', authStaff, blockViewer, requireManager, async (req, res) => {
   try {
     await prisma.menuCategory.deleteMany({ where:{ id:req.params.id, restaurantId:req.restaurantId } });
+    notifyMenuChanged(req);
     res.json({ success:true, data:null });
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });

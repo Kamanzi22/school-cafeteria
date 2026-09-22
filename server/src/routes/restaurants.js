@@ -64,7 +64,11 @@ router.get('/:id', optionalCustomer, async (req, res) => {
   try {
     const r = await prisma.restaurant.findFirst({
       where: { OR:[{ id: req.params.id }, { slug: req.params.id }], isDeleted: false, isApproved: true },
-      include: { categories:{ where:{ isVisible:true }, orderBy:{ sortOrder:'asc' } }, items:{ where:{ isAvailable:true }, include:{ variants:{ orderBy:{ sortOrder:'asc' } } }, orderBy:[{ isFeatured:'desc' }, { sortOrder:'asc' }] }, promotions:{ where:{ isActive:true, validFrom:{ lte: new Date() }, validUntil:{ gte: new Date() } } } }
+      // Sold-out items still come down (grayed out, unorderable) rather than vanishing — the
+      // "Mark as Sold Out" toggle in the restaurant admin says "Customers will see this item is
+      // unavailable", and the menu UI already has a whole "86'd" / disabled-add-button state
+      // built for exactly this. Order placement still re-checks isAvailable server-side.
+      include: { categories:{ where:{ isVisible:true }, orderBy:{ sortOrder:'asc' } }, items:{ include:{ variants:{ orderBy:{ sortOrder:'asc' } } }, orderBy:[{ isAvailable:'desc' }, { isFeatured:'desc' }, { sortOrder:'asc' }] }, promotions:{ where:{ isActive:true, validFrom:{ lte: new Date() }, validUntil:{ gte: new Date() } } } }
     });
     if (!r) return res.status(404).json({ success: false, error: 'Restaurant not found' });
     let isFavorited = false;

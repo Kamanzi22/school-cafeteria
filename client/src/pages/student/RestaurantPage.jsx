@@ -7,6 +7,7 @@ import CartDrawer from '../../components/student/CartDrawer'
 import Seo from '../../components/Seo'
 import { useBackNavigate } from '../../hooks/useBackNavigate'
 import { useVisitTracking } from '../../hooks/useVisitTracking'
+import { useSocket } from '../../hooks/useSocket'
 import toast from 'react-hot-toast'
 
 // Category names that actually have meals, in the restaurant's own category order (Food, then Drinks)
@@ -91,6 +92,15 @@ export default function RestaurantPage() {
       setLoading(false)
     }).catch(() => { setLoading(false); navigate('/') })
   }, [id])
+
+  // A restaurant editing its menu (sold out, price, new item…) while this customer already has
+  // the page open — refetch quietly rather than making them reload to see it.
+  useSocket({
+    'menu:updated': ({ restaurantId } = {}) => {
+      if (restaurantId !== id) return
+      restaurantAPI.get(id).then(r => setRestaurant(r.data.data)).catch(() => {})
+    }
+  })
 
   useEffect(() => {
     if (loading || !restaurant || !focusItemId) return

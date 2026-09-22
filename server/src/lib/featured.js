@@ -17,7 +17,7 @@ function applyAutoFeatured(items) {
   const picked = new Set(pickAutoFeatured(items));
   return items
     .map(i => ({ ...i, isFeatured: picked.has(i.id) }))
-    .sort((a, b) => (Number(b.isFeatured) - Number(a.isFeatured)) || (a.sortOrder - b.sortOrder));
+    .sort((a, b) => (Number(b.isAvailable) - Number(a.isAvailable)) || (Number(b.isFeatured) - Number(a.isFeatured)) || (a.sortOrder - b.sortOrder));
 }
 
 module.exports = { AUTO_FEATURED_COUNT, pickAutoFeatured, applyAutoFeatured };
