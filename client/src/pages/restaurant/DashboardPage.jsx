@@ -4,6 +4,7 @@ import { orderAPI } from '../../services/api'
 import { useAdminStore } from '../../store'
 import { useSocket, getSocket } from '../../hooks/useSocket'
 import AdminLayout from '../../components/restaurant/AdminLayout'
+import AppNudge from '../../components/restaurant/AppNudge'
 import { format, formatDistanceToNow, isToday } from 'date-fns'
 import toast from 'react-hot-toast'
 
@@ -190,6 +191,8 @@ export default function DashboardPage() {
   return (
     <AdminLayout newOrderCount={newCount}>
       <div className="p-6">
+        {!isViewer && <AppNudge />}
+
         {/* Page header */}
         <div className="flex items-center justify-between gap-3 mb-6">
           <div className="min-w-0">

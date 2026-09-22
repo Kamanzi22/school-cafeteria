@@ -3,7 +3,7 @@ import { LayoutDashboard, UtensilsCrossed, Receipt, Tag, Star, Settings, LogOut,
 import { useAdminStore } from '../../store'
 import { restaurantAPI } from '../../services/api'
 import { restaurantPush } from '../../services/push'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
 
 const NAV = [
@@ -21,7 +21,21 @@ export default function AdminLayout({ children, newOrderCount = 0 }) {
   const navigate = useNavigate()
   const [toggling, setToggling] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [pushState, setPushState] = useState(null)
   const isViewer = role === 'viewer'
+
+  useEffect(() => { restaurantPush.getPushState().then(setPushState).catch(() => setPushState('unsupported')) }, [])
+
+  // The bell is the one-tap way to turn on new-order alerts. Once they're on there's nothing
+  // left to tap for (a site can't revoke its own notification permission), so it just confirms.
+  const handleBell = async () => {
+    if (pushState === 'on') { toast('Notifications are already on 🔔'); return }
+    if (pushState === 'blocked') { toast.error('Notifications are blocked for this site — allow them in your browser or phone settings'); return }
+    if (pushState === 'needs-install' || pushState === 'unsupported') { navigate('/admin/settings'); return }
+    const next = await restaurantPush.enableNotifications()
+    setPushState(next)
+    if (next === 'on') toast.success('Notifications on 🔔')
+  }
 
   const handleToggle = async () => {
     setToggling(true)
@@ -144,7 +158,9 @@ export default function AdminLayout({ children, newOrderCount = 0 }) {
           <span className="font-bold text-ink-900 text-sm">{restaurant?.name}</span>
           <div className="flex items-center gap-1">
             {newOrderCount > 0 && <span className="w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">{newOrderCount}</span>}
-            <Link to="/admin" className="btn btn-ghost btn-icon"><Bell size={18} /></Link>
+            <button onClick={handleBell} title={pushState === 'on' ? 'Notifications on' : 'Turn on new-order notifications'} className="btn btn-ghost btn-icon">
+              <Bell size={18} className={pushState === 'on' ? 'text-brand-500 fill-brand-500' : ''} />
+            </button>
           </div>
         </div>
         {children}

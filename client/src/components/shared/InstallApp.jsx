@@ -22,17 +22,20 @@ const IosSteps = () => (
 // already installed or this browser can't install it, so it never shows a control that can't
 // work. title/subtitle/emoji/installedToast let the restaurant and super admin apps reuse this
 // with their own copy — the underlying install prompt is the same browser API either way.
-export default function InstallApp({ variant = 'card', title = 'Get the CaféCampus app', subtitle = 'Add it to your phone for order-ready alerts.', emoji = '🍽️', installedToast = 'CaféCampus installed 🎉', buttonClassName = 'btn btn-ghost text-ink-400 text-sm' }) {
+export default function InstallApp({ variant = 'card', title = 'Get the CaféCampus app', subtitle = 'Add it to your phone for order-ready alerts.', emoji = '🍽️', installedToast = 'CaféCampus installed 🎉', buttonClassName = 'btn btn-ghost text-ink-400 text-sm', onInstalled }) {
   const state = useInstallState()
   const [showSteps, setShowSteps] = useState(false)
   const [dismissed, setDismissed] = useState(variant === 'banner' && wasDismissed())
 
   if (state === 'installed' || state === 'unavailable' || dismissed) return null
 
+  // Android/desktop only — the native prompt resolves right here, still within the tap's user
+  // activation, so this is the one place we can chase it with a second prompt (e.g. notification
+  // permission) without the browser silently ignoring it. iOS has no such signal (see AppNudge).
   const install = async () => {
     if (state === 'ios') return setShowSteps(s => !s)
     const outcome = await promptInstall()
-    if (outcome === 'accepted') toast.success(installedToast)
+    if (outcome === 'accepted') { toast.success(installedToast); onInstalled?.() }
   }
   const dismiss = () => {
     try { localStorage.setItem(DISMISS_KEY, '1') } catch {}
