@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Download, Share, X } from 'lucide-react'
+import { Download, Share, MoreHorizontal, ArrowRight, X } from 'lucide-react'
 import { useInstallState, promptInstall } from '../../services/install'
 import toast from 'react-hot-toast'
 
@@ -34,8 +34,12 @@ export default function InstallApp({ variant = 'card' }) {
         <p className="text-xs text-alu-muted mt-0.5">Add it to your phone for one-tap ordering and order-ready alerts.</p>
         <button onClick={install} className="btn btn-primary btn-sm mt-3"><Download size={14} />Install app</button>
         {state === 'ios' && showSteps && (
-          <p className="text-xs text-alu-muted mt-3">
-            Tap <Share size={12} className="inline -mt-0.5" /> Share in your browser's toolbar, then choose <strong>Add to Home Screen</strong>.
+          <p className="text-xs text-alu-muted mt-3 flex flex-wrap items-center gap-1.5">
+            <span className="inline-flex items-center gap-1">Tap <Share size={12} className="inline -mt-0.5" /> <strong>Share</strong></span>
+            <ArrowRight size={11} className="inline text-alu-muted/70" />
+            <span className="inline-flex items-center gap-1"><MoreHorizontal size={12} className="inline -mt-0.5" /> <strong>View More</strong></span>
+            <ArrowRight size={11} className="inline text-alu-muted/70" />
+            <strong>Add to Home Screen</strong>
           </p>
         )}
       </div>
