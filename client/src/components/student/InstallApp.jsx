@@ -31,7 +31,7 @@ export default function InstallApp({ variant = 'card' }) {
       <span className="text-2xl leading-none mt-0.5">🍽️</span>
       <div className="flex-1 min-w-0">
         <p className="font-bold text-alu-cream text-sm">Get the CaféCampus app</p>
-        <p className="text-xs text-alu-muted mt-0.5">Add it to your phone for one-tap ordering and order-ready alerts.</p>
+        <p className="text-xs text-alu-muted mt-0.5">Add it to your phone for order-ready alerts.</p>
         <button onClick={install} className="btn btn-primary btn-sm mt-3"><Download size={14} />Install app</button>
         {state === 'ios' && showSteps && (
           <p className="text-xs text-alu-muted mt-3 flex flex-wrap items-center gap-1.5">
