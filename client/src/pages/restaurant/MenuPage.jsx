@@ -338,8 +338,8 @@ export default function MenuPage() {
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-sm text-white truncate">{item.name}</span>
+                  <span className="font-semibold text-sm text-white truncate block">{item.name}</span>
+                  <div className="flex items-center gap-2 flex-wrap mt-1">
                     {item.isFeatured && (
                       <span className="badge bg-brand-500/15 text-brand-500 text-[10px] shrink-0">
                         ★ {featuredMode === 'auto' ? 'Auto-featured' : 'Featured'}
