@@ -69,6 +69,7 @@ model Restaurant {
   reviews       Review[]
   promotions    Promotion[]
   visits        RestaurantVisit[]
+  pushSubscriptions RestaurantPushSubscription[]
 }
 
 model RestaurantStaff {
@@ -195,6 +196,23 @@ model PushSubscription {
   customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
   @@index([customerId])
+}
+
+// Same idea as PushSubscription, but for a restaurant's own devices (owner/staff) — used for
+// "someone placed an order" alerts. Not tied to a specific staff member: any device signed in
+// under the restaurant that turns notifications on gets them, same scope as the socket
+// 'restaurant:<id>' room.
+model RestaurantPushSubscription {
+  id           String     @id @default(uuid())
+  restaurantId String
+  endpoint     String     @unique
+  p256dh       String
+  auth         String
+  createdAt    DateTime   @default(now())
+
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId])
 }
 
 // ─── ORDERS ─────────────────────────────────────────────────────────────────

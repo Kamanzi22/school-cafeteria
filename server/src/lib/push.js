@@ -41,4 +41,22 @@ async function sendPushToCustomer(customerId, payload) {
   } catch (e) { console.error('Push notification failed:', e.message); }
 }
 
-module.exports = { pushEnabled: enabled, publicKey: VAPID_PUBLIC_KEY || null, isAllowedEndpoint, sendPushToCustomer };
+// Same as sendPushToCustomer, but to every device subscribed to a restaurant (owner/staff —
+// "someone placed an order").
+async function sendPushToRestaurant(restaurantId, payload) {
+  if (!enabled) return;
+  try {
+    const subs = await prisma.restaurantPushSubscription.findMany({ where: { restaurantId } });
+    const body = JSON.stringify(payload);
+    await Promise.all(subs.map(async (s) => {
+      try {
+        await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, body, { TTL: 60 * 60 });
+      } catch (e) {
+        if (e.statusCode === 404 || e.statusCode === 410) await prisma.restaurantPushSubscription.deleteMany({ where: { id: s.id } });
+        else console.error('Restaurant push send failed:', e.statusCode || '', e.message);
+      }
+    }));
+  } catch (e) { console.error('Restaurant push notification failed:', e.message); }
+}
+
+module.exports = { pushEnabled: enabled, publicKey: VAPID_PUBLIC_KEY || null, isAllowedEndpoint, sendPushToCustomer, sendPushToRestaurant };

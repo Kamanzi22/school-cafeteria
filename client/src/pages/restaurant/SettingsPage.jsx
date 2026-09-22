@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { Save, Loader, ToggleLeft, ToggleRight, Lock, Mail, Trash2, AlertTriangle, ImagePlus } from 'lucide-react'
 import { restaurantAPI, uploadAPI, verifyAPI } from '../../services/api'
+import { restaurantPush } from '../../services/push'
 import { useAdminStore } from '../../store'
 import AdminLayout from '../../components/restaurant/AdminLayout'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import VerifyCodeStep from '../../components/shared/VerifyCodeStep'
+import InstallApp from '../../components/shared/InstallApp'
+import NotificationSettings from '../../components/shared/NotificationSettings'
 import toast from 'react-hot-toast'
 
 export default function SettingsPage() {
@@ -157,6 +160,23 @@ export default function SettingsPage() {
               {restaurant?.isAccepting ? 'Accepting' : 'Paused'}
             </button>
           </div>
+        </div>
+
+        {/* App & notifications */}
+        <div className="space-y-3">
+          <InstallApp
+            title="Get the CaféCampus restaurant app"
+            subtitle="Add it to this device for a faster dashboard and new-order alerts."
+            emoji="🏪"
+            installedToast="Restaurant app installed 🎉"
+          />
+          <NotificationSettings
+            push={restaurantPush}
+            title="New order notifications"
+            onDescription="On — this device will be alerted the moment a customer places an order, even if the app is closed."
+            offDescription="Get an alert on this device the moment a customer places an order, even if the app is closed."
+            appName="the CaféCampus restaurant app"
+          />
         </div>
 
         {/* Profile */}

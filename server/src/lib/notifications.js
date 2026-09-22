@@ -1,5 +1,5 @@
 const { sendOrderReadyEmail } = require('./mailer');
-const { sendPushToCustomer } = require('./push');
+const { sendPushToCustomer, sendPushToRestaurant } = require('./push');
 
 const CLIENT_URL = (process.env.CLIENT_URL || '').split(',')[0]?.trim() || '';
 
@@ -41,4 +41,17 @@ async function notifyOrderReady(io, order) {
   await Promise.all([email, push]);
 }
 
-module.exports = { notifyOrderReady };
+// Tells the restaurant a new order came in — the dashboard already shows it live via socket
+// while open (see 'order:new' in orders.js), this is the push notification so a device with the
+// app closed or backgrounded still gets alerted. Never throws.
+async function notifyNewOrder(order) {
+  const push = sendPushToRestaurant(order.restaurantId, {
+    title: 'New order 🔔',
+    body: `${order.customer?.name || order.guestName || 'A customer'} placed an order — ${order.orderNumber}`,
+    tag: `new-order-${order.id}`,
+    url: '/admin',
+  }).catch((e) => console.error('New-order push failed:', e.message));
+  await push;
+}
+
+module.exports = { notifyOrderReady, notifyNewOrder };

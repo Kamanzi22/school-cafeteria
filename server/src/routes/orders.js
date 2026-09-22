@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const { authStaff, optionalCustomer, blockViewer } = require('../middleware/auth');
 const prisma = require('../lib/prisma');
-const { notifyOrderReady } = require('../lib/notifications');
+const { notifyOrderReady, notifyNewOrder } = require('../lib/notifications');
 
 const genNum = () => 'CC-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2,5).toUpperCase();
 
@@ -136,6 +136,7 @@ router.post('/', async (req, res) => {
 
     req.app.get('io').to(`restaurant:${restaurantId}`).emit('order:new', order);
     if (order.fulfillmentType === 'delivery') req.app.get('io').to('superadmin').to('delivery').emit('delivery:order', order);
+    notifyNewOrder(order);
     res.json({ success:true, data: order });
   } catch(e){
     if (e instanceof OrderValidationError) return res.status(400).json({ success:false, error:e.message });

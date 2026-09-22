@@ -4,6 +4,7 @@ import { Shield, Store, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn
 import { superAdminAPI, authAPI } from '../../services/api'
 import { useAdminStore } from '../../store'
 import { useSocket, getSocket } from '../../hooks/useSocket'
+import InstallApp from '../../components/shared/InstallApp'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 import jsPDF from 'jspdf'
@@ -523,6 +524,7 @@ export default function SuperAdminPage() {
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <Link to="/superadmin/delivery" className="btn btn-ghost text-ink-400 text-sm"><Backpack size={14} /> Delivery</Link>
+            <InstallApp variant="button" title="Get the CaféCampus admin app" installedToast="Admin app installed 🎉" />
             <button onClick={() => setPwModal(true)} className="btn btn-ghost text-ink-400 text-sm"><Lock size={14} /> Change Password</button>
             <button onClick={openEmailSettings} className="btn btn-ghost text-ink-400 text-sm"><Mail size={14} /> Email Settings</button>
             <a href="/" className="btn btn-ghost text-ink-400 text-sm">← Student App</a>

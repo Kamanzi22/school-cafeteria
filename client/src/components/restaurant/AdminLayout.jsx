@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { LayoutDashboard, UtensilsCrossed, Receipt, Tag, Star, Settings, LogOut, ToggleLeft, ToggleRight, Bell, ChevronRight, Eye, X } from 'lucide-react'
 import { useAdminStore } from '../../store'
 import { restaurantAPI } from '../../services/api'
+import { restaurantPush } from '../../services/push'
 import { useState } from 'react'
 import toast from 'react-hot-toast'
 
@@ -32,7 +33,9 @@ export default function AdminLayout({ children, newOrderCount = 0 }) {
     finally { setToggling(false) }
   }
 
-  const handleLogout = () => { logout(); navigate('/restaurant/auth') }
+  // Before logout() clears the token — the unsubscribe call needs it, and the next person on a
+  // shared device shouldn't get this restaurant's order alerts.
+  const handleLogout = async () => { await restaurantPush.disablePush(); logout(); navigate('/restaurant/auth') }
   const exitViewer = () => { logout(); navigate('/superadmin') }
 
   const isOpen = restaurant?.isOpen

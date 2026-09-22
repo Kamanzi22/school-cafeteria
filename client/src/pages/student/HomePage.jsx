@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Search, ShoppingBag, User, Star, Clock, MapPin, TrendingUp } from 'lucide-react'
 import { restaurantAPI } from '../../services/api'
-import { useCartStore, useCustomerStore, useUIStore } from '../../store'
+import { useCartStore, useCustomerStore, useUIStore, useAdminStore } from '../../store'
 import { useSocket } from '../../hooks/useSocket'
 import CartDrawer from '../../components/student/CartDrawer'
-import InstallApp from '../../components/student/InstallApp'
+import InstallApp from '../../components/shared/InstallApp'
 import Seo from '../../components/Seo'
 import toast from 'react-hot-toast'
 
@@ -76,10 +76,27 @@ export default function HomePage() {
   const [restaurants, setRestaurants] = useState([])
   const [loading, setLoading] = useState(true)
   const { customer: student } = useCustomerStore()
+  const { restaurant: adminRestaurant, token: adminToken } = useAdminStore()
   const { count } = useCartStore()
   const { cartOpen, openCart, closeCart } = useUIStore()
   const cartCount = count()
   const navigate = useNavigate()
+
+  // The restaurant/admin "install" buttons and the customer one all point at this same origin,
+  // so on Android the installed icon isn't always guaranteed to land on its own manifest's
+  // start_url — if this got launched standalone (home-screen icon) straight to the customer
+  // home but the device is actually signed in to a restaurant or super admin session (and not
+  // a customer one), send it to that dashboard instead of showing an empty "sign in" homepage.
+  useEffect(() => {
+    if (student) return
+    const standalone = window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone === true
+    if (!standalone) return
+    if (adminToken && adminRestaurant) { navigate('/admin', { replace: true }); return }
+    try {
+      const superadmin = JSON.parse(localStorage.getItem('cc-superadmin-v1') || '{}')?.state?.token
+      if (superadmin) navigate('/superadmin', { replace: true })
+    } catch {}
+  }, [])
 
   useSocket({
     'restaurant:status': ({ restaurantId, isOpen }) =>

@@ -5,8 +5,8 @@ import { useCustomerStore } from '../../store'
 import { customerAPI } from '../../services/api'
 import { useBackNavigate } from '../../hooks/useBackNavigate'
 import { disablePush } from '../../services/push'
-import NotificationSettings from '../../components/student/NotificationSettings'
-import InstallApp from '../../components/student/InstallApp'
+import NotificationSettings from '../../components/shared/NotificationSettings'
+import InstallApp from '../../components/shared/InstallApp'
 import toast from 'react-hot-toast'
 
 export default function CustomerProfilePage() {
