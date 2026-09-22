@@ -246,10 +246,13 @@ export default function RestaurantPage() {
             <div className="flex gap-3 overflow-x-auto scrollbar-hide -mx-1 px-1 pb-1">
               {featuredItems.map(item => (
                 <button key={item.id} onClick={() => setActiveCategory(categoryTabOf(item))}
-                  className="flex-none flex flex-col items-center gap-1.5 w-24 group">
-                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl transition group-hover:scale-105"
+                  className={`flex-none flex flex-col items-center gap-1.5 w-24 group ${!item.isAvailable ? 'opacity-50' : ''}`}>
+                  <div className="relative w-16 h-16 rounded-2xl flex items-center justify-center text-3xl transition group-hover:scale-105"
                     style={{ background: `${restaurant.coverColor}18` }}>
                     {item.emoji}
+                    {!item.isAvailable && (
+                      <span className="absolute inset-0 rounded-2xl bg-black/50 flex items-center justify-center text-[9px] font-bold text-white">Sold Out</span>
+                    )}
                   </div>
                   <p className="text-xs font-medium text-ink-700 text-center leading-tight line-clamp-2">{item.name}</p>
                   <p className="text-xs font-bold text-flame-500">{item.price.toLocaleString()}</p>
@@ -293,17 +296,18 @@ export default function RestaurantPage() {
             const canOrder = restaurant.isOpen && restaurant.isAccepting && item.isAvailable && !outOfStock
             const lowStock = !item.hasVariants && item.trackStock && item.stock > 0 && item.stock <= 5
             return (
-              <div key={item.id} id={`item-${item.id}`} className={`card flex gap-4 p-4 transition-all ${!item.isAvailable ? 'opacity-50' : ''} ${isFocus ? 'bg-white border-white text-ink-900' : ''}`}>
+              <div key={item.id} id={`item-${item.id}`} className={`card flex gap-4 p-4 transition-all ${!item.isAvailable ? 'opacity-50 cursor-not-allowed' : ''} ${isFocus ? 'bg-white border-white text-ink-900' : ''}`}>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start gap-2 flex-wrap mb-0.5">
                     <h3 className={`font-semibold text-sm ${isFocus ? 'text-ink-900' : 'text-alu-cream'}`}>{item.name}</h3>
+                    {!item.isAvailable && <span className="badge bg-red-100 text-red-500 text-[10px]">Sold Out</span>}
                     {item.isFeatured && <span className="badge bg-flame-100 text-flame-600 text-[10px]">★ Featured</span>}
                     {item.isPopular && <span className="badge bg-purple-100 text-purple-600 text-[10px]">🔥 Popular</span>}
                     {item.isVegan && <span className="tag-vegan text-[10px]">Vegan</span>}
                     {!item.isVegan && item.isVeg && <span className="tag-veg text-[10px]">Veg</span>}
                     {item.isSpicy && <span className="tag-spicy text-[10px]">Spicy 🌶</span>}
                     {lowStock && <span className="badge bg-amber-100 text-amber-600 text-[10px]">Only {item.stock} left</span>}
-                    {outOfStock && <span className="badge bg-ink-100 text-ink-400 text-[10px]">Out of stock</span>}
+                    {item.isAvailable && outOfStock && <span className="badge bg-ink-100 text-ink-400 text-[10px]">Out of stock</span>}
                   </div>
                   {item.description && <p className={`text-xs ${mutedText} mt-0.5 line-clamp-2`}>{item.description}</p>}
                   <div className="flex items-center gap-3 mt-2 flex-wrap">
