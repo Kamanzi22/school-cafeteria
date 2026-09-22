@@ -47,7 +47,31 @@ services:
     rootDir: client
     buildCommand: npm install && npm run build
     staticPublishPath: dist
+    # Order matters: specific rules first, SPA catch-all last. /admin* and /restaurant/auth* (the
+    # restaurant owner/staff app) and /superadmin* each get their own HTML shell (admin.html /
+    # superadmin.html) with their own web manifest baked in, so "Install app" installs as that
+    # app's own identity instead of the customer one — see client/vite.config.js. Everything else
+    # (including /restaurant/:id, the customer-facing menu page — never matched by /restaurant/auth*)
+    # falls through to the default index.html.
     routes:
+      - type: rewrite
+        source: /superadmin
+        destination: /superadmin.html
+      - type: rewrite
+        source: /superadmin/*
+        destination: /superadmin.html
+      - type: rewrite
+        source: /admin
+        destination: /admin.html
+      - type: rewrite
+        source: /admin/*
+        destination: /admin.html
+      - type: rewrite
+        source: /restaurant/auth
+        destination: /admin.html
+      - type: rewrite
+        source: /restaurant/auth/*
+        destination: /admin.html
       - type: rewrite
         source: /*
         destination: /index.html

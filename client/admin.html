@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#121212" />
+  <meta name="robots" content="noindex" />
+  <!-- Own HTML shell (not index.html) for the /admin* and /restaurant/auth* restaurant-owner
+       routes — see render.yaml. A separate static entry, rather than swapping the manifest link
+       with JS after mount, is what makes "Install app" here install AS the restaurant app
+       instead of the customer one: the browser decides installability from whatever manifest is
+       already in the page it fetched, before any React code runs, so there's no race to lose. -->
+  <link rel="manifest" href="/manifest-restaurant.webmanifest" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-title" content="CaféCampus Restaurant" />
+  <title>CaféCampus Restaurant — Manage your store</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏪</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+</html>
