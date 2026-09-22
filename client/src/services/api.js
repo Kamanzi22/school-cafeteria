@@ -144,7 +144,6 @@ export const superAdminAPI = {
   getDeliveryHistory: (date, type) => api.get('/superadmin/delivery-orders/history', { params: { date, type } }),
   getSettings: () => api.get('/superadmin/settings'),
   updateSettings: (d) => api.put('/superadmin/settings', d),
-  resetSmtp: (purpose) => api.delete(`/superadmin/settings/smtp/${purpose}`),
 }
 
 // Public support contact (phone/email) shown on the customer and restaurant apps — no auth needed.

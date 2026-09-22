@@ -172,15 +172,9 @@ export default function SuperAdminPage() {
   const [pwForm, setPwForm] = useState({ currentPassword:'', newPassword:'', confirm:'' })
   const [pwSaving, setPwSaving] = useState(false)
   const [emailSettingsModal, setEmailSettingsModal] = useState(false)
-  const [emailSettingsForm, setEmailSettingsForm] = useState({
-    noreplyName:'', noreplyEmail:'', noreplyAppPassword:'',
-    infoName:'', infoEmail:'', infoAppPassword:'',
-    supportName:'', supportEmail:'', supportPhone:'',
-  })
-  const [smtpConfigured, setSmtpConfigured] = useState({ noreply:false, info:false })
+  const [emailSettingsForm, setEmailSettingsForm] = useState({ supportName:'', supportEmail:'', supportPhone:'' })
   const [emailSettingsLoading, setEmailSettingsLoading] = useState(false)
   const [emailSettingsSaving, setEmailSettingsSaving] = useState(false)
-  const [smtpResetting, setSmtpResetting] = useState(null) // null | 'noreply' | 'info'
   const navigate = useNavigate()
   const { loginViewer, logout: exitAdminSession, role: adminRole } = useAdminStore()
 
@@ -424,12 +418,7 @@ export default function SuperAdminPage() {
     setEmailSettingsLoading(true)
     try {
       const d = (await superAdminAPI.getSettings()).data.data
-      setEmailSettingsForm({
-        noreplyName: d.noreplyName || '', noreplyEmail: d.noreplyEmail || '', noreplyAppPassword: '',
-        infoName: d.infoName || '', infoEmail: d.infoEmail || '', infoAppPassword: '',
-        supportName: d.supportName || '', supportEmail: d.supportEmail || '', supportPhone: d.supportPhone || '',
-      })
-      setSmtpConfigured({ noreply: d.noreplySmtpConfigured, info: d.infoSmtpConfigured })
+      setEmailSettingsForm({ supportName: d.supportName || '', supportEmail: d.supportEmail || '', supportPhone: d.supportPhone || '' })
     } catch { toast.error('Could not load settings') }
     finally { setEmailSettingsLoading(false) }
   }
@@ -438,23 +427,10 @@ export default function SuperAdminPage() {
     e.preventDefault()
     setEmailSettingsSaving(true)
     try {
-      const res = await superAdminAPI.updateSettings(emailSettingsForm)
-      toast.success('Email settings saved!')
-      setSmtpConfigured({ noreply: res.data.data.noreplySmtpConfigured, info: res.data.data.infoSmtpConfigured })
-      setEmailSettingsForm(p => ({ ...p, noreplyAppPassword:'', infoAppPassword:'' }))
+      await superAdminAPI.updateSettings(emailSettingsForm)
+      toast.success('Support contact saved!')
     } catch (e2) { toast.error(e2.response?.data?.error || 'Could not save settings') }
     finally { setEmailSettingsSaving(false) }
-  }
-
-  const resetSmtp = async (purpose) => {
-    if (!window.confirm(`Stop using this account for ${purpose} and fall back to the server's environment default?`)) return
-    setSmtpResetting(purpose)
-    try {
-      await superAdminAPI.resetSmtp(purpose)
-      toast.success('Reverted to environment default')
-      setSmtpConfigured(p => ({ ...p, [purpose]: false }))
-    } catch { toast.error('Failed') }
-    finally { setSmtpResetting(null) }
   }
 
   const viewStore = async (id) => {
@@ -526,7 +502,7 @@ export default function SuperAdminPage() {
             <Link to="/superadmin/delivery" className="btn btn-ghost text-ink-400 text-sm"><Backpack size={14} /> Delivery</Link>
             <InstallApp variant="button" title="Get the CaféCampus admin app" installedToast="Admin app installed 🎉" />
             <button onClick={() => setPwModal(true)} className="btn btn-ghost text-ink-400 text-sm"><Lock size={14} /> Change Password</button>
-            <button onClick={openEmailSettings} className="btn btn-ghost text-ink-400 text-sm"><Mail size={14} /> Email Settings</button>
+            <button onClick={openEmailSettings} className="btn btn-ghost text-ink-400 text-sm"><Mail size={14} /> Support Contact</button>
             <a href="/" className="btn btn-ghost text-ink-400 text-sm">← Student App</a>
             <button onClick={signOut} className="btn btn-ghost text-red-400 text-sm"><LogOut size={14} /> Sign out</button>
           </div>
@@ -809,58 +785,19 @@ export default function SuperAdminPage() {
         </div>
       )}
 
-      {/* Email settings modal — three independent identities: noreply/info/support */}
+      {/* Support contact modal — the phone/email shown to customers and restaurant owners.
+          Noreply (verification emails) and Info keep working server-side exactly as before;
+          they're just no longer editable from this panel. */}
       {emailSettingsModal && (
         <div className="fixed inset-0 bg-ink-950/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
-            <h3 className="font-bold text-lg text-ink-900 mb-1 flex items-center gap-2"><Mail size={16}/>Email Settings</h3>
-            <p className="text-xs text-ink-400 mb-4">Three separate identities. Only Noreply is wired to a live feature (verification emails) today — Info and Support are stored ready for future features and don't send anything yet.</p>
+            <h3 className="font-bold text-lg text-ink-900 mb-1 flex items-center gap-2"><Mail size={16}/>Support Contact</h3>
+            <p className="text-xs text-ink-400 mb-4">Shown to customers and restaurant owners on their profile/settings page when they need to reach you.</p>
             {emailSettingsLoading ? (
               <div className="py-6 text-center"><Loader size={20} className="animate-spin text-brand-500 mx-auto" /></div>
             ) : (
               <form onSubmit={saveEmailSettings} className="space-y-5">
-                {/* Noreply — powers verification emails right now */}
-                <div className="border border-ink-100 rounded-xl p-4 space-y-3">
-                  <div>
-                    <p className="font-semibold text-sm text-ink-900">Noreply</p>
-                    <p className="text-xs text-ink-400">Sends verification codes/links to customers and restaurants. Live.</p>
-                  </div>
-                  <div><label className="label">Sender Name</label><input value={emailSettingsForm.noreplyName} onChange={e => setEmailSettingsForm(p => ({ ...p, noreplyName:e.target.value }))} className="input" placeholder="CaféCampus" /></div>
-                  <div><label className="label">Email</label><input type="email" value={emailSettingsForm.noreplyEmail} onChange={e => setEmailSettingsForm(p => ({ ...p, noreplyEmail:e.target.value }))} className="input" placeholder="noreply@yourbusiness.com" /></div>
-                  <div>
-                    <label className="label">App Password</label>
-                    <input type="password" value={emailSettingsForm.noreplyAppPassword} onChange={e => setEmailSettingsForm(p => ({ ...p, noreplyAppPassword:e.target.value }))} className="input" placeholder={smtpConfigured.noreply ? 'Leave blank to keep current password' : 'Paste the Gmail App Password'} />
-                    <p className="text-xs text-ink-400 mt-1">
-                      {smtpConfigured.noreply
-                        ? <>Currently sending as this account. <button type="button" onClick={() => resetSmtp('noreply')} disabled={smtpResetting==='noreply'} className="text-red-500 hover:underline disabled:opacity-50">{smtpResetting==='noreply' ? 'Reverting…' : 'Revert to server default'}</button></>
-                        : "Not set — currently sending using the server's environment default."}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Info — reserved for a future "message registered users" feature */}
-                <div className="border border-ink-100 rounded-xl p-4 space-y-3">
-                  <div>
-                    <p className="font-semibold text-sm text-ink-900">Info</p>
-                    <p className="text-xs text-ink-400">For messaging registered users. Not built yet — saving this won't send anything until that feature exists.</p>
-                  </div>
-                  <div><label className="label">Sender Name</label><input value={emailSettingsForm.infoName} onChange={e => setEmailSettingsForm(p => ({ ...p, infoName:e.target.value }))} className="input" placeholder="CaféCampus" /></div>
-                  <div><label className="label">Email</label><input type="email" value={emailSettingsForm.infoEmail} onChange={e => setEmailSettingsForm(p => ({ ...p, infoEmail:e.target.value }))} className="input" placeholder="info@yourbusiness.com" /></div>
-                  <div>
-                    <label className="label">App Password</label>
-                    <input type="password" value={emailSettingsForm.infoAppPassword} onChange={e => setEmailSettingsForm(p => ({ ...p, infoAppPassword:e.target.value }))} className="input" placeholder={smtpConfigured.info ? 'Leave blank to keep current password' : 'Paste the Gmail App Password'} />
-                    {smtpConfigured.info && (
-                      <p className="text-xs text-ink-400 mt-1">Saved. <button type="button" onClick={() => resetSmtp('info')} disabled={smtpResetting==='info'} className="text-red-500 hover:underline disabled:opacity-50">{smtpResetting==='info' ? 'Removing…' : 'Remove'}</button></p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Support — a contact address, no sending capability needed */}
-                <div className="border border-ink-100 rounded-xl p-4 space-y-3">
-                  <div>
-                    <p className="font-semibold text-sm text-ink-900">Support</p>
-                    <p className="text-xs text-ink-400">Shown to customers and restaurant owners on their profile/settings page when they need to reach you. Doesn't need an App Password.</p>
-                  </div>
+                <div className="space-y-3">
                   <div><label className="label">Display Name</label><input value={emailSettingsForm.supportName} onChange={e => setEmailSettingsForm(p => ({ ...p, supportName:e.target.value }))} className="input" placeholder="CaféCampus Support" /></div>
                   <div><label className="label">Email</label><input type="email" value={emailSettingsForm.supportEmail} onChange={e => setEmailSettingsForm(p => ({ ...p, supportEmail:e.target.value }))} className="input" placeholder="support@yourbusiness.com" /></div>
                   <div><label className="label">Phone</label><input type="tel" value={emailSettingsForm.supportPhone} onChange={e => setEmailSettingsForm(p => ({ ...p, supportPhone:e.target.value }))} className="input" placeholder="+250 7xx xxx xxx" /></div>
