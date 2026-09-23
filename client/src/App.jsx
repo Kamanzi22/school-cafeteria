@@ -3,6 +3,7 @@ import { useAdminStore } from './store'
 import { useOrderNotifications } from './hooks/useOrderNotifications'
 import { useRestaurantOrderNotifications } from './hooks/useRestaurantOrderNotifications'
 import { usePwaScope } from './hooks/usePwaScope'
+import OfflineScreen from './components/shared/OfflineScreen'
 
 // Customer-facing
 import HomePage from './pages/student/HomePage'
@@ -39,6 +40,8 @@ export default function App() {
   useRestaurantOrderNotifications()
   usePwaScope()
   return (
+    <>
+    <OfflineScreen />
     <Routes>
       {/* ── Customer side ──────────────────────────────── */}
       <Route path="/" element={<HomePage />} />
@@ -71,5 +74,6 @@ export default function App() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   )
 }
