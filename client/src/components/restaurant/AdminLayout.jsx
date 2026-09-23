@@ -26,10 +26,16 @@ export default function AdminLayout({ children, newOrderCount = 0 }) {
 
   useEffect(() => { restaurantPush.getPushState().then(setPushState).catch(() => setPushState('unsupported')) }, [])
 
-  // The bell is the one-tap way to turn on new-order alerts. Once they're on there's nothing
-  // left to tap for (a site can't revoke its own notification permission), so it just confirms.
+  // The bell is a one-tap toggle for new-order alerts: off → on prompts for permission, on → off
+  // unsubscribes this device. A "blocked" browser permission can only be changed in the
+  // browser/phone's own settings, so that state just explains that instead of doing anything.
   const handleBell = async () => {
-    if (pushState === 'on') { toast('Notifications are already on 🔔'); return }
+    if (pushState === 'on') {
+      await restaurantPush.disablePush()
+      setPushState('off')
+      toast.success('Notifications off')
+      return
+    }
     if (pushState === 'blocked') { toast.error('Notifications are blocked for this site — allow them in your browser or phone settings'); return }
     if (pushState === 'needs-install' || pushState === 'unsupported') { navigate('/admin/settings'); return }
     const next = await restaurantPush.enableNotifications()
@@ -158,7 +164,7 @@ export default function AdminLayout({ children, newOrderCount = 0 }) {
           <span className="font-bold text-ink-900 text-sm">{restaurant?.name}</span>
           <div className="flex items-center gap-1">
             {newOrderCount > 0 && <span className="w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">{newOrderCount}</span>}
-            <button onClick={handleBell} title={pushState === 'on' ? 'Notifications on' : 'Turn on new-order notifications'} className="btn btn-ghost btn-icon">
+            <button onClick={handleBell} title={pushState === 'on' ? 'Turn off notifications' : 'Turn on new-order notifications'} className="btn btn-ghost btn-icon">
               <Bell size={18} className={pushState === 'on' ? 'text-brand-500 fill-brand-500' : ''} />
             </button>
           </div>

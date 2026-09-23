@@ -75,6 +75,19 @@ services:
       - type: rewrite
         source: /*
         destination: /index.html
+    # Render doesn't know the .webmanifest extension, so it was serving these as
+    # application/octet-stream — harmless to Safari (it parses the JSON regardless) but Android
+    # Chrome's installability check can be stricter about the content type of a fetched manifest.
+    headers:
+      - path: /manifest.webmanifest
+        name: Content-Type
+        value: application/manifest+json
+      - path: /manifest-restaurant.webmanifest
+        name: Content-Type
+        value: application/manifest+json
+      - path: /manifest-superadmin.webmanifest
+        name: Content-Type
+        value: application/manifest+json
     envVars:
       - key: VITE_BACKEND_URL
         value: https://cafecampus-api-feu3.onrender.com
