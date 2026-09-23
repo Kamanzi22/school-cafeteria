@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Bell, BellOff, Loader, Share } from 'lucide-react'
-import { getPushState, enableNotifications } from '../../services/push'
+import { getPushState, enableNotifications, disablePush } from '../../services/push'
 import toast from 'react-hot-toast'
 
 // Settings card for phone/browser push notifications. Renders nothing when this device or the
@@ -8,7 +8,7 @@ import toast from 'react-hot-toast'
 // dashboard reuse this with its own subscribe/unsubscribe endpoint (see services/push.js
 // restaurantPush) — everything else about the flow (permission prompt, iOS install-first
 // messaging) is identical to the customer app.
-export default function NotificationSettings({ push = { getPushState, enableNotifications }, title = 'Order notifications', onDescription = "On — this device will be alerted when your order is ready, even if the app is closed.", offDescription = "Get an alert on this device when your order is ready, even if the app is closed.", appName = 'CaféCampus' }) {
+export default function NotificationSettings({ push = { getPushState, enableNotifications, disablePush }, title = 'Order notifications', onDescription = "On — this device will be alerted when your order is ready, even if the app is closed.", offDescription = "Get an alert on this device when your order is ready, even if the app is closed.", appName = 'CaféCampus' }) {
   const [state, setState] = useState(null) // null while checking
   const [busy, setBusy] = useState(false)
 
@@ -24,6 +24,16 @@ export default function NotificationSettings({ push = { getPushState, enableNoti
     finally { setBusy(false) }
   }
 
+  const disable = async () => {
+    setBusy(true)
+    try {
+      await push.disablePush()
+      setState('off')
+      toast.success('Notifications off')
+    } catch { toast.error('Could not turn off notifications') }
+    finally { setBusy(false) }
+  }
+
   if (!state || state === 'unsupported') return null
 
   return (
@@ -32,7 +42,14 @@ export default function NotificationSettings({ push = { getPushState, enableNoti
         {state === 'on' ? <Bell size={20} className="text-alu-success-fg mt-0.5 shrink-0" /> : <BellOff size={20} className="text-alu-muted mt-0.5 shrink-0" />}
         <div className="flex-1">
           <p className="font-bold text-alu-cream text-sm">{title}</p>
-          {state === 'on' && <p className="text-xs text-alu-muted mt-0.5">{onDescription}</p>}
+          {state === 'on' && (
+            <>
+              <p className="text-xs text-alu-muted mt-0.5">{onDescription}</p>
+              <button onClick={disable} disabled={busy} className="btn btn-secondary btn-sm mt-3">
+                {busy ? <Loader size={14} className="animate-spin" /> : <BellOff size={14} />}Turn off notifications
+              </button>
+            </>
+          )}
           {state === 'off' && (
             <>
               <p className="text-xs text-alu-muted mt-0.5">{offDescription}</p>
