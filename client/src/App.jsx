@@ -3,6 +3,7 @@ import { useAdminStore } from './store'
 import { useOrderNotifications } from './hooks/useOrderNotifications'
 import { useRestaurantOrderNotifications } from './hooks/useRestaurantOrderNotifications'
 import { usePwaScope } from './hooks/usePwaScope'
+import { useAppUpdateCheck } from './hooks/useAppUpdateCheck'
 import OfflineScreen from './components/shared/OfflineScreen'
 
 // Customer-facing
@@ -39,6 +40,7 @@ export default function App() {
   useOrderNotifications()
   useRestaurantOrderNotifications()
   usePwaScope()
+  useAppUpdateCheck()
   return (
     <>
     <OfflineScreen />
