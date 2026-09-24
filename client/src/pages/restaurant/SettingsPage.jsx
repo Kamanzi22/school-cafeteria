@@ -9,6 +9,7 @@ import VerifyCodeStep from '../../components/shared/VerifyCodeStep'
 import InstallApp from '../../components/shared/InstallApp'
 import NotificationSettings from '../../components/shared/NotificationSettings'
 import SupportContact from '../../components/shared/SupportContact'
+import PasswordInput from '../../components/shared/PasswordInput'
 import toast from 'react-hot-toast'
 
 export default function SettingsPage() {
@@ -280,7 +281,7 @@ export default function SettingsPage() {
           <p className="text-xs text-ink-400 mb-3">Current: <span className="font-medium">{restaurant?.ownerEmail}</span></p>
           {emailStep === 'form' ? (
             <form onSubmit={requestEmailChange} className="space-y-3">
-              <div><label className="label">Current Password</label><input type="password" value={emailForm.currentPassword} onChange={e => setEmailForm(p => ({ ...p, currentPassword:e.target.value }))} className="input" required /></div>
+              <div><label className="label">Current Password</label><PasswordInput value={emailForm.currentPassword} onChange={e => setEmailForm(p => ({ ...p, currentPassword:e.target.value }))} required /></div>
               <div><label className="label">New Email</label><input type="email" value={emailForm.newEmail} onChange={e => setEmailForm(p => ({ ...p, newEmail:e.target.value }))} className="input" required /></div>
               <button type="submit" disabled={emailSaving} className="btn btn-secondary">{emailSaving?'Sending…':'Send Verification Code'}</button>
             </form>
@@ -303,7 +304,7 @@ export default function SettingsPage() {
           {pwStep === 'form' ? (
             <form onSubmit={requestPasswordChange} className="space-y-3">
               {[['Current Password','currentPassword'],['New Password','newPassword'],['Confirm New Password','confirm']].map(([label,key]) => (
-                <div key={key}><label className="label">{label}</label><input type="password" value={pwForm[key]} onChange={e => setPwForm(p => ({ ...p, [key]:e.target.value }))} className="input" required /></div>
+                <div key={key}><label className="label">{label}</label><PasswordInput value={pwForm[key]} onChange={e => setPwForm(p => ({ ...p, [key]:e.target.value }))} required /></div>
               ))}
               <button type="submit" disabled={pwSaving} className="btn btn-secondary">{pwSaving?'Sending…':'Send Verification Code'}</button>
             </form>
@@ -333,7 +334,7 @@ export default function SettingsPage() {
             <div className="space-y-3 border border-red-200 rounded-xl p-4 bg-white">
               <p className="font-semibold text-red-700 text-sm">⚠️ This action cannot be undone.</p>
               <div><label className="label text-red-600">Reason for closing (optional)</label><input value={deleteForm.reason} onChange={e => setDeleteForm(p => ({ ...p, reason:e.target.value }))} className="input border-red-200" placeholder="Moving locations, business closing…" /></div>
-              <div><label className="label text-red-600">Enter your password to confirm *</label><input type="password" value={deleteForm.password} onChange={e => setDeleteForm(p => ({ ...p, password:e.target.value }))} className="input border-red-300 focus:border-red-400 focus:ring-red-300/30" placeholder="Your account password" required /></div>
+              <div><label className="label text-red-600">Enter your password to confirm *</label><PasswordInput value={deleteForm.password} onChange={e => setDeleteForm(p => ({ ...p, password:e.target.value }))} className="border-red-300 focus:border-red-400 focus:ring-red-300/30" placeholder="Your account password" required /></div>
               <div className="flex gap-2">
                 <button onClick={() => setShowDelete(false)} className="btn btn-secondary flex-1">Cancel</button>
                 <button onClick={handleDeleteAccount} disabled={deleting || !deleteForm.password} className="btn btn-danger flex-1">

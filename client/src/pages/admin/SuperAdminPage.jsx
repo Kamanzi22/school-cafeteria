@@ -5,6 +5,7 @@ import { superAdminAPI, authAPI } from '../../services/api'
 import { useAdminStore } from '../../store'
 import { useSocket, getSocket } from '../../hooks/useSocket'
 import InstallApp from '../../components/shared/InstallApp'
+import PasswordInput from '../../components/shared/PasswordInput'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 import jsPDF from 'jspdf'
@@ -770,8 +771,8 @@ export default function SuperAdminPage() {
               {[['Current Password','currentPassword'],['New Password','newPassword'],['Confirm New Password','confirm']].map(([label,key]) => (
                 <div key={key}>
                   <label className="label">{label}</label>
-                  <input type="password" autoFocus={key==='currentPassword'} value={pwForm[key]}
-                    onChange={e => setPwForm(p => ({ ...p, [key]:e.target.value }))} className="input" required />
+                  <PasswordInput autoFocus={key==='currentPassword'} value={pwForm[key]}
+                    onChange={e => setPwForm(p => ({ ...p, [key]:e.target.value }))} required />
                 </div>
               ))}
               <div className="flex gap-3 pt-2">

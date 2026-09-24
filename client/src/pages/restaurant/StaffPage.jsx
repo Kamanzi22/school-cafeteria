@@ -3,6 +3,7 @@ import { Plus, Users, X, Loader } from 'lucide-react'
 import { restaurantAPI, authAPI } from '../../services/api'
 import { useAdminStore } from '../../store'
 import AdminLayout from '../../components/restaurant/AdminLayout'
+import PasswordInput from '../../components/shared/PasswordInput'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 
@@ -62,7 +63,7 @@ export default function StaffPage() {
                 </div>
                 <div>
                   <label className="label">Password *</label>
-                  <input type="password" value={form.password} onChange={f('password')} className="input" placeholder="Min 8 chars" required minLength={6} />
+                  <PasswordInput value={form.password} onChange={f('password')} placeholder="Min 8 chars" required minLength={6} />
                 </div>
                 <div>
                   <label className="label">Role</label>
