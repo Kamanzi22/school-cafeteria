@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { X, Plus, Minus, Trash2, ShoppingBag, ChevronRight, Loader, Backpack, MapPin } from 'lucide-react'
 import { useCartStore, useCustomerStore, useUIStore } from '../../store'
-import { orderAPI } from '../../services/api'
+import { orderAPI, restaurantAPI } from '../../services/api'
 import { enableNotifications } from '../../services/push'
 import toast from 'react-hot-toast'
 
@@ -13,9 +13,25 @@ export default function CartDrawer() {
   const [placing, setPlacing] = useState(false)
   // Per-restaurant fulfillment choice: { [restaurantId]: { type: 'pickup'|'delivery', scope: 'campus'|'off_campus', location: '' } }
   const [fulfillment, setFulfillment] = useState({})
+  // Cart items only carry a snapshot of each store's delivery offering from whenever they were
+  // added — a restaurant can flip "Offer delivery" on any time after that, so refetch live on
+  // open rather than trusting the stale snapshot (which would otherwise hide the toggle even
+  // after delivery is turned on).
+  const [liveRestaurants, setLiveRestaurants] = useState({})
   const navigate = useNavigate()
 
-  const groups = byRestaurant()
+  const rawGroups = byRestaurant()
+  const restaurantIds = rawGroups.map(g => g.id).join(',')
+  useEffect(() => {
+    if (!cartOpen || !restaurantIds) return
+    Promise.all(restaurantIds.split(',').map(id => restaurantAPI.get(id).then(r => [id, r.data.data]).catch(() => null)))
+      .then(pairs => setLiveRestaurants(prev => ({ ...prev, ...Object.fromEntries(pairs.filter(Boolean)) })))
+  }, [cartOpen, restaurantIds])
+
+  const groups = rawGroups.map(g => {
+    const live = liveRestaurants[g.id]
+    return live ? { ...g, offersPickup: live.offersPickup, offersDelivery: live.offersDelivery, offersCampusDelivery: live.offersCampusDelivery, offersOffCampusDelivery: live.offersOffCampusDelivery, campusDeliveryFee: live.campusDeliveryFee, offCampusDeliveryFee: live.offCampusDeliveryFee } : g
+  })
   const cartSubtotal = items.reduce((s, i) => s + i.price * i.qty, 0)
   const scopeFee = (g, scope) => scope === 'off_campus' ? g.offCampusDeliveryFee : g.campusDeliveryFee
   const deliveryFeeTotal = groups.reduce((s, g) => s + (fulfillment[g.id]?.type === 'delivery' ? scopeFee(g, getFulfillment(g.id).scope) : 0), 0)
