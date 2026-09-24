@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Star, Clock, MapPin, Phone, Plus, Minus, ShoppingBag, Flame, Leaf, Zap, AlertCircle, Heart, Search, X, PackageX } from 'lucide-react'
+import { ArrowLeft, Star, Clock, MapPin, Phone, Plus, Minus, ShoppingBag, Flame, Leaf, Zap, AlertCircle, Heart, Search, X, PackageX, Backpack } from 'lucide-react'
 import { restaurantAPI } from '../../services/api'
 import { useCartStore, useCustomerStore, useUIStore } from '../../store'
 import CartDrawer from '../../components/student/CartDrawer'
@@ -131,7 +131,9 @@ export default function RestaurantPage() {
       { id: item.id, name: item.name, price: item.price, emoji: item.emoji },
       {
         id: restaurant.id, name: restaurant.name, emoji: restaurant.emoji,
-        offersPickup: restaurant.offersPickup,
+        offersPickup: restaurant.offersPickup, offersDelivery: restaurant.offersDelivery,
+        offersCampusDelivery: restaurant.offersCampusDelivery, offersOffCampusDelivery: restaurant.offersOffCampusDelivery,
+        campusDeliveryFee: restaurant.campusDeliveryFee, offCampusDeliveryFee: restaurant.offCampusDeliveryFee,
       },
       variant
     )
@@ -216,6 +218,9 @@ export default function RestaurantPage() {
                 {restaurant.ratingCount > 0 && <span className="flex items-center gap-1"><Star size={11} className="fill-amber-300 text-amber-300" />{restaurant.rating} ({restaurant.ratingCount})</span>}
                 <span className="flex items-center gap-1"><Clock size={11} />{restaurant.prepTimeMin}–{restaurant.prepTimeMax} min</span>
                 <span className="flex items-center gap-1"><MapPin size={11} />{restaurant.location}</span>
+                {restaurant.offersDelivery && restaurant.offersCampusDelivery && (
+                  <span className="flex items-center gap-1"><Backpack size={11} />Delivery {restaurant.campusDeliveryFee > 0 ? `+${restaurant.campusDeliveryFee.toLocaleString()} RWF` : 'free'}</span>
+                )}
               </div>
             </div>
           </div>

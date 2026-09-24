@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, Plus, Minus, Trash2, ShoppingBag, ChevronRight, Loader } from 'lucide-react'
+import { X, Plus, Minus, Trash2, ShoppingBag, ChevronRight, Loader, Backpack, MapPin } from 'lucide-react'
 import { useCartStore, useCustomerStore, useUIStore } from '../../store'
 import { orderAPI } from '../../services/api'
 import { enableNotifications } from '../../services/push'
@@ -11,30 +11,54 @@ export default function CartDrawer() {
   const { items, setQty, remove, clear, subtotal, count, byRestaurant } = useCartStore()
   const { customer } = useCustomerStore()
   const [placing, setPlacing] = useState(false)
+  // Per-restaurant fulfillment choice: { [restaurantId]: { type: 'pickup'|'delivery', scope: 'campus'|'off_campus', location: '' } }
+  const [fulfillment, setFulfillment] = useState({})
   const navigate = useNavigate()
 
   const groups = byRestaurant()
   const cartSubtotal = items.reduce((s, i) => s + i.price * i.qty, 0)
-  const total = cartSubtotal
+  const scopeFee = (g, scope) => scope === 'off_campus' ? g.offCampusDeliveryFee : g.campusDeliveryFee
+  const deliveryFeeTotal = groups.reduce((s, g) => s + (fulfillment[g.id]?.type === 'delivery' ? scopeFee(g, getFulfillment(g.id).scope) : 0), 0)
+  const total = cartSubtotal + deliveryFeeTotal
+
+  function getFulfillment(restaurantId) {
+    const group = groups.find(g => g.id === restaurantId)
+    const defaultScope = group?.offersCampusDelivery ? 'campus' : 'off_campus'
+    const defaultType = group && !group.offersPickup && group.offersDelivery ? 'delivery' : 'pickup'
+    return fulfillment[restaurantId] || { type: defaultType, location: '', scope: defaultScope }
+  }
+  const setGroupFulfillment = (restaurantId, patch) =>
+    setFulfillment(prev => ({ ...prev, [restaurantId]: { ...getFulfillment(restaurantId), ...patch } }))
 
   const placeOrder = async () => {
     if (!customer) { closeCart(); navigate('/auth'); return }
     if (items.length === 0) return
+    for (const group of groups) {
+      const f = getFulfillment(group.id)
+      if (f.type === 'delivery' && !f.location.trim()) {
+        toast.error(`Enter a delivery location for ${group.name}`)
+        return
+      }
+    }
     // Straight from the click, so the browser lets the permission prompt show.
     enableNotifications().catch(() => {})
     setPlacing(true)
     try {
       const results = await Promise.all(groups.map(group => {
+        const f = getFulfillment(group.id)
         return orderAPI.place({
           customerId: customer.id,
           restaurantId: group.id,
           items: group.items.map(i => ({ menuItemId: i.id, variantId: i.variantId || undefined, quantity: i.qty })),
           paymentMethod: 'cash',
-          fulfillmentType: 'pickup'
+          fulfillmentType: f.type,
+          deliveryScope: f.type === 'delivery' ? f.scope : undefined,
+          deliveryLocation: f.type === 'delivery' ? f.location.trim() : undefined,
         })
       }))
       clear()
       closeCart()
+      setFulfillment({})
       navigate(`/order/confirm/${results[0].data.data.id}`)
       toast.success(`${results.length > 1 ? `${results.length} orders` : 'Order'} placed! 🎉`)
     } catch (e) {
@@ -68,6 +92,7 @@ export default function CartDrawer() {
           ) : (
             <>
               {groups.map(group => {
+                const f = getFulfillment(group.id)
                 return (
                   <div key={group.id} className="mb-4">
                     <p className="text-xs font-bold text-ink-500 uppercase tracking-wider mb-2">{group.emoji} {group.name}</p>
@@ -91,6 +116,47 @@ export default function CartDrawer() {
                         <p className="font-bold text-sm text-ink-900 w-20 text-right">{(item.price * item.qty).toLocaleString()}</p>
                       </div>
                     ))}
+
+                    {/* Fulfillment choice — only shown if this store offers delivery */}
+                    {group.offersDelivery && (group.offersCampusDelivery || group.offersOffCampusDelivery) && (
+                      <div className="mt-1">
+                        {group.offersPickup ? (
+                          <div className="flex gap-2">
+                            <button onClick={() => setGroupFulfillment(group.id, { type: 'pickup' })}
+                              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold border transition ${f.type === 'pickup' ? 'border-flame-500 bg-flame-50 text-flame-600' : 'border-ink-200 text-ink-500'}`}>
+                              <MapPin size={13} /> Pickup
+                            </button>
+                            <button onClick={() => setGroupFulfillment(group.id, { type: 'delivery' })}
+                              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold border transition ${f.type === 'delivery' ? 'border-flame-500 bg-flame-50 text-flame-600' : 'border-ink-200 text-ink-500'}`}>
+                              <Backpack size={13} /> Delivery
+                            </button>
+                          </div>
+                        ) : (
+                          <p className="text-[11px] font-semibold text-ink-500 flex items-center gap-1.5">
+                            <Backpack size={12} /> Delivery only — this is a virtual store with no pickup location
+                          </p>
+                        )}
+                        {f.type === 'delivery' && (
+                          <>
+                            {group.offersCampusDelivery && group.offersOffCampusDelivery && (
+                              <div className="flex gap-2 mt-2">
+                                <button onClick={() => setGroupFulfillment(group.id, { scope: 'campus' })}
+                                  className={`flex-1 py-1.5 rounded-lg text-[11px] font-semibold border transition ${f.scope === 'campus' ? 'border-flame-500 bg-flame-50 text-flame-600' : 'border-ink-200 text-ink-500'}`}>
+                                  🏬 On campus{group.campusDeliveryFee > 0 ? ` (+${group.campusDeliveryFee.toLocaleString()})` : ''}
+                                </button>
+                                <button onClick={() => setGroupFulfillment(group.id, { scope: 'off_campus' })}
+                                  className={`flex-1 py-1.5 rounded-lg text-[11px] font-semibold border transition ${f.scope === 'off_campus' ? 'border-flame-500 bg-flame-50 text-flame-600' : 'border-ink-200 text-ink-500'}`}>
+                                  🌆 Off campus{group.offCampusDeliveryFee > 0 ? ` (+${group.offCampusDeliveryFee.toLocaleString()})` : ''}
+                                </button>
+                              </div>
+                            )}
+                            <input value={f.location} onChange={e => setGroupFulfillment(group.id, { location: e.target.value })}
+                              placeholder={f.scope === 'off_campus' ? 'Delivery address (e.g. Kacyiru, KG 5 Ave)' : 'Delivery location (e.g. Dorm B, Room 204)'}
+                              className="input text-sm mt-2" />
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )
               })}
@@ -107,11 +173,17 @@ export default function CartDrawer() {
                 <span>Subtotal ({count()} items)</span>
                 <span>{cartSubtotal.toLocaleString()} RWF</span>
               </div>
+              {deliveryFeeTotal > 0 && (
+                <div className="flex justify-between text-ink-500">
+                  <span>Delivery fee</span>
+                  <span>{deliveryFeeTotal.toLocaleString()} RWF</span>
+                </div>
+              )}
               <div className="flex justify-between font-bold text-ink-900 text-base pt-1 border-t border-ink-100">
                 <span>Total</span>
                 <span>{total.toLocaleString()} RWF</span>
               </div>
-              <p className="text-xs text-ink-400 text-center">💵 Pay on pickup</p>
+              <p className="text-xs text-ink-400 text-center">💵 Pay cash on {groups.some(g => getFulfillment(g.id).type === 'delivery') ? 'delivery' : 'pickup'}</p>
             </div>
 
             <button onClick={placeOrder} disabled={placing}

@@ -15,7 +15,9 @@ export const useCartStore = create(persist((set, get) => ({
       price: item.price + (variant?.priceDelta || 0),
       variantId: variant?.id || null, variantName: variant?.name || null,
       restaurantId: restaurant.id, restaurantName: restaurant.name, restaurantEmoji: restaurant.emoji || '🍽️',
-      restaurantOffersPickup: restaurant.offersPickup !== false,
+      restaurantOffersPickup: restaurant.offersPickup !== false, restaurantOffersDelivery: !!restaurant.offersDelivery,
+      restaurantOffersCampusDelivery: !!restaurant.offersCampusDelivery, restaurantOffersOffCampusDelivery: !!restaurant.offersOffCampusDelivery,
+      restaurantCampusDeliveryFee: restaurant.campusDeliveryFee || 0, restaurantOffCampusDeliveryFee: restaurant.offCampusDeliveryFee || 0,
     }] })
     return 'added'
   },
@@ -29,7 +31,9 @@ export const useCartStore = create(persist((set, get) => ({
     for (const item of get().items) {
       if (!groups[item.restaurantId]) groups[item.restaurantId] = {
         id: item.restaurantId, name: item.restaurantName, emoji: item.restaurantEmoji,
-        offersPickup: item.restaurantOffersPickup,
+        offersPickup: item.restaurantOffersPickup, offersDelivery: item.restaurantOffersDelivery,
+        offersCampusDelivery: item.restaurantOffersCampusDelivery, offersOffCampusDelivery: item.restaurantOffersOffCampusDelivery,
+        campusDeliveryFee: item.restaurantCampusDeliveryFee, offCampusDeliveryFee: item.restaurantOffCampusDeliveryFee,
         items: [],
       }
       groups[item.restaurantId].items.push(item)
