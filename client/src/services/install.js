@@ -8,19 +8,31 @@ import { useSyncExternalStore } from 'react'
 export const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 export const isInstalled = () => window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone === true
 
+// Remembers that this device installed the app, so the Install button also stays hidden when the
+// site is later opened in a normal browser tab. Keyed by the page's manifest because the customer,
+// restaurant and super admin apps are separate installs on the same origin. Only set on real proof
+// of install: the browser's appinstalled event, or the page running as the installed app.
+const INSTALLED_KEY = `cc-installed:${document.querySelector('link[rel="manifest"]')?.getAttribute('href') || ''}`
+const rememberInstalled = (on) => { try { on ? localStorage.setItem(INSTALLED_KEY, '1') : localStorage.removeItem(INSTALLED_KEY) } catch {} }
+const wasInstalled = () => { try { return localStorage.getItem(INSTALLED_KEY) === '1' } catch { return false } }
+
 let deferredPrompt = null
-let installed = isInstalled()
+if (isInstalled()) rememberInstalled(true)
+let installed = isInstalled() || wasInstalled()
 const listeners = new Set()
 const notify = () => listeners.forEach(l => l())
 
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault() // suppress the browser's own mini-infobar; our button triggers it instead
   deferredPrompt = e
+  // The browser only offers this when the app is NOT installed — so it was uninstalled since.
+  if (!isInstalled()) { installed = false; rememberInstalled(false) }
   notify()
 })
 window.addEventListener('appinstalled', () => {
   installed = true
   deferredPrompt = null
+  rememberInstalled(true)
   notify()
 })
 
