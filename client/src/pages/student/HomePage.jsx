@@ -5,6 +5,7 @@ import { restaurantAPI } from '../../services/api'
 import { useCartStore, useCustomerStore, useUIStore, useAdminStore } from '../../store'
 import { useSocket } from '../../hooks/useSocket'
 import CartDrawer from '../../components/student/CartDrawer'
+import NotificationBell from '../../components/student/NotificationBell'
 import InstallApp from '../../components/shared/InstallApp'
 import Seo from '../../components/Seo'
 import toast from 'react-hot-toast'
@@ -136,6 +137,7 @@ export default function HomePage() {
           </button>
 
           <div className="flex items-center gap-2 shrink-0 ml-auto sm:ml-0">
+            {student && <NotificationBell />}
             {student ? (
               <Link to="/profile" className="btn btn-ghost btn-icon">
                 <User size={18} />
