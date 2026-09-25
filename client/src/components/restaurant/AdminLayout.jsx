@@ -115,7 +115,13 @@ export default function AdminLayout({ children, newOrderCount = 0 }) {
       </nav>
 
       {/* Footer */}
-      <div className="px-3 py-4 border-t border-white/10">
+      <div className="px-3 py-4 border-t border-white/10 space-y-0.5">
+        {/* Desktop only — on mobile the bell lives in the top bar */}
+        <button onClick={handleBell} title={pushState === 'on' ? 'Turn off notifications' : 'Turn on new-order notifications'}
+          className="nav-item nav-item-inactive w-full hidden md:flex">
+          <Bell size={17} className={pushState === 'on' ? 'text-brand-500 fill-brand-500' : ''} />
+          <span className="flex-1 text-left">{pushState === 'on' ? 'Notifications on' : 'Notifications off'}</span>
+        </button>
         {isViewer ? (
           <button onClick={exitViewer} className="nav-item nav-item-inactive w-full text-brand-400 hover:bg-brand-500/10">
             <X size={17} />Exit to Super Admin

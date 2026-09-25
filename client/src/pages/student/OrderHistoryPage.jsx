@@ -87,6 +87,11 @@ export default function OrderHistoryPage() {
                 <p className="text-xs text-alu-muted mb-3 line-clamp-1">
                   {order.items.map(i => `${i.quantity}× ${i.menuItemName}`).join(', ')}
                 </p>
+                {order.status === 'cancelled' && order.cancelledBy === 'restaurant' && order.cancelReason && order.cancelReason !== 'Cancelled by restaurant' && (
+                  <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-2.5 py-1.5 mb-3 line-clamp-2">
+                    Restaurant: “{order.cancelReason}”
+                  </p>
+                )}
                 <div className="flex gap-2">
                   <Link to={`/order/track/${order.id}`} className="btn btn-secondary btn-sm flex-1">
                     <ChevronRight size={13} />Details

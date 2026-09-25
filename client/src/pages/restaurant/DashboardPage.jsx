@@ -16,11 +16,55 @@ const TABS = [
   { key: 'preparing', statuses: ['preparing'], label: 'Cooking', color: 'text-orange-600 bg-orange-100' },
   { key: 'ready', statuses: ['ready'], label: 'Ready', color: 'text-emerald-600 bg-emerald-100' },
   { key: 'picked_up', statuses: ['picked_up'], label: 'Picked Up', color: 'text-sky-600 bg-sky-100' },
+  { key: 'cancelled', statuses: ['cancelled'], label: 'Cancelled', color: 'text-red-600 bg-red-100' },
   { key: 'all', statuses: null, label: 'All Today', color: 'text-ink-600 bg-ink-100' },
 ]
 
+// One-tap starting points for the note; staff can edit or write their own.
+const CANCEL_REASONS = ['Item out of stock', 'Kitchen is closing', 'Too busy right now', 'Could not reach you']
+
+// Asks the staff member for an optional note to the customer before cancelling — it's shown on
+// the customer's order page and in the push/email telling them the order was cancelled.
+function CancelOrderModal({ order, onClose, onConfirm, loading }) {
+  const [note, setNote] = useState('')
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl p-5 w-full max-w-sm shadow-xl animate-scale-in" onClick={e => e.stopPropagation()}>
+        <div className="flex items-start justify-between mb-1">
+          <h3 className="font-bold text-lg text-ink-900">Cancel order?</h3>
+          <button onClick={onClose} className="text-ink-400 hover:text-ink-600 p-1 -mr-1"><X size={18} /></button>
+        </div>
+        <p className="text-sm text-ink-500 mb-4">
+          <span className="font-mono font-semibold text-flame-500">{order.orderNumber}</span> · {order.customer?.name || order.guestName || 'Customer'} will be notified.
+        </p>
+        <label className="text-xs font-semibold text-ink-600 mb-1.5 block">Note to the customer <span className="font-normal text-ink-400">(optional)</span></label>
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {CANCEL_REASONS.map(r => (
+            <button key={r} type="button" onClick={() => setNote(r)}
+              className={`text-xs px-2.5 py-1 rounded-full border transition ${note === r ? 'bg-red-50 border-red-300 text-red-600' : 'border-ink-200 text-ink-500 hover:bg-ink-50'}`}>
+              {r}
+            </button>
+          ))}
+        </div>
+        <textarea value={note} onChange={e => setNote(e.target.value)} maxLength={300} autoFocus
+          placeholder="e.g. Sorry, we just ran out of chicken — please try another dish."
+          className="input resize-none h-24 text-sm w-full" />
+        <p className="text-[11px] text-ink-400 text-right mt-1 mb-4">{note.length}/300</p>
+        <div className="flex gap-2">
+          <button onClick={onClose} disabled={loading} className="btn btn-secondary flex-1 text-sm">Keep order</button>
+          <button onClick={() => onConfirm(note.trim())} disabled={loading}
+            className="btn flex-1 text-sm bg-red-500 hover:bg-red-600 text-white">
+            {loading ? <Loader size={14} className="animate-spin" /> : <X size={14} />}Cancel order
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function OrderCard({ order, onUpdate, isViewer }) {
   const [loading, setLoading] = useState(false)
+  const [confirmingCancel, setConfirmingCancel] = useState(false)
   // A delivery order stops at 'ready' on the restaurant's side — from there the delivery
   // runner (superadmin/delivery) takes over marking it on the way and delivered.
   const nextStatus = order.status === 'ready' && order.fulfillmentType === 'delivery' ? null : STATUS_NEXT[order.status]
@@ -36,18 +80,19 @@ function OrderCard({ order, onUpdate, isViewer }) {
     finally { setLoading(false) }
   }
 
-  const cancel = async () => {
+  const cancel = async (note) => {
     setLoading(true)
     try {
-      const res = await orderAPI.updateStatus(order.id, { status: 'cancelled', cancelReason: 'Cancelled by restaurant' })
+      const res = await orderAPI.updateStatus(order.id, { status: 'cancelled', cancelReason: note })
       onUpdate(res.data.data)
-      toast.success('Order cancelled')
-    } catch { toast.error('Failed') }
+      setConfirmingCancel(false)
+      toast.success('Order cancelled — customer notified')
+    } catch (e) { toast.error(e.response?.data?.error || 'Failed to cancel') }
     finally { setLoading(false) }
   }
 
   return (
-    <div className={`bg-white rounded-2xl border-2 p-4 transition-all duration-200 ${order.status === 'pending' ? 'border-amber-300 shadow-[0_0_20px_rgba(251,191,36,0.2)]' : order.status === 'ready' ? 'border-emerald-300' : 'border-ink-100'} ${isNew ? 'animate-scale-in' : ''}`}>
+    <div className={`bg-white rounded-2xl border-2 p-4 transition-all duration-200 ${order.status === 'pending' ? 'border-amber-300 shadow-[0_0_20px_rgba(251,191,36,0.2)]' : order.status === 'ready' ? 'border-emerald-300' : order.status === 'cancelled' ? 'border-red-200 opacity-80' : 'border-ink-100'} ${isNew ? 'animate-scale-in' : ''}`}>
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div>
@@ -108,6 +153,15 @@ function OrderCard({ order, onUpdate, isViewer }) {
         </p>
       )}
 
+      {order.status === 'cancelled' && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-xs text-red-700 mb-3">
+          <p className="font-semibold">Cancelled by {order.cancelledBy === 'restaurant' ? 'you' : 'the customer'}{order.cancelledAt && ` · ${format(new Date(order.cancelledAt), 'HH:mm')}`}</p>
+          {order.cancelReason && !['Cancelled by restaurant', 'Cancelled by customer', 'Cancelled by student'].includes(order.cancelReason) && (
+            <p className="mt-0.5 whitespace-pre-line break-words">“{order.cancelReason}”</p>
+          )}
+        </div>
+      )}
+
       {/* Actions — hidden for a read-only viewer, since the server rejects these anyway */}
       {!isViewer && (
         <div className="flex gap-2">
@@ -119,12 +173,16 @@ function OrderCard({ order, onUpdate, isViewer }) {
             </button>
           )}
           {['pending', 'confirmed'].includes(order.status) && (
-            <button onClick={cancel} disabled={loading}
+            <button onClick={() => setConfirmingCancel(true)} disabled={loading} title="Cancel order"
               className="btn btn-secondary text-red-500 border-red-200 hover:bg-red-50 p-2.5">
               <X size={16} />
             </button>
           )}
         </div>
+      )}
+
+      {confirmingCancel && (
+        <CancelOrderModal order={order} loading={loading} onClose={() => !loading && setConfirmingCancel(false)} onConfirm={cancel} />
       )}
     </div>
   )
@@ -162,7 +220,7 @@ export default function DashboardPage() {
     'order:cancelled': (updated) => {
       if (updated.restaurantId !== restaurant.id) return
       setOrders(prev => prev.map(o => o.id === updated.id ? updated : o))
-      toast.error(`Order ${updated.orderNumber} cancelled by student`)
+      toast.error(`Order ${updated.orderNumber} cancelled by the customer`)
     }
   })
 

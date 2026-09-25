@@ -1,5 +1,5 @@
-// Service worker for order notifications. It exists so the phone can show "your order is
-// ready" while the browser/app is closed — it deliberately does no caching or offline work.
+// Service worker for order notifications. It exists so the phone can show order updates
+// ("cooking", "ready", "cancelled"…) while the browser/app is closed — it deliberately does no caching or offline work.
 self.addEventListener('install', () => self.skipWaiting())
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()))
 
@@ -10,6 +10,9 @@ self.addEventListener('push', (event) => {
   event.waitUntil(self.registration.showNotification(data.title || 'CaféCampus', {
     body: data.body || '',
     tag: data.tag,
+    // Each status update for an order reuses its tag so they replace each other instead of
+    // stacking — renotify makes the replacement buzz/sound again. Only valid alongside a tag.
+    renotify: !!data.tag,
     icon: '/icon-192.png',
     data: { url: data.url || '/' },
   }))

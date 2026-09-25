@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const { authStaff, optionalCustomer, blockViewer } = require('../middleware/auth');
 const prisma = require('../lib/prisma');
-const { notifyOrderReady, notifyNewOrder } = require('../lib/notifications');
+const { notifyOrderStatus, notifyNewOrder } = require('../lib/notifications');
 
 const genNum = () => 'CC-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2,5).toUpperCase();
 
@@ -201,13 +201,17 @@ const STATUS_TIMES = { confirmed:'confirmedAt', preparing:'preparingAt', ready:'
 
 router.patch('/:id/status', authStaff, blockViewer, async (req, res) => {
   try {
-    const { status, cancelReason, estimatedReadyAt } = req.body;
+    const { status, estimatedReadyAt } = req.body;
+    // The restaurant's note to the customer explaining the cancellation (shown on their order page
+    // and in the notification). Capped so a pasted essay can't bloat the notification payload.
+    const cancelReason = typeof req.body.cancelReason === 'string' ? req.body.cancelReason.trim().slice(0, 300) : '';
     const order = await prisma.order.findUnique({ where:{ id:req.params.id } });
     if (!order || order.restaurantId !== req.restaurantId) return res.status(403).json({ success:false, error:'Forbidden' });
+    if (order.status === 'cancelled') return res.status(400).json({ success:false, error:'This order is already cancelled' });
     const data = { status };
     // Stamp the time only when the status actually changes, so re-sending 'picked_up' can't move an order's revenue to another day
     if (STATUS_TIMES[status] && order.status !== status) data[STATUS_TIMES[status]] = new Date();
-    if (cancelReason) { data.cancelReason = cancelReason; data.cancelledBy = 'restaurant'; }
+    if (status === 'cancelled') { data.cancelReason = cancelReason || 'Cancelled by restaurant'; data.cancelledBy = 'restaurant'; }
     if (estimatedReadyAt) data.estimatedReadyAt = new Date(estimatedReadyAt);
     const updated = await prisma.$transaction(async (tx) => {
       if (status === 'cancelled') {
@@ -218,14 +222,14 @@ router.patch('/:id/status', authStaff, blockViewer, async (req, res) => {
       } else {
         await tx.order.updateMany({ where:{ id:req.params.id }, data });
       }
-      return tx.order.update({ where:{ id:req.params.id }, data:{ statusHistory:{ create:[{ status, note:cancelReason||null }] } }, include:ORDER_INCLUDE });
+      return tx.order.update({ where:{ id:req.params.id }, data:{ statusHistory:{ create:[{ status, note:status === 'cancelled' ? data.cancelReason : null }] } }, include:ORDER_INCLUDE });
     });
     req.app.get('io').to(`order:${req.params.id}`).emit('order:updated', updated);
     req.app.get('io').to(`restaurant:${order.restaurantId}`).emit('order:statusChanged', updated);
     if (updated.fulfillmentType === 'delivery') req.app.get('io').to('superadmin').to('delivery').emit('delivery:order', updated);
-    // Only on the transition into 'ready' — re-sending 'ready' (or touching a cancelled order)
-    // must not notify the customer a second time. Fire-and-forget: the email shouldn't hold up the response.
-    if (status === 'ready' && order.status !== 'ready' && order.status !== 'cancelled') notifyOrderReady(req.app.get('io'), updated);
+    // Only on an actual transition — re-sending the same status must not notify the customer a
+    // second time. Fire-and-forget: the push/email shouldn't hold up the response.
+    if (status !== order.status) notifyOrderStatus(req.app.get('io'), updated);
     res.json({ success:true, data:updated });
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });

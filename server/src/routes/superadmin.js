@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const { authSuperAdmin, authDelivery } = require('../middleware/auth');
 const { encrypt } = require('../lib/crypto');
 const prisma = require('../lib/prisma');
+const { notifyOrderStatus } = require('../lib/notifications');
 
 router.get('/restaurants', authSuperAdmin, async (req, res) => {
   try {
@@ -367,6 +368,7 @@ router.patch('/delivery-orders/:id/on-the-way', authDelivery, async (req, res) =
     req.app.get('io').to(`order:${updated.id}`).emit('order:updated', updated);
     req.app.get('io').to(`restaurant:${updated.restaurantId}`).emit('order:statusChanged', updated);
     req.app.get('io').to('superadmin').to('delivery').emit('delivery:order', updated);
+    if (order.status !== updated.status) notifyOrderStatus(req.app.get('io'), updated);
     res.json({ success: true, data: updated });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -384,6 +386,7 @@ router.patch('/delivery-orders/:id/delivered', authDelivery, async (req, res) =>
     req.app.get('io').to(`order:${updated.id}`).emit('order:updated', updated);
     req.app.get('io').to(`restaurant:${updated.restaurantId}`).emit('order:statusChanged', updated);
     req.app.get('io').to('superadmin').to('delivery').emit('delivery:order', updated);
+    if (order.status !== updated.status) notifyOrderStatus(req.app.get('io'), updated);
     res.json({ success: true, data: updated });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

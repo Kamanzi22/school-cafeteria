@@ -15,8 +15,17 @@ const showSystemNotification = ({ title, body, orderId }) => {
   } catch {}
 }
 
+// Shared with TrackOrderPage (which also hears the same change over the order's own room): both
+// use the same toast id per order+status, so a customer on that page sees one toast, not two.
+export const showOrderStatusToast = ({ orderId, status, title, body }) => {
+  const opts = { id: `order-${orderId}-${status}`, duration: status === 'cancelled' ? 15000 : 8000 }
+  if (status === 'cancelled') toast.error(`${title} — ${body}`, opts)
+  else toast.success(`${title} — ${body}`, { ...opts, icon: '🔔' })
+}
+
 // Mounted once at the app root: while a customer is signed in, listens on their personal
-// socket room for "your order is ready" and surfaces it wherever they are in the app, and
+// socket room for order status changes (confirmed, cooking, ready, on the way, picked up,
+// cancelled) and surfaces it wherever they are in the app, and
 // keeps this device's push subscription attached to their account.
 export const useOrderNotifications = () => {
   const token = useCustomerStore(s => s.token)
@@ -28,7 +37,7 @@ export const useOrderNotifications = () => {
     // Rooms don't survive a reconnect, so re-join every time the socket (re)connects.
     const join = () => socket.emit('join:customer', { token })
     const onNotification = (n) => {
-      toast.success(`${n.title} — ${n.body}`, { id: `${n.type}-${n.orderId}`, duration: 10000, icon: '🔔' })
+      showOrderStatusToast(n)
       showSystemNotification(n)
     }
     socket.on('connect', join)

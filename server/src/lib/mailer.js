@@ -56,7 +56,7 @@ async function sendVerificationEmail({ to, code, link, purpose }) {
 
 // "Your order is ready" — sent when a restaurant marks an order ready. Unlike the verification
 // email this is best-effort: with no email account configured it just logs and returns.
-async function sendOrderReadyEmail({ to, title, body, orderNumber, link }) {
+async function sendOrderStatusEmail({ to, title, body, orderNumber, link }) {
   const creds = await getEffectiveCredentials();
   if (!creds) {
     console.log(`\n📧 [email not configured] ${title} — ${body} (${orderNumber}) → ${to}\n`);
@@ -79,4 +79,4 @@ async function sendOrderReadyEmail({ to, title, body, orderNumber, link }) {
   });
 }
 
-module.exports = { sendVerificationEmail, sendOrderReadyEmail };
+module.exports = { sendVerificationEmail, sendOrderStatusEmail };

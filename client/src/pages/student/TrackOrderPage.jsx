@@ -1,20 +1,36 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, CheckCircle, Clock, X, Star, Loader } from 'lucide-react'
 import { orderAPI, reviewAPI } from '../../services/api'
 import { useSocket } from '../../hooks/useSocket'
 import { useCustomerStore } from '../../store'
+import { showOrderStatusToast } from '../../hooks/useOrderNotifications'
 import { format, formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 
 const STEPS = [
   { key: 'pending', emoji: '📋', label: 'Order Placed', sub: 'Waiting for confirmation' },
   { key: 'confirmed', emoji: '✅', label: 'Confirmed', sub: 'Restaurant accepted your order' },
-  { key: 'preparing', emoji: '👨‍🍳', label: 'Being Prepared', sub: 'Your food is cooking right now' },
+  { key: 'preparing', emoji: '👨‍🍳', label: 'Cooking', sub: 'Your food is cooking right now' },
   { key: 'ready', emoji: '🎉', label: 'Ready!', sub: 'Go pick up at the counter' },
 ]
 const DELIVERY_STEP = { key: 'on_the_way', emoji: '🚴', label: 'Out for Delivery', sub: '' }
-const STATUS_IDX = { pending: 0, confirmed: 1, preparing: 2, ready: 3, on_the_way: 4, picked_up: 5 }
+
+// Toast copy for a live status change seen on this page — guests aren't in a customer socket
+// room, so this page is their only in-app notice. Signed-in customers also get the server's
+// version via useOrderNotifications; the shared toast id means only one shows.
+const statusToast = (order) => {
+  const isDelivery = order.fulfillmentType === 'delivery'
+  switch (order.status) {
+    case 'confirmed': return { title: 'Order confirmed ✅', body: 'The restaurant accepted your order' }
+    case 'preparing': return { title: 'Your food is cooking 👨‍🍳', body: 'The restaurant is preparing it now' }
+    case 'ready': return { title: 'Your order is ready 🎉', body: isDelivery ? 'It will be on its way shortly' : 'Head over to pick it up' }
+    case 'on_the_way': return { title: 'On its way 🚴', body: `Delivering to ${order.deliveryLocation}` }
+    case 'picked_up': return { title: isDelivery ? 'Delivered 🍽️' : 'Picked up 🍽️', body: 'Enjoy your meal!' }
+    case 'cancelled': return { title: 'Order cancelled ❌', body: order.cancelledBy === 'restaurant' && order.cancelReason ? order.cancelReason : 'Your order was cancelled' }
+    default: return null
+  }
+}
 
 export default function TrackOrderPage() {
   const { id } = useParams()
@@ -25,8 +41,19 @@ export default function TrackOrderPage() {
   const [submitting, setSubmitting] = useState(false)
   const { customer: student } = useCustomerStore()
 
+  const lastStatus = useRef(null)
+  useEffect(() => { if (order) lastStatus.current = order.status }, [order?.status])
+
   const socket = useSocket({
-    'order:updated': (updated) => { if (updated.id === id) { setOrder(updated); if (updated.status !== 'ready') toast.success(`Order status: ${updated.status.replace('_', ' ')} 🔔`) } }
+    'order:updated': (updated) => {
+      if (updated.id !== id) return
+      // Several events can carry the same status (e.g. a refetch) — only toast on a real change.
+      const copy = updated.status !== lastStatus.current && statusToast(updated)
+      if (copy) showOrderStatusToast({ orderId: updated.id, status: updated.status, ...copy })
+      // The superadmin delivery routes send a slimmer order (no status history/restaurant
+      // details), so merge rather than replace to keep what the page already has.
+      setOrder(prev => ({ ...prev, ...updated, restaurant: { ...prev?.restaurant, ...updated.restaurant }, statusHistory: updated.statusHistory || prev?.statusHistory }))
+    }
   })
 
   useEffect(() => {
@@ -38,7 +65,7 @@ export default function TrackOrderPage() {
   const handleCancel = async () => {
     if (!window.confirm('Cancel this order?')) return
     try {
-      const res = await orderAPI.cancel(id, 'Cancelled by student')
+      const res = await orderAPI.cancel(id, 'Cancelled by customer')
       setOrder(res.data.data)
       toast.success('Order cancelled')
     } catch (e) { toast.error(e.response?.data?.error || 'Cannot cancel') }
@@ -57,7 +84,6 @@ export default function TrackOrderPage() {
 
   if (!order) return <div className="min-h-dvh flex items-center justify-center bg-alu-bg"><Loader size={24} className="animate-spin text-alu-red" /></div>
 
-  const currentIdx = STATUS_IDX[order.status] ?? 0
   const isCancelled = order.status === 'cancelled'
   const isDone = order.status === 'picked_up'
   const isDelivery = order.fulfillmentType === 'delivery'
@@ -67,7 +93,19 @@ export default function TrackOrderPage() {
       ? { ...s, label: isDelivery ? 'Packed & Ready' : 'Ready!', sub: isDelivery ? 'Waiting for a delivery runner to pick it up' : 'Go pick up at the counter' }
       : s),
     ...(isDelivery ? [{ ...DELIVERY_STEP, sub: `Delivering ${deliveryLabel} to ${order.deliveryLocation}` }] : []),
+    isDelivery
+      ? { key: 'picked_up', emoji: '🚚', label: 'Delivered', sub: 'Enjoy your meal!' }
+      : { key: 'picked_up', emoji: '🍽️', label: 'Picked Up', sub: 'Enjoy your meal!' },
   ]
+  // When each step happened, from the timestamps the server stamps on every transition.
+  const STEP_TIMES = { pending: order.createdAt, confirmed: order.confirmedAt, preparing: order.preparingAt, ready: order.readyAt, on_the_way: order.onTheWayAt, picked_up: order.pickedUpAt }
+  // A cancelled order shows the steps it got through, then the cancellation in their place.
+  const reachedIdx = isCancelled
+    ? steps.reduce((last, st, i) => STEP_TIMES[st.key] ? i : last, 0)
+    : Math.max(0, steps.findIndex(st => st.key === order.status))
+  const visibleSteps = isCancelled ? steps.slice(0, reachedIdx + 1) : steps
+  const cancelledByRestaurant = order.cancelledBy === 'restaurant'
+  const restaurantNote = cancelledByRestaurant && order.cancelReason && order.cancelReason !== 'Cancelled by restaurant' ? order.cancelReason : null
 
   return (
     <div className="min-h-dvh bg-alu-bg">
@@ -92,13 +130,22 @@ export default function TrackOrderPage() {
         {/* Status card */}
         <div className="card p-5 mb-4 -mt-1">
           {isCancelled ? (
-            <div className="text-center py-4">
+            <div className="text-center pt-2 pb-4">
               <div className="text-4xl mb-2">❌</div>
               <h2 className="font-bold text-xl text-red-400">Order Cancelled</h2>
-              {order.cancelReason && <p className="text-alu-muted text-sm mt-1">{order.cancelReason}</p>}
+              <p className="text-alu-muted text-sm mt-1">
+                {cancelledByRestaurant ? `${order.restaurant?.name || 'The restaurant'} cancelled this order` : 'You cancelled this order'}
+                {order.cancelledAt && ` · ${format(new Date(order.cancelledAt), 'HH:mm')}`}
+              </p>
+              {restaurantNote && (
+                <div className="mt-3 text-left bg-red-500/10 border border-red-500/25 rounded-xl p-3">
+                  <p className="text-xs font-semibold text-red-400 mb-1">Note from the restaurant</p>
+                  <p className="text-sm text-alu-cream whitespace-pre-line break-words">{restaurantNote}</p>
+                </div>
+              )}
             </div>
           ) : isDone ? (
-            <div className="text-center py-4">
+            <div className="text-center pt-2 pb-4">
               <div className="text-4xl mb-2">{isDelivery ? '🚚' : '🍽️'}</div>
               <h2 className="font-bold text-xl text-alu-success-fg">{isDelivery ? 'Delivered!' : 'Picked Up!'}</h2>
               <p className="text-alu-muted text-sm">Enjoy!</p>
@@ -122,32 +169,48 @@ export default function TrackOrderPage() {
                   <p className="text-alu-success-fg/70 text-sm">Delivering {deliveryLabel} to {order.deliveryLocation}</p>
                 </div>
               )}
-              <div className="space-y-2">
-                {steps.map((step, i) => {
-                  const done = i <= currentIdx
-                  const current = i === currentIdx
-                  return (
-                    <div key={step.key} className={`flex items-center gap-3 p-3 rounded-xl transition-all ${current ? 'bg-alu-red/10 border border-alu-red/25' : done ? 'opacity-70' : 'opacity-30'}`}>
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${done ? 'bg-alu-red' : 'bg-alu-card'}`}>
-                        {done ? <CheckCircle size={18} className="text-white" /> : <span className="text-lg">{step.emoji}</span>}
-                      </div>
-                      <div className="flex-1">
-                        <p className={`font-semibold text-sm ${current ? 'text-alu-red' : 'text-alu-cream'}`}>{step.label}</p>
-                        <p className="text-xs text-alu-muted">{step.sub}</p>
-                      </div>
-                      {current && <div className="w-2 h-2 bg-alu-red rounded-full animate-pulse" />}
-                    </div>
-                  )
-                })}
-              </div>
-              {order.estimatedReadyAt && (
-                <div className="mt-3 bg-alu-card rounded-xl p-3 flex items-center gap-2 text-sm text-alu-muted">
-                  <Clock size={15} className="text-alu-red shrink-0" />
-                  Ready at <strong className="ml-1 text-alu-cream">{format(new Date(order.estimatedReadyAt), 'HH:mm')}</strong>
-                  <span className="text-alu-muted ml-1">({formatDistanceToNow(new Date(order.estimatedReadyAt), { addSuffix: true })})</span>
-                </div>
-              )}
             </>
+          )}
+
+          <div className="space-y-2">
+            {visibleSteps.map((step, i) => {
+              const done = i <= reachedIdx
+              const current = !isCancelled && !isDone && i === reachedIdx
+              const at = STEP_TIMES[step.key]
+              return (
+                <div key={step.key} className={`flex items-center gap-3 p-3 rounded-xl transition-all ${current ? 'bg-alu-red/10 border border-alu-red/25' : done ? 'opacity-70' : 'opacity-30'}`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${done ? 'bg-alu-red' : 'bg-alu-card'}`}>
+                    {done ? <CheckCircle size={18} className="text-white" /> : <span className="text-lg">{step.emoji}</span>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`font-semibold text-sm ${current ? 'text-alu-red' : 'text-alu-cream'}`}>{step.label}</p>
+                    <p className="text-xs text-alu-muted">{step.sub}</p>
+                  </div>
+                  {done && at && <span className="text-xs text-alu-muted shrink-0">{format(new Date(at), 'HH:mm')}</span>}
+                  {current && <div className="w-2 h-2 bg-alu-red rounded-full animate-pulse shrink-0" />}
+                </div>
+              )
+            })}
+            {isCancelled && (
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-red-500/10 border border-red-500/25">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-red-500">
+                  <X size={18} className="text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-red-400">Cancelled</p>
+                  <p className="text-xs text-alu-muted">{cancelledByRestaurant ? 'By the restaurant' : 'By you'}</p>
+                </div>
+                {order.cancelledAt && <span className="text-xs text-alu-muted shrink-0">{format(new Date(order.cancelledAt), 'HH:mm')}</span>}
+              </div>
+            )}
+          </div>
+
+          {!isCancelled && !isDone && order.estimatedReadyAt && (
+            <div className="mt-3 bg-alu-card rounded-xl p-3 flex items-center gap-2 text-sm text-alu-muted">
+              <Clock size={15} className="text-alu-red shrink-0" />
+              Ready at <strong className="ml-1 text-alu-cream">{format(new Date(order.estimatedReadyAt), 'HH:mm')}</strong>
+              <span className="text-alu-muted ml-1">({formatDistanceToNow(new Date(order.estimatedReadyAt), { addSuffix: true })})</span>
+            </div>
           )}
         </div>
 
