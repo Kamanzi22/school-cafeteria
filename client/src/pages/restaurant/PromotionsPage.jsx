@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Trash2, ToggleLeft, ToggleRight, Tag, Loader, X } from 'lucide-react'
+import { Plus, Trash2, ToggleLeft, ToggleRight, Tag, Loader, X, Pencil } from 'lucide-react'
 import { promoAPI } from '../../services/api'
 import { useAdminStore } from '../../store'
 import AdminLayout from '../../components/restaurant/AdminLayout'
@@ -8,18 +8,33 @@ import toast from 'react-hot-toast'
 
 const EMPTY_PROMO = { code: '', title: '', description: '', type: 'percentage', value: '', minOrder: '', maxDiscount: '', usageLimit: '', validFrom: '', validUntil: '' }
 
-function PromoModal({ onSave, onClose }) {
-  const [form, setForm] = useState(EMPTY_PROMO)
+// <input type="datetime-local"> wants local "yyyy-MM-ddTHH:mm", not an ISO string.
+const toLocalInput = (d) => d ? format(new Date(d), "yyyy-MM-dd'T'HH:mm") : ''
+
+// Existing promo → form values (numbers back to strings, empty optional fields back to '').
+const promoToForm = (p) => ({
+  code: p.code, title: p.title, description: p.description || '', type: p.type, value: String(p.value),
+  minOrder: p.minOrder ? String(p.minOrder) : '', maxDiscount: p.maxDiscount != null ? String(p.maxDiscount) : '',
+  usageLimit: p.usageLimit != null ? String(p.usageLimit) : '', validFrom: toLocalInput(p.validFrom), validUntil: toLocalInput(p.validUntil),
+})
+
+// Create a promo, or edit `promo` when given — including one that's already live.
+function PromoModal({ promo, onSave, onClose }) {
+  const isEdit = !!promo
+  const [form, setForm] = useState(() => isEdit ? promoToForm(promo) : EMPTY_PROMO)
   const [saving, setSaving] = useState(false)
   const f = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
+  const isLive = isEdit && promo.isActive && new Date(promo.validFrom) <= new Date() && new Date(promo.validUntil) >= new Date()
 
   const save = async (e) => {
     e.preventDefault()
     setSaving(true)
     try {
-      const res = await promoAPI.create(form)
+      // Send real instants: the server runs in UTC, so a bare local time would be read hours off.
+      const payload = { ...form, validFrom: new Date(form.validFrom).toISOString(), validUntil: new Date(form.validUntil).toISOString() }
+      const res = isEdit ? await promoAPI.update(promo.id, payload) : await promoAPI.create(payload)
       onSave(res.data.data)
-      toast.success('Promotion created!')
+      toast.success(isEdit ? 'Promotion updated' : 'Promotion created!')
       onClose()
     } catch (e) { toast.error(e.response?.data?.error || 'Failed') }
     finally { setSaving(false) }
@@ -29,9 +44,14 @@ function PromoModal({ onSave, onClose }) {
     <div className="fixed inset-0 bg-ink-950/60 z-50 flex items-center justify-center p-4">
       <div className="card p-6 w-full max-w-md animate-scale-in max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="font-bold text-lg">New Promotion</h3>
+          <h3 className="font-bold text-lg">{isEdit ? 'Edit Promotion' : 'New Promotion'}</h3>
           <button onClick={onClose} className="btn btn-ghost btn-icon"><X size={18} /></button>
         </div>
+        {isLive && (
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mb-3">
+            This promotion is live. Changes apply to orders placed from now on{promo.usageCount > 0 ? ` — the ${promo.usageCount} order${promo.usageCount === 1 ? '' : 's'} already placed keep their discount` : ''}.
+          </p>
+        )}
         <form onSubmit={save} className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -50,10 +70,14 @@ function PromoModal({ onSave, onClose }) {
             <label className="label">Title *</label>
             <input value={form.title} onChange={f('title')} className="input" placeholder="10% Off Your Order" required />
           </div>
+          <div>
+            <label className="label">Description</label>
+            <input value={form.description} onChange={f('description')} className="input" placeholder="Shown to customers under the offer (optional)" />
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="label">Discount Value *</label>
-              <input type="number" value={form.value} onChange={f('value')} className="input" placeholder={form.type === 'percentage' ? '10' : '500'} required min="0" />
+              <input type="number" value={form.value} onChange={f('value')} className="input" placeholder={form.type === 'percentage' ? '10' : '500'} required min="0" max={form.type === 'percentage' ? 100 : undefined} step="any" />
             </div>
             <div>
               <label className="label">Min Order (RWF)</label>
@@ -78,7 +102,7 @@ function PromoModal({ onSave, onClose }) {
           </div>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="btn btn-secondary flex-1">Cancel</button>
-            <button type="submit" disabled={saving} className="btn btn-primary flex-1">{saving ? '…' : 'Create Promo'}</button>
+            <button type="submit" disabled={saving} className="btn btn-primary flex-1">{saving ? '…' : isEdit ? 'Save Changes' : 'Create Promo'}</button>
           </div>
         </form>
       </div>
@@ -90,6 +114,7 @@ export default function PromotionsPage() {
   const [promos, setPromos] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
+  const [editing, setEditing] = useState(null)
   const { role } = useAdminStore()
   const isViewer = role === 'viewer'
 
@@ -152,6 +177,7 @@ export default function PromotionsPage() {
                   </div>
                   {!isViewer && (
                     <div className="flex items-center gap-2 shrink-0">
+                      <button onClick={() => setEditing(p)} title="Edit" className="btn btn-ghost btn-icon text-ink-400 hover:text-flame-500"><Pencil size={16} /></button>
                       <button onClick={() => toggle(p.id)} className={`btn btn-ghost btn-icon ${p.isActive ? 'text-emerald-500' : 'text-ink-400'}`}>
                         {p.isActive ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
                       </button>
@@ -165,6 +191,7 @@ export default function PromotionsPage() {
         )}
       </div>
       {showModal && <PromoModal onSave={p => setPromos(prev => [p, ...prev])} onClose={() => setShowModal(false)} />}
+      {editing && <PromoModal promo={editing} onSave={p => setPromos(prev => prev.map(x => x.id === p.id ? p : x))} onClose={() => setEditing(null)} />}
     </AdminLayout>
   )
 }

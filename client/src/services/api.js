@@ -114,6 +114,7 @@ export const analyticsAPI = { salesReport: (range, params = {}) => api.get('/ana
 export const promoAPI = {
   list: () => api.get('/promotions/admin'),
   create: (d) => api.post('/promotions', d),
+  update: (id, d) => api.put(`/promotions/${id}`, d),
   toggle: (id) => api.patch(`/promotions/${id}/toggle`),
   delete: (id) => api.delete(`/promotions/${id}`),
   validate: (d) => api.post('/promotions/validate', d),
