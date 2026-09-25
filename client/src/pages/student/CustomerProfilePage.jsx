@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, Navigate } from 'react-router-dom'
-import { ArrowLeft, LogOut, Star, User, Mail, Phone, Hash, UserPlus } from 'lucide-react'
+import { ArrowLeft, LogOut, User, Mail, Phone, Hash, UserPlus } from 'lucide-react'
 import { useCustomerStore } from '../../store'
 import { customerAPI } from '../../services/api'
 import { useBackNavigate } from '../../hooks/useBackNavigate'
@@ -64,7 +64,7 @@ export default function CustomerProfilePage() {
               <UserPlus size={20} className="text-alu-red mt-0.5 shrink-0" />
               <div className="flex-1">
                 <p className="font-bold text-alu-cream text-sm">Create a full account</p>
-                <p className="text-xs text-alu-muted mt-0.5">Save your order history, earn points, and access your orders from any device.</p>
+                <p className="text-xs text-alu-muted mt-0.5">Save your order history and access your orders from any device.</p>
                 <Link to="/auth?tab=register" className="btn btn-primary btn-sm mt-3">Create account with Google</Link>
               </div>
             </div>
@@ -73,8 +73,8 @@ export default function CustomerProfilePage() {
 
         {/* Stats */}
         {!isGuest && (
-          <div className="grid grid-cols-3 gap-3">
-            {[['Orders', customer.orderCount||0],['RWF Spent', (customer.totalSpent||0).toLocaleString()],['Points', customer.points||0]].map(([l,v]) => (
+          <div className="grid grid-cols-2 gap-3">
+            {[['Orders', customer.orderCount||0],['RWF Spent', (customer.totalSpent||0).toLocaleString()]].map(([l,v]) => (
               <div key={l} className="card p-4 text-center">
                 <p className="font-black text-alu-cream text-lg leading-tight">{v}</p>
                 <p className="text-xs text-alu-muted mt-0.5">{l}</p>
