@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, Navigate } from 'react-router-dom'
-import { ArrowLeft, LogOut, ShoppingBag, Star, User, Mail, Phone, Hash, UserPlus } from 'lucide-react'
+import { ArrowLeft, LogOut, Star, User, Mail, Phone, Hash, UserPlus } from 'lucide-react'
 import { useCustomerStore } from '../../store'
 import { customerAPI } from '../../services/api'
 import { useBackNavigate } from '../../hooks/useBackNavigate'
@@ -87,7 +87,6 @@ export default function CustomerProfilePage() {
         <NotificationSettings />
         <SupportContact />
 
-        <Link to="/orders" className="btn btn-secondary w-full"><ShoppingBag size={16}/>My Orders</Link>
         <button onClick={handleLogout} className="btn btn-danger w-full"><LogOut size={16}/>Sign Out</button>
       </div>
     </div>

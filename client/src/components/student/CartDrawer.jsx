@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, Plus, Minus, Trash2, ShoppingBag, ChevronRight, Loader, Backpack, MapPin, Tag } from 'lucide-react'
+import { X, Plus, Minus, Trash2, ShoppingBag, ChevronRight, Loader, Backpack, MapPin, Tag, History } from 'lucide-react'
 import { useCartStore, useCustomerStore, useUIStore } from '../../store'
 import { orderAPI, restaurantAPI, promoAPI } from '../../services/api'
 import { promoDiscount, promoHeadline } from '../../lib/promo'
@@ -129,7 +129,12 @@ export default function CartDrawer() {
             <h2 className="font-bold text-ink-900">Your Order</h2>
             {items.length > 0 && <p className="text-xs text-ink-400 mt-0.5">{groups.length} store{groups.length !== 1 ? 's' : ''}</p>}
           </div>
-          <button onClick={closeCart} className="btn btn-ghost btn-icon"><X size={18} /></button>
+          <div className="flex items-center gap-1">
+            <button onClick={() => { closeCart(); navigate('/orders') }} className="btn btn-secondary btn-sm">
+              <History size={14} />Order History
+            </button>
+            <button onClick={closeCart} className="btn btn-ghost btn-icon"><X size={18} /></button>
+          </div>
         </div>
 
         {/* Items */}
