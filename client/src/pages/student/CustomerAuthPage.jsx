@@ -115,7 +115,7 @@ export default function CustomerAuthPage() {
                 <label className="label">Email</label>
                 <div className="relative">
                   <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" />
-                  <input type="email" value={form.email} onChange={f('email')} className="input pl-9" placeholder="you@alustudent.com" required />
+                  <input type="email" value={form.email} onChange={f('email')} className="input pl-9" required />
                 </div>
               </div>
               <div>
