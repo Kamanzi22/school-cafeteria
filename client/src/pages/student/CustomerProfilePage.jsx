@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, Navigate } from 'react-router-dom'
-import { ArrowLeft, LogOut, User, Mail, Phone, Hash, UserPlus } from 'lucide-react'
+import { ArrowLeft, LogOut, User, Mail, Phone, UserPlus } from 'lucide-react'
 import { useCustomerStore } from '../../store'
 import { customerAPI } from '../../services/api'
 import { useBackNavigate } from '../../hooks/useBackNavigate'
@@ -51,7 +51,6 @@ export default function CustomerProfilePage() {
           ) : (
             <>
               {customer.email && <p className="text-alu-muted text-sm mt-1">{customer.email}</p>}
-              {customer.studentId && <p className="text-xs text-alu-muted">Student ID: {customer.studentId}</p>}
               {customer.department && <p className="text-xs text-alu-muted">{customer.department} · {customer.year}</p>}
             </>
           )}

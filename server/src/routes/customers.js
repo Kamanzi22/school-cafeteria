@@ -13,7 +13,7 @@ const requireSelf = (req, res, next) => {
 
 router.get('/:id', optionalCustomer, requireSelf, async (req, res) => {
   try {
-    const c = await prisma.customer.findUnique({ where:{ id:req.params.id }, select:{ id:true, accountType:true, name:true, email:true, phone:true, studentId:true, year:true, department:true, totalSpent:true, orderCount:true, points:true, createdAt:true } });
+    const c = await prisma.customer.findUnique({ where:{ id:req.params.id }, select:{ id:true, accountType:true, name:true, email:true, phone:true, year:true, department:true, totalSpent:true, orderCount:true, points:true, createdAt:true } });
     if (!c) return res.status(404).json({ success:false, error:'Not found' });
     res.json({ success:true, data:c });
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }

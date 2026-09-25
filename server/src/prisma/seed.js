@@ -143,13 +143,13 @@ async function main() {
 
   // ── Demo Customers ─────────────────────────────────────────
   const customers = [
-    { accountType:'registered', name:'Alice Uwimana', email:'alice@school.ac.rw', studentId:'STU001', year:'Year 3', department:'Computer Science' },
-    { accountType:'registered', name:'Bob Nkurunziza', email:'bob@school.ac.rw', studentId:'STU002', year:'Year 2', department:'Business' },
+    { accountType:'registered', name:'Alice Uwimana', email:'alice@school.ac.rw', year:'Year 3', department:'Computer Science' },
+    { accountType:'registered', name:'Bob Nkurunziza', email:'bob@school.ac.rw', year:'Year 2', department:'Business' },
   ];
   const custPw = await hash12('password123');
   for (const c of customers) {
     await prisma.customer.create({ data: { ...c, passwordHash:custPw } });
-    console.log(`  👤 Customer: ${c.name} — email: ${c.email} / password123  studentId: ${c.studentId}`);
+    console.log(`  👤 Customer: ${c.name} — email: ${c.email} / password123`);
   }
 
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -160,8 +160,8 @@ async function main() {
   console.log('   Each restaurant owner logs in with their EMAIL\n');
   console.log('   Use /restaurant/login to sign in or /restaurant/register to create a new one\n');
   console.log('👤 DEMO CUSTOMERS (password: password123)');
-  console.log('   alice@school.ac.rw  or  STU001');
-  console.log('   bob@school.ac.rw    or  STU002');
+  console.log('   alice@school.ac.rw');
+  console.log('   bob@school.ac.rw');
   console.log('   — OR order as a Guest (no account needed)');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 }

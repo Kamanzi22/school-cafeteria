@@ -117,19 +117,13 @@ router.post('/restaurant/staff/login', async (req, res) => {
 // ══════════════════════════════════════════════════════
 
 // ══════════════════════════════════════════════════════
-// CUSTOMER — LOGIN (email or student ID)
+// CUSTOMER — LOGIN (email)
 // ══════════════════════════════════════════════════════
 router.post('/customer/login', async (req, res) => {
   try {
-    const { email, studentId, password } = req.body;
-    let customer;
-    if (email) {
-      customer = await prisma.customer.findUnique({ where: { email: email.toLowerCase() } });
-    } else if (studentId) {
-      customer = await prisma.customer.findUnique({ where: { studentId: studentId.toUpperCase() } });
-    } else {
-      return res.status(400).json({ success: false, error: 'Email or Student ID required' });
-    }
+    const { email, password } = req.body;
+    if (!email) return res.status(400).json({ success: false, error: 'Email required' });
+    const customer = await prisma.customer.findUnique({ where: { email: email.toLowerCase() } });
 
     if (!customer || customer.accountType === 'guest')
       return res.status(401).json({ success: false, error: 'No account found' });

@@ -23,8 +23,7 @@ export default function CustomerAuthPage() {
   const handleLogin = async (e) => {
     e.preventDefault(); setLoading(true)
     try {
-      const payload = form.email ? { email: form.email, password: form.password } : { studentId: form.studentId, password: form.password }
-      const res = await authAPI.customerLogin(payload)
+      const res = await authAPI.customerLogin({ email: form.email, password: form.password })
       login(res.data.data.customer, res.data.data.token)
       toast.success(`Welcome back, ${res.data.data.customer.name}! 👋`)
       navigate('/')
@@ -112,16 +111,11 @@ export default function CustomerAuthPage() {
 
           {tab === 'login' && (
             <form onSubmit={handleLogin} className="space-y-4">
-              <p className="text-sm text-ink-500 mb-1">Sign in with email <strong>or</strong> student ID</p>
               <div>
-                <label className="label">Email or Student ID</label>
+                <label className="label">Email</label>
                 <div className="relative">
                   <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" />
-                  <input value={form.email || form.studentId} onChange={e => {
-                    const v = e.target.value
-                    if (v.includes('@')) setForm(p => ({ ...p, email:v, studentId:'' }))
-                    else setForm(p => ({ ...p, studentId:v, email:'' }))
-                  }} className="input pl-9" placeholder="you@alustudent.com or STU001" required />
+                  <input type="email" value={form.email} onChange={f('email')} className="input pl-9" placeholder="you@alustudent.com" required />
                 </div>
               </div>
               <div>

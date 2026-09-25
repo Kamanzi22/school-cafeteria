@@ -212,7 +212,7 @@ function getPeriodRange(type, dateStr) {
   return { start, end };
 }
 
-// Attaches, to each visit: the visitor's login credential (email/studentId for account,
+// Attaches, to each visit: the visitor's login credential (email for account,
 // name for guest, nothing for anonymous — they have no credential to show), the order they
 // placed during that specific visit (if any — matched by same visitor+restaurant with the
 // order created between arrival and ~2min after they left, to allow for checkout time), and
@@ -225,7 +225,7 @@ async function enrichVisits(visits) {
   const namedVisits = visits.filter(v => v.visitorType !== 'anonymous');
   const customerIds = [...new Set(namedVisits.map(v => v.visitorId))];
   const customers = customerIds.length
-    ? await prisma.customer.findMany({ where: { id: { in: customerIds } }, select: { id: true, name: true, email: true, studentId: true } })
+    ? await prisma.customer.findMany({ where: { id: { in: customerIds } }, select: { id: true, name: true, email: true } })
     : [];
   const customerMap = Object.fromEntries(customers.map(c => [c.id, c]));
 
@@ -266,7 +266,7 @@ async function enrichVisits(visits) {
     const order = orderMatch.get(v.id);
     return {
       ...v,
-      visitorLogin: c ? (c.email || c.studentId || c.name) : null,
+      visitorLogin: c ? (c.email || c.name) : null,
       websiteDurationSec: websiteTimeByVisitor[v.visitorId] || v.durationSec,
       order: order ? {
         itemsLabel: order.items.map(i => `${i.quantity}x ${i.menuItemName}`).join(', '),
@@ -335,7 +335,7 @@ router.get('/visits/history', authSuperAdmin, async (req, res) => {
 
 const DELIVERY_ORDER_INCLUDE = {
   items: true,
-  customer: { select: { id: true, name: true, email: true, studentId: true, phone: true } },
+  customer: { select: { id: true, name: true, email: true, phone: true } },
   restaurant: { select: { name: true, emoji: true } },
 };
 

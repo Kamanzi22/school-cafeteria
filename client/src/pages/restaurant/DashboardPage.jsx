@@ -104,7 +104,7 @@ function OrderCard({ order, onUpdate, isViewer }) {
             )}
           </div>
           <p className="font-bold text-ink-900 text-sm mt-0.5">{order.customer?.name}</p>
-          <p className="text-xs text-ink-400">{order.customer?.studentId} · {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true })}</p>
+          <p className="text-xs text-ink-400">{formatDistanceToNow(new Date(order.createdAt), { addSuffix: true })}</p>
         </div>
         <div className="text-right shrink-0 ml-2">
           <p className="font-black text-ink-900">{order.totalPrice.toLocaleString()} <span className="text-xs font-normal text-ink-400">RWF</span></p>
