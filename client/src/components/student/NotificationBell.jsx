@@ -11,7 +11,12 @@ export default function NotificationBell() {
   const [state, setState] = useState(null)
   const navigate = useNavigate()
 
-  useEffect(() => { getPushState().then(setState).catch(() => setState('unsupported')) }, [])
+  // 'unsupported' can also mean the server was asleep/slow when asked (Render cold start), so on a
+  // browser that can do push, keep the bell visible as 'off' — tapping re-checks the server.
+  const browserCanPush = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
+  useEffect(() => {
+    getPushState().catch(() => 'unsupported').then(s => setState(s === 'unsupported' && browserCanPush ? 'off' : s))
+  }, [])
 
   const toggle = async () => {
     if (state === 'on') {
@@ -23,6 +28,7 @@ export default function NotificationBell() {
     if (state === 'blocked') { toast.error('Notifications are blocked for this site — allow them in your browser or phone settings'); return }
     if (state === 'needs-install') { navigate('/profile'); return }
     const next = await enableNotifications()
+    if (next === 'unsupported') { toast.error("Couldn't turn on notifications — try again in a moment"); return }
     setState(next)
     if (next === 'on') toast.success('Notifications on 🔔')
   }
