@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft, CheckCircle, Clock, X, Star, Loader } from 'lucide-react'
 import { orderAPI, reviewAPI } from '../../services/api'
 import { useSocket } from '../../hooks/useSocket'
@@ -35,6 +35,9 @@ const statusToast = (order) => {
 export default function TrackOrderPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  // 'default' key means the page was opened directly (no in-app page to return to)
+  const canGoBack = location.key !== 'default'
   const [order, setOrder] = useState(null)
   const [showReview, setShowReview] = useState(false)
   const [review, setReview] = useState({ foodRating: 5, serviceRating: 5, comment: '' })
@@ -113,10 +116,10 @@ export default function TrackOrderPage() {
       <div className="gradient-dark text-white px-4 pt-4 pb-8">
         <div className="max-w-lg mx-auto">
           <div className="flex items-center gap-3 mb-6">
-            <button onClick={() => navigate('/')} className="w-9 h-9 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center transition">
+            <button onClick={() => canGoBack ? navigate(-1) : navigate('/')} className="w-9 h-9 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center transition">
               <ArrowLeft size={18} />
             </button>
-            <h1 className="font-bold text-lg">HOME</h1>
+            <h1 className="font-bold text-lg">{canGoBack ? 'BACK' : 'HOME'}</h1>
           </div>
           <div className="bg-white/10 rounded-2xl p-4 backdrop-blur-sm">
             <p className="text-white/50 text-xs mb-1">Order Number</p>
