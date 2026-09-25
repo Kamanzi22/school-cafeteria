@@ -173,10 +173,10 @@ function OrderCard({ order, onUpdate, isViewer }) {
               {BTN_LABELS[order.status]}
             </button>
           )}
-          {['pending', 'confirmed'].includes(order.status) && (
+          {!['picked_up', 'cancelled'].includes(order.status) && (
             <button onClick={() => setConfirmingCancel(true)} disabled={loading} title="Cancel order"
-              className="btn btn-secondary text-red-500 border-red-200 hover:bg-red-50 p-2.5">
-              <X size={16} />
+              className="btn btn-secondary text-red-500 border-red-200 hover:bg-red-50 text-sm py-2.5">
+              <X size={14} />Cancel
             </button>
           )}
         </div>

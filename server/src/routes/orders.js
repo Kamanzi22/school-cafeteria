@@ -209,6 +209,7 @@ router.patch('/:id/status', authStaff, blockViewer, async (req, res) => {
     const order = await prisma.order.findUnique({ where:{ id:req.params.id } });
     if (!order || order.restaurantId !== req.restaurantId) return res.status(403).json({ success:false, error:'Forbidden' });
     if (order.status === 'cancelled') return res.status(400).json({ success:false, error:'This order is already cancelled' });
+    if (status === 'cancelled' && order.status === 'picked_up') return res.status(400).json({ success:false, error:'This order was already picked up' });
     const data = { status };
     // Stamp the time only when the status actually changes, so re-sending 'picked_up' can't move an order's revenue to another day
     if (STATUS_TIMES[status] && order.status !== status) data[STATUS_TIMES[status]] = new Date();
