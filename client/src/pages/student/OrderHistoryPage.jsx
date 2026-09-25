@@ -93,7 +93,7 @@ export default function OrderHistoryPage() {
                   </p>
                 )}
                 <div className="flex gap-2">
-                  <Link to={`/order/track/${order.id}`} className="btn btn-secondary btn-sm flex-1">
+                  <Link to={`/order/track/${order.id}`} state={{ from: '/orders' }} className="btn btn-secondary btn-sm flex-1">
                     <ChevronRight size={13} />Details
                   </Link>
                   {['picked_up', 'cancelled'].includes(order.status) && (
