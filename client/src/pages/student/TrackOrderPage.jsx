@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
-import { useBackNavigate } from '../../hooks/useBackNavigate'
 import { ArrowLeft, CheckCircle, Clock, X, Star, Loader } from 'lucide-react'
 import { orderAPI, reviewAPI } from '../../services/api'
 import { useSocket } from '../../hooks/useSocket'
@@ -39,7 +38,8 @@ export default function TrackOrderPage() {
   const location = useLocation()
   // Pages that link here pass their own path as `from` so the back button returns there
   const backTo = location.state?.from || '/'
-  const goBack = useBackNavigate(backTo)
+  // fromState lets that page restore its own back destination (e.g. order history → cart)
+  const goBack = () => navigate(backTo, { state: location.state?.fromState })
   const [order, setOrder] = useState(null)
   const [showReview, setShowReview] = useState(false)
   const [review, setReview] = useState({ foodRating: 5, serviceRating: 5, comment: '' })

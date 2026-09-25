@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { X, Plus, Minus, Trash2, ShoppingBag, ChevronRight, Loader, Backpack, MapPin, Tag, History } from 'lucide-react'
 import { useCartStore, useCustomerStore, useUIStore } from '../../store'
 import { orderAPI, restaurantAPI, promoAPI } from '../../services/api'
@@ -25,6 +25,7 @@ export default function CartDrawer() {
   const [validatedPromos, setValidatedPromos] = useState({})
   const [promoLoading, setPromoLoading] = useState(null)
   const navigate = useNavigate()
+  const location = useLocation()
 
   const rawGroups = byRestaurant()
   const restaurantIds = rawGroups.map(g => g.id).join(',')
@@ -130,7 +131,7 @@ export default function CartDrawer() {
             {items.length > 0 && <p className="text-xs text-ink-400 mt-0.5">{groups.length} store{groups.length !== 1 ? 's' : ''}</p>}
           </div>
           <div className="flex items-center gap-1">
-            <button onClick={() => { closeCart(); navigate('/orders') }} className="btn btn-secondary btn-sm">
+            <button onClick={() => { closeCart(); navigate('/orders', { state: { from: location.pathname + location.search, fromCart: true } }) }} className="btn btn-secondary btn-sm">
               <History size={14} />Order History
             </button>
             <button onClick={closeCart} className="btn btn-ghost btn-icon"><X size={18} /></button>

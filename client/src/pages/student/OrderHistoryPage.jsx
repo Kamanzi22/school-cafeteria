@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft, Clock, ChevronRight, RotateCcw, Package } from 'lucide-react'
 import { orderAPI } from '../../services/api'
-import { useCustomerStore, useCartStore } from '../../store'
-import { useBackNavigate } from '../../hooks/useBackNavigate'
+import { useCustomerStore, useCartStore, useUIStore } from '../../store'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 
@@ -16,7 +15,14 @@ export default function OrderHistoryPage() {
   const { customer: student } = useCustomerStore()
   const { addItem } = useCartStore()
   const navigate = useNavigate()
-  const goBack = useBackNavigate()
+  const location = useLocation()
+  const { openCart } = useUIStore()
+  // Opened from the cart: return to the page it was on and slide the cart back open
+  const goBack = () => {
+    const back = location.state
+    if (back?.fromCart) openCart()
+    navigate(back?.from || '/')
+  }
 
   useEffect(() => {
     if (!student) { navigate('/auth'); return }
@@ -93,7 +99,7 @@ export default function OrderHistoryPage() {
                   </p>
                 )}
                 <div className="flex gap-2">
-                  <Link to={`/order/track/${order.id}`} state={{ from: '/orders' }} className="btn btn-secondary btn-sm flex-1">
+                  <Link to={`/order/track/${order.id}`} state={{ from: '/orders', fromState: location.state }} className="btn btn-secondary btn-sm flex-1">
                     <ChevronRight size={13} />Details
                   </Link>
                   {['picked_up', 'cancelled'].includes(order.status) && (
