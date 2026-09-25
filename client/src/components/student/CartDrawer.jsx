@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, Plus, Minus, Trash2, ShoppingBag, ChevronRight, Loader, Backpack, MapPin } from 'lucide-react'
+import { X, Plus, Minus, Trash2, ShoppingBag, ChevronRight, Loader, Backpack, MapPin, Tag } from 'lucide-react'
 import { useCartStore, useCustomerStore, useUIStore } from '../../store'
-import { orderAPI, restaurantAPI } from '../../services/api'
+import { orderAPI, restaurantAPI, promoAPI } from '../../services/api'
+import { promoDiscount, promoHeadline } from '../../lib/promo'
 import { enableNotifications } from '../../services/push'
 import toast from 'react-hot-toast'
 
 export default function CartDrawer() {
   const { cartOpen, closeCart } = useUIStore()
-  const { items, setQty, remove, clear, subtotal, count, byRestaurant } = useCartStore()
+  const { items, setQty, remove, clear, subtotal, count, byRestaurant, promoCodes, setPromoCode } = useCartStore()
   const { customer } = useCustomerStore()
   const [placing, setPlacing] = useState(false)
   // Per-restaurant fulfillment choice: { [restaurantId]: { type: 'pickup'|'delivery', scope: 'campus'|'off_campus', location: '' } }
@@ -18,6 +19,11 @@ export default function CartDrawer() {
   // open rather than trusting the stale snapshot (which would otherwise hide the toggle even
   // after delivery is turned on).
   const [liveRestaurants, setLiveRestaurants] = useState({})
+  // What's typed in each restaurant's promo box, and promos confirmed by the server that aren't
+  // in the live list yet (e.g. the restaurant fetch hasn't come back).
+  const [promoInput, setPromoInput] = useState({})
+  const [validatedPromos, setValidatedPromos] = useState({})
+  const [promoLoading, setPromoLoading] = useState(null)
   const navigate = useNavigate()
 
   const rawGroups = byRestaurant()
@@ -30,12 +36,41 @@ export default function CartDrawer() {
 
   const groups = rawGroups.map(g => {
     const live = liveRestaurants[g.id]
-    return live ? { ...g, offersPickup: live.offersPickup, offersDelivery: live.offersDelivery, offersCampusDelivery: live.offersCampusDelivery, offersOffCampusDelivery: live.offersOffCampusDelivery, campusDeliveryFee: live.campusDeliveryFee, offCampusDeliveryFee: live.offCampusDeliveryFee } : g
+    const withLive = live ? { ...g, offersPickup: live.offersPickup, offersDelivery: live.offersDelivery, offersCampusDelivery: live.offersCampusDelivery, offersOffCampusDelivery: live.offersOffCampusDelivery, campusDeliveryFee: live.campusDeliveryFee, offCampusDeliveryFee: live.offCampusDeliveryFee } : g
+    const promotions = live?.promotions || []
+    const code = promoCodes[g.id]
+    const promo = code ? (promotions.find(p => p.code === code) || validatedPromos[g.id]?.code === code && validatedPromos[g.id]) || null : null
+    const groupSubtotal = g.items.reduce((s, i) => s + i.price * i.qty, 0)
+    return { ...withLive, promotions, promo, groupSubtotal, discount: promoDiscount(promo, groupSubtotal) }
   })
   const cartSubtotal = items.reduce((s, i) => s + i.price * i.qty, 0)
   const scopeFee = (g, scope) => scope === 'off_campus' ? g.offCampusDeliveryFee : g.campusDeliveryFee
   const deliveryFeeTotal = groups.reduce((s, g) => s + (fulfillment[g.id]?.type === 'delivery' ? scopeFee(g, getFulfillment(g.id).scope) : 0), 0)
-  const total = cartSubtotal + deliveryFeeTotal
+  const discountTotal = groups.reduce((s, g) => s + g.discount, 0)
+  const total = cartSubtotal - discountTotal + deliveryFeeTotal
+
+  // A code picked on the restaurant page (or earlier) that has since expired/been switched off
+  // disappears from the live list — drop it once that list has loaded so it isn't sent silently.
+  useEffect(() => {
+    for (const g of groups) {
+      if (promoCodes[g.id] && liveRestaurants[g.id] && !g.promo) setPromoCode(g.id, null)
+    }
+  }, [liveRestaurants])
+
+  const applyPromo = async (group, code) => {
+    code = (code || '').trim().toUpperCase()
+    if (!code) return
+    setPromoLoading(group.id)
+    try {
+      const res = await promoAPI.validate({ code, restaurantId: group.id, subtotal: group.groupSubtotal })
+      setValidatedPromos(prev => ({ ...prev, [group.id]: res.data.data.promo }))
+      setPromoCode(group.id, code)
+      setPromoInput(prev => ({ ...prev, [group.id]: '' }))
+      toast.success(`Promo applied! −${res.data.data.discount.toLocaleString()} RWF`)
+    } catch (e) {
+      toast.error(e.response?.data?.error || 'Invalid code')
+    } finally { setPromoLoading(null) }
+  }
 
   function getFulfillment(restaurantId) {
     const group = groups.find(g => g.id === restaurantId)
@@ -70,6 +105,7 @@ export default function CartDrawer() {
           fulfillmentType: f.type,
           deliveryScope: f.type === 'delivery' ? f.scope : undefined,
           deliveryLocation: f.type === 'delivery' ? f.location.trim() : undefined,
+          promoCode: group.promo ? group.promo.code : undefined,
         })
       }))
       clear()
@@ -173,6 +209,42 @@ export default function CartDrawer() {
                         )}
                       </div>
                     )}
+
+                    {/* Promo — the applied code, or this store's offers + a box to type one */}
+                    {group.promo ? (
+                      <div className="mt-2 flex items-center gap-2 text-xs bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+                        <Tag size={12} className="text-emerald-600 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-emerald-700 truncate">{group.promo.code} · {group.promo.title}</p>
+                          {group.discount > 0
+                            ? <p className="text-emerald-600">−{group.discount.toLocaleString()} RWF</p>
+                            : <p className="text-amber-600">Add {(group.promo.minOrder - group.groupSubtotal).toLocaleString()} RWF more to use this code</p>}
+                        </div>
+                        <button onClick={() => setPromoCode(group.id, null)} className="text-ink-400 hover:text-red-500 p-1 -mr-1" title="Remove code"><X size={14} /></button>
+                      </div>
+                    ) : (
+                      <div className="mt-2">
+                        {group.promotions.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mb-2">
+                            {group.promotions.map(p => (
+                              <button key={p.id} onClick={() => applyPromo(group, p.code)} disabled={promoLoading === group.id}
+                                className="text-[11px] font-semibold px-2.5 py-1 rounded-full border border-dashed border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition flex items-center gap-1">
+                                <Tag size={10} />{promoHeadline(p)} · {p.code}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex gap-2">
+                          <input value={promoInput[group.id] || ''} onChange={e => setPromoInput(prev => ({ ...prev, [group.id]: e.target.value.toUpperCase() }))}
+                            onKeyDown={e => e.key === 'Enter' && applyPromo(group, promoInput[group.id])}
+                            placeholder="Promo code" className="input text-sm flex-1 py-2" />
+                          <button onClick={() => applyPromo(group, promoInput[group.id])} disabled={promoLoading === group.id || !promoInput[group.id]?.trim()}
+                            className="btn btn-secondary text-sm shrink-0 py-2">
+                            {promoLoading === group.id ? <Loader size={14} className="animate-spin" /> : 'Apply'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )
               })}
@@ -189,6 +261,12 @@ export default function CartDrawer() {
                 <span>Subtotal ({count()} items)</span>
                 <span>{cartSubtotal.toLocaleString()} RWF</span>
               </div>
+              {discountTotal > 0 && (
+                <div className="flex justify-between text-emerald-600">
+                  <span>Discount</span>
+                  <span>−{discountTotal.toLocaleString()} RWF</span>
+                </div>
+              )}
               {deliveryFeeTotal > 0 && (
                 <div className="flex justify-between text-ink-500">
                   <span>Delivery fee</span>

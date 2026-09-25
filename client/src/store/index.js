@@ -23,7 +23,11 @@ export const useCartStore = create(persist((set, get) => ({
   },
   setQty: (key, qty) => { if (qty < 1) { get().remove(key); return } set({ items: get().items.map(i => i.key===key ? { ...i, qty } : i) }) },
   remove: (key) => set({ items: get().items.filter(i => i.key!==key) }),
-  clear: () => set({ items: [] }),
+  // Promo code chosen per restaurant ({ [restaurantId]: 'CODE' }) — set from the offers on a
+  // restaurant's page or typed in the cart, and sent with that restaurant's order.
+  promoCodes: {},
+  setPromoCode: (restaurantId, code) => set({ promoCodes: { ...get().promoCodes, [restaurantId]: code || undefined } }),
+  clear: () => set({ items: [], promoCodes: {} }),
   subtotal: () => get().items.reduce((s,i) => s+i.price*i.qty, 0),
   count: () => get().items.reduce((s,i) => s+i.qty, 0),
   byRestaurant: () => {

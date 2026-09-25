@@ -91,6 +91,7 @@ router.post('/', async (req, res) => {
       if (promo && subtotal >= promo.minOrder && !(promo.usageLimit && promo.usageCount >= promo.usageLimit)) {
         discountAmount = promo.type === 'percentage' ? subtotal * (promo.value/100) : promo.value;
         if (promo.maxDiscount) discountAmount = Math.min(discountAmount, promo.maxDiscount);
+        discountAmount = Math.min(discountAmount, subtotal);
         // Guarded by usageLimit in the where clause so a race between two concurrent orders
         // can't both increment past the cap — whichever loses the race just applies no discount.
         const { count } = await prisma.promotion.updateMany({

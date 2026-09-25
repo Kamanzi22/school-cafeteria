@@ -82,6 +82,9 @@ router.get('/:id', optionalCustomer, async (req, res) => {
     const catById = new Map(safe.categories.map(c => [c.id, c]));
     safe.items = safe.items.map(i => ({ ...i, category: catById.get(i.categoryId) || null }));
     if (safe.featuredMode === 'auto') safe.items = applyAutoFeatured(safe.items);
+    // Customers see these as offers on the menu page — hide ones whose usage cap is already hit,
+    // since checkout would refuse them anyway.
+    safe.promotions = safe.promotions.filter(p => !(p.usageLimit && p.usageCount >= p.usageLimit));
     res.json({ success: true, data: { ...safe, isFavorited } });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

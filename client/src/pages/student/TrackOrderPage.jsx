@@ -224,6 +224,16 @@ export default function TrackOrderPage() {
                 <span className="font-medium text-alu-cream">{item.subtotal.toLocaleString()} RWF</span>
               </div>
             ))}
+            {order.discountAmount > 0 && (
+              <div className="flex justify-between text-sm text-alu-success-fg">
+                <span>Discount</span><span>−{order.discountAmount.toLocaleString()} RWF</span>
+              </div>
+            )}
+            {order.deliveryFee > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-alu-muted">Delivery fee</span><span className="text-alu-cream">{order.deliveryFee.toLocaleString()} RWF</span>
+              </div>
+            )}
             <div className="flex justify-between font-bold text-alu-cream border-t border-alu-border pt-2 mt-2">
               <span>Total</span><span>{order.totalPrice.toLocaleString()} RWF</span>
             </div>

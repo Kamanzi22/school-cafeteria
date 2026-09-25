@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Star, Clock, MapPin, Phone, Plus, Minus, ShoppingBag, Flame, Leaf, Zap, AlertCircle, Heart, Search, X, PackageX, Backpack } from 'lucide-react'
+import { ArrowLeft, Star, Clock, MapPin, Phone, Plus, Minus, ShoppingBag, Flame, Leaf, Zap, AlertCircle, Heart, Search, X, PackageX, Backpack, Tag, Check } from 'lucide-react'
 import { restaurantAPI } from '../../services/api'
 import { useCartStore, useCustomerStore, useUIStore } from '../../store'
 import CartDrawer from '../../components/student/CartDrawer'
@@ -9,6 +9,8 @@ import { useBackNavigate } from '../../hooks/useBackNavigate'
 import { useVisitTracking } from '../../hooks/useVisitTracking'
 import { useSocket } from '../../hooks/useSocket'
 import toast from 'react-hot-toast'
+import { format } from 'date-fns'
+import { promoHeadline, promoTerms } from '../../lib/promo'
 
 // Category names that actually have meals, in the restaurant's own category order (Food, then Drinks)
 const usedCategoryNames = (r) => {
@@ -75,7 +77,7 @@ export default function RestaurantPage() {
   const [search, setSearch] = useState('')
   const [favorited, setFavorited] = useState(false)
   const [variantItem, setVariantItem] = useState(null)
-  const { items, addItem, setQty } = useCartStore()
+  const { items, addItem, setQty, promoCodes, setPromoCode } = useCartStore()
   const { customer: student } = useCustomerStore()
   const { openCart } = useUIStore()
   const cartCount = items.reduce((s, i) => s + i.qty, 0)
@@ -238,6 +240,41 @@ export default function RestaurantPage() {
       {!restaurant.isOpen && (
         <div className="bg-red-50 border-b border-red-100 page-container py-3">
           <p className="text-red-600 font-semibold text-sm text-center">This restaurant is currently closed · Opens {restaurant.openTime}</p>
+        </div>
+      )}
+
+      {/* Offers — the restaurant's live promotions; tapping one sets its code for checkout */}
+      {restaurant.promotions?.length > 0 && (
+        <div className="bg-white border-b border-ink-100">
+          <div className="page-container py-4">
+            <p className="text-xs font-bold text-ink-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <Tag size={13} className="text-emerald-500" /> Offers
+            </p>
+            <div className="flex gap-3 overflow-x-auto scrollbar-hide -mx-1 px-1 pb-1">
+              {restaurant.promotions.map(promo => {
+                const applied = promoCodes[restaurant.id] === promo.code
+                const terms = promoTerms(promo)
+                return (
+                  <div key={promo.id} className={`flex-none w-64 rounded-2xl border-2 border-dashed p-3 flex flex-col ${applied ? 'border-emerald-400 bg-emerald-50' : 'border-emerald-200 bg-emerald-50/50'}`}>
+                    <p className="font-black text-emerald-600 text-lg leading-tight">{promoHeadline(promo)}</p>
+                    <p className="font-semibold text-sm text-ink-900 mt-0.5 line-clamp-1">{promo.title}</p>
+                    {promo.description && <p className="text-xs text-ink-500 mt-0.5 line-clamp-2">{promo.description}</p>}
+                    <p className="text-[11px] text-ink-400 mt-1">{[terms, `Until ${format(new Date(promo.validUntil), 'd MMM')}`].filter(Boolean).join(' · ')}</p>
+                    <div className="flex items-center justify-between gap-2 mt-auto pt-2.5">
+                      <span className="font-mono font-bold text-xs text-ink-700 bg-white border border-ink-200 rounded-lg px-2 py-1 truncate">{promo.code}</span>
+                      <button onClick={() => {
+                          setPromoCode(restaurant.id, applied ? null : promo.code)
+                          if (!applied) toast.success(`${promo.code} will be applied at checkout`)
+                        }}
+                        className={`btn btn-sm shrink-0 ${applied ? 'bg-emerald-500 text-white hover:bg-emerald-600' : 'btn-secondary'}`}>
+                        {applied ? <><Check size={13} />Applied</> : 'Use code'}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
         </div>
       )}
 

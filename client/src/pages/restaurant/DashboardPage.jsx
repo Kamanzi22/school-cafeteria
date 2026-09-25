@@ -108,6 +108,7 @@ function OrderCard({ order, onUpdate, isViewer }) {
         </div>
         <div className="text-right shrink-0 ml-2">
           <p className="font-black text-ink-900">{order.totalPrice.toLocaleString()} <span className="text-xs font-normal text-ink-400">RWF</span></p>
+          {order.discountAmount > 0 && <p className="text-[11px] font-semibold text-emerald-600">Promo −{order.discountAmount.toLocaleString()}</p>}
           <p className="text-xs text-ink-400 mt-0.5">{format(new Date(order.createdAt), 'HH:mm')}</p>
         </div>
       </div>

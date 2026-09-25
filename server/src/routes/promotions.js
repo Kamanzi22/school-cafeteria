@@ -35,12 +35,14 @@ router.delete('/:id', authStaff, blockViewer, requireManager, async (req, res) =
 router.post('/validate', async (req, res) => {
   try {
     const { code, restaurantId, subtotal } = req.body;
-    const promo = await prisma.promotion.findFirst({ where:{ code:code.toUpperCase(), restaurantId, isActive:true, validFrom:{ lte:new Date() }, validUntil:{ gte:new Date() } } });
+    if (!code?.trim() || !restaurantId) return res.status(400).json({ success:false, error:'Enter a promo code' });
+    const promo = await prisma.promotion.findFirst({ where:{ code:code.trim().toUpperCase(), restaurantId, isActive:true, validFrom:{ lte:new Date() }, validUntil:{ gte:new Date() } } });
     if (!promo) return res.status(404).json({ success:false, error:'Invalid or expired code' });
     if (subtotal < promo.minOrder) return res.status(400).json({ success:false, error:`Min order ${promo.minOrder.toLocaleString()} RWF` });
     if (promo.usageLimit && promo.usageCount >= promo.usageLimit) return res.status(400).json({ success:false, error:'Promo usage limit reached' });
     let discount = promo.type==='percentage' ? subtotal*(promo.value/100) : promo.value;
     if (promo.maxDiscount) discount = Math.min(discount, promo.maxDiscount);
+    discount = Math.min(discount, subtotal);
     res.json({ success:true, data:{ promo, discount } });
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
