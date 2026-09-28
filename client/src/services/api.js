@@ -84,6 +84,7 @@ export const orderAPI = {
   customerHistory: (customerId) => api.get(`/orders/customer/${customerId}/history`),
   guestHistory: (guestToken) => api.get(`/orders/guest/${guestToken}/history`),
   restaurantOrders: (restaurantId, params) => api.get(`/orders/restaurant/${restaurantId}/all`, { params }),
+  restaurantHistory: (restaurantId, params) => api.get(`/orders/restaurant/${restaurantId}/history`, { params }),
   updateStatus: (id, d) => api.patch(`/orders/${id}/status`, d),
   cancel: (id, reason) => api.patch(`/orders/${id}/cancel`, { reason }),
   removeFromHistory: (id) => api.delete(`/orders/${id}`),

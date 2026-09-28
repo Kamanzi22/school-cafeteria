@@ -17,7 +17,7 @@ const TABS = [
   { key: 'ready', statuses: ['ready'], label: 'Ready', color: 'text-emerald-600 bg-emerald-100' },
   { key: 'picked_up', statuses: ['picked_up'], label: 'Picked Up', color: 'text-sky-600 bg-sky-100' },
   { key: 'cancelled', statuses: ['cancelled'], label: 'Cancelled', color: 'text-red-600 bg-red-100' },
-  { key: 'all', statuses: null, label: 'All Today', color: 'text-ink-600 bg-ink-100' },
+  { key: 'all', statuses: null, label: 'All', color: 'text-ink-600 bg-ink-100' },
 ]
 
 // One-tap starting points for the note; staff can edit or write their own.
@@ -70,6 +70,8 @@ function OrderCard({ order, onUpdate, isViewer }) {
   const nextStatus = order.status === 'ready' && order.fulfillmentType === 'delivery' ? null : STATUS_NEXT[order.status]
   const Icon = BTN_ICONS[order.status]
   const isNew = Date.now() - new Date(order.createdAt) < 90000
+  // Unfinished orders from an earlier day stay on the board until someone closes them out
+  const isCarriedOver = !isToday(new Date(order.createdAt))
 
   const advance = async () => {
     setLoading(true)
@@ -99,6 +101,7 @@ function OrderCard({ order, onUpdate, isViewer }) {
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-mono font-bold text-flame-500 text-sm">{order.orderNumber}</span>
             {isNew && <span className="badge bg-red-100 text-red-600 animate-pulse">🔴 NEW</span>}
+            {isCarriedOver && <span className="badge bg-amber-100 text-amber-700">Earlier · {format(new Date(order.createdAt), 'd MMM')}</span>}
             {order.fulfillmentType === 'delivery' && (
               <span className="badge bg-indigo-100 text-indigo-600"><Backpack size={10} className="mr-0.5" />Delivery · {order.deliveryScope === 'off_campus' ? 'Off campus' : 'On campus'}</span>
             )}
@@ -109,7 +112,7 @@ function OrderCard({ order, onUpdate, isViewer }) {
         <div className="text-right shrink-0 ml-2">
           <p className="font-black text-ink-900">{order.totalPrice.toLocaleString()} <span className="text-xs font-normal text-ink-400">RWF</span></p>
           {order.discountAmount > 0 && <p className="text-[11px] font-semibold text-emerald-600">Promo −{order.discountAmount.toLocaleString()}</p>}
-          <p className="text-xs text-ink-400 mt-0.5">{format(new Date(order.createdAt), 'HH:mm')}</p>
+          <p className="text-xs text-ink-400 mt-0.5">{format(new Date(order.createdAt), isCarriedOver ? 'd MMM · HH:mm' : 'HH:mm')}</p>
         </div>
       </div>
 

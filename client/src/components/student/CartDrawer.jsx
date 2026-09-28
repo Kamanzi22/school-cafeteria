@@ -283,7 +283,6 @@ export default function CartDrawer() {
                 <span>Total</span>
                 <span>{total.toLocaleString()} RWF</span>
               </div>
-              <p className="text-xs text-ink-400 text-center">💵 Pay cash on {groups.some(g => getFulfillment(g.id).type === 'delivery') ? 'delivery' : 'pickup'}</p>
             </div>
 
             <button onClick={placeOrder} disabled={placing}
