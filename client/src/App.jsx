@@ -32,6 +32,11 @@ import SuperAdminPage from './pages/admin/SuperAdminPage'
 import DeliveryPage from './pages/admin/DeliveryPage'
 import DeliveryAuthPage from './pages/admin/DeliveryAuthPage'
 
+// restaurant.cafecampus.org.rw and superadmin.cafecampus.org.rw serve this same build, so the
+// hostname picks which section "/" (and any unknown path) opens instead of the customer home page.
+const PORTAL_HOMES = { restaurant: '/admin', superadmin: '/superadmin' }
+const portalHome = PORTAL_HOMES[window.location.hostname.split('.')[0]]
+
 function AdminGuard({ children }) {
   const { restaurant } = useAdminStore()
   return restaurant ? children : <Navigate to="/restaurant/auth" replace />
@@ -47,7 +52,7 @@ export default function App() {
     <OfflineScreen />
     <Routes>
       {/* ── Customer side ──────────────────────────────── */}
-      <Route path="/" element={<HomePage />} />
+      <Route path="/" element={portalHome ? <Navigate to={portalHome} replace /> : <HomePage />} />
       <Route path="/search" element={<SearchPage />} />
       <Route path="/auth" element={<CustomerAuthPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
@@ -76,7 +81,7 @@ export default function App() {
       <Route path="/delivery/login" element={<DeliveryAuthPage />} />
       <Route path="/delivery" element={<DeliveryPage standalone />} />
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<Navigate to={portalHome || '/'} replace />} />
     </Routes>
     </>
   )
