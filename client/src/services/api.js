@@ -39,21 +39,15 @@ export const authAPI = {
   // Customer
   customerLogin: (d) => api.post('/auth/customer/login', d),
   customerGoogle: (d) => api.post('/auth/customer/google', d),
+  // Restaurant owner — unlock with current password, then change email / password directly
+  restaurantCheckPassword: (d) => api.post('/auth/restaurant/check-password', d),
+  restaurantChangeEmail: (d) => api.put('/auth/restaurant/email', d),
+  restaurantChangePassword: (d) => api.put('/auth/restaurant/password', d),
   // Super admin
   superAdminLogin: (d) => api.post('/auth/superadmin/login', d),
   superAdminChangePassword: (d) => api.put('/auth/superadmin/password', d),
   // Delivery staff
   deliveryLogin: (d) => api.post('/auth/delivery/login', d),
-}
-
-// Email-verification-gated actions: a restaurant owner changing their login email or password.
-// Each is request (send code) then confirm (apply the change). Customer accounts are created via
-// Google sign-in (authAPI.customerGoogle) instead.
-export const verifyAPI = {
-  restaurantEmailRequest: (d) => api.post('/verify/restaurant-email/request', d),
-  restaurantEmailConfirm: (d) => api.post('/verify/restaurant-email/confirm', d),
-  restaurantPasswordRequest: (d) => api.post('/verify/restaurant-password/request', d),
-  restaurantPasswordConfirm: (d) => api.post('/verify/restaurant-password/confirm', d),
 }
 
 export const restaurantAPI = {

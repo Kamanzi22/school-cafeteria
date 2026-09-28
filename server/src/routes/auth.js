@@ -217,10 +217,59 @@ router.post('/restaurant/staff', authStaff, blockViewer, async (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════
-// RESTAURANT — change own email / password — see /api/verify/restaurant-email/* and
-// /api/verify/restaurant-password/*. Both require the current password AND a code emailed
-// to confirm, so there's no direct-change route here.
+// RESTAURANT — change own email / password. Owner only. The settings page first unlocks
+// with the current password (/restaurant/check-password), then each change re-sends that
+// same password so the server checks it again — no emailed code involved.
 // ══════════════════════════════════════════════════════
+const accountLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many attempts — try again later' },
+});
+
+// Shared guard: owner only, and the current password must match.
+const checkOwnerPassword = async (req, res) => {
+  if (req.role !== 'owner') { res.status(403).json({ success: false, error: 'Only the owner can change login details' }); return false; }
+  const valid = await bcrypt.compare(req.body.currentPassword || '', req.restaurant.passwordHash);
+  if (!valid) { res.status(400).json({ success: false, error: 'Current password is incorrect' }); return false; }
+  return true;
+};
+
+router.post('/restaurant/check-password', authStaff, blockViewer, accountLimiter, async (req, res) => {
+  try {
+    if (!await checkOwnerPassword(req, res)) return;
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+router.put('/restaurant/email', authStaff, blockViewer, accountLimiter, async (req, res) => {
+  try {
+    if (!await checkOwnerPassword(req, res)) return;
+    const newEmail = String(req.body.newEmail || '').toLowerCase().trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) return res.status(400).json({ success: false, error: 'Enter a valid email' });
+
+    const taken = await prisma.restaurant.findUnique({ where: { ownerEmail: newEmail } });
+    if (taken && taken.id !== req.restaurantId) return res.status(409).json({ success: false, error: 'That email is already in use' });
+
+    const updated = await prisma.restaurant.update({ where: { id: req.restaurantId }, data: { ownerEmail: newEmail } });
+    const { passwordHash: _, ...safe } = updated;
+    res.json({ success: true, data: { restaurant: safe } });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+router.put('/restaurant/password', authStaff, blockViewer, accountLimiter, async (req, res) => {
+  try {
+    if (!await checkOwnerPassword(req, res)) return;
+    const { newPassword } = req.body;
+    if (!newPassword || newPassword.length < 6) return res.status(400).json({ success: false, error: 'Min 6 characters' });
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await prisma.restaurant.update({ where: { id: req.restaurantId }, data: { passwordHash } });
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
 
 // ══════════════════════════════════════════════════════
 // SUPER ADMIN — login
