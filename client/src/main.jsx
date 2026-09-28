@@ -1,19 +1,25 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
+import { BrowserRouter, unstable_HistoryRouter as HistoryRouter } from 'react-router-dom'
 import { HelmetProvider } from 'react-helmet-async'
 import { Toaster } from 'react-hot-toast'
 import App from './App'
+import { portalHistory } from './portal'
 import './index.css'
 import './services/install'
+
+// On restaurant./superadmin. subdomains the router reads and writes short addresses (see portal.js)
+const Router = ({ children }) => portalHistory
+  ? <HistoryRouter history={portalHistory}>{children}</HistoryRouter>
+  : <BrowserRouter>{children}</BrowserRouter>
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <HelmetProvider>
-      <BrowserRouter>
+      <Router>
         <App />
         <Toaster position="top-center" toastOptions={{ style:{ fontFamily:'DM Sans', borderRadius:'14px', fontSize:'14px', fontWeight:500 }, success:{ iconTheme:{ primary:'#ff5c1a', secondary:'white' } } }} />
-      </BrowserRouter>
+      </Router>
     </HelmetProvider>
   </React.StrictMode>
 )

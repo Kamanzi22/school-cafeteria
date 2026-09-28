@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { currentPath } from '../portal'
 
 const BACKEND = import.meta.env.VITE_BACKEND_URL || ''
 const api = axios.create({ baseURL: `${BACKEND}/api`, timeout: 15000 })
@@ -13,7 +14,8 @@ const getToken = () => {
     const customer = JSON.parse(localStorage.getItem('cc-customer-v4') || '{}')?.state?.token || null
     const superadmin = JSON.parse(localStorage.getItem('cc-superadmin-v1') || '{}')?.state?.token || null
     const delivery = JSON.parse(localStorage.getItem('cc-delivery-v1') || '{}')?.state?.token || null
-    const path = window.location.pathname
+    // The internal path — on a portal subdomain the address bar shows a shortened one (see portal.js)
+    const path = currentPath()
     // /delivery is the standalone delivery-runner route — it must never fall back to a
     // superadmin/admin/customer token, since that would defeat the whole point of the scope.
     if (path.startsWith('/delivery')) return delivery
