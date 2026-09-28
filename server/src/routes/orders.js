@@ -3,6 +3,10 @@ const { authStaff, optionalCustomer, blockViewer } = require('../middleware/auth
 const prisma = require('../lib/prisma');
 const { notifyOrderStatus, notifyNewOrder } = require('../lib/notifications');
 
+// Statuses an order sits in until it's finished (picked up / delivered) or cancelled
+const OPEN_STATUSES = ['pending', 'confirmed', 'preparing', 'ready', 'on_the_way'];
+const ALL_STATUSES = [...OPEN_STATUSES, 'picked_up', 'cancelled'];
+
 const genNum = () => 'CC-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2,5).toUpperCase();
 
 // Thrown for expected, user-correctable order problems (out of stock, missing option) so the
@@ -159,7 +163,7 @@ router.get('/customer/:customerId/history', optionalCustomer, async (req, res) =
   try {
     if (!req.customer || req.customer.id !== req.params.customerId) return res.status(403).json({ success:false, error:'Forbidden' });
     const orders = await prisma.order.findMany({
-      where:{ customerId: req.params.customerId },
+      where:{ customerId: req.params.customerId, hiddenByCustomer:false },
       include:{ items:{ include:{ menuItem:{ select:{ name:true, emoji:true } } } }, restaurant:{ select:{ id:true, name:true, emoji:true, coverColor:true } }, review:true },
       orderBy:{ createdAt:'desc' }
     });
@@ -172,7 +176,7 @@ router.get('/guest/:guestToken/history', async (req, res) => {
   try {
     const customer = await prisma.customer.findUnique({ where:{ guestToken:req.params.guestToken } });
     if (!customer) return res.json({ success:true, data:[] });
-    const orders = await prisma.order.findMany({ where:{ customerId:customer.id }, include:{ items:true, restaurant:{ select:{ id:true, name:true, emoji:true, coverColor:true } }, review:true }, orderBy:{ createdAt:'desc' } });
+    const orders = await prisma.order.findMany({ where:{ customerId:customer.id, hiddenByCustomer:false }, include:{ items:true, restaurant:{ select:{ id:true, name:true, emoji:true, coverColor:true } }, review:true }, orderBy:{ createdAt:'desc' } });
     res.json({ success:true, data:orders });
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
@@ -188,12 +192,44 @@ router.get('/restaurant/:restaurantId/all', authStaff, async (req, res) => {
       const d = new Date(date); const ds = new Date(d); ds.setHours(0,0,0,0); const de = new Date(d); de.setHours(23,59,59,999);
       where.createdAt = { gte:ds, lte:de };
     } else {
-      // Today's list = orders placed today plus any picked up today, so revenue counted at pickup is never missing an order
+      // Today's list = orders placed today plus any picked up today, so revenue counted at pickup is never missing an order,
+      // plus any order from an earlier day that was never finished — otherwise it drops off the board and stays stuck forever
       const today = new Date(); today.setHours(0,0,0,0);
-      where.OR = [{ createdAt:{ gte:today } }, { pickedUpAt:{ gte:today } }];
+      where.OR = [{ createdAt:{ gte:today } }, { pickedUpAt:{ gte:today } }, { status:{ in:OPEN_STATUSES } }];
     }
     const orders = await prisma.order.findMany({ where, include:ORDER_INCLUDE, orderBy:{ createdAt:'desc' }, take:200 });
     res.json({ success:true, data:orders });
+  } catch(e){ res.status(500).json({ success:false, error:e.message }); }
+});
+
+// ── Restaurant order history (paginated, any date range) ─────────────────────
+router.get('/restaurant/:restaurantId/history', authStaff, async (req, res) => {
+  try {
+    if (req.restaurantId !== req.params.restaurantId) return res.status(403).json({ success:false, error:'Forbidden' });
+    const { status, from, to, q } = req.query;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize) || 30));
+    const where = { restaurantId: req.params.restaurantId };
+    if (status === 'open') where.status = { in:OPEN_STATUSES };
+    else if (status && status !== 'all') where.status = status;
+    if (from || to) {
+      where.createdAt = {};
+      if (from) { const d = new Date(from); d.setHours(0,0,0,0); where.createdAt.gte = d; }
+      if (to) { const d = new Date(to); d.setHours(23,59,59,999); where.createdAt.lte = d; }
+    }
+    const search = typeof q === 'string' ? q.trim() : '';
+    if (search) {
+      where.OR = [
+        { orderNumber:{ contains:search, mode:'insensitive' } },
+        { guestName:{ contains:search, mode:'insensitive' } },
+        { customer:{ name:{ contains:search, mode:'insensitive' } } },
+      ];
+    }
+    const [orders, total] = await Promise.all([
+      prisma.order.findMany({ where, include:ORDER_INCLUDE, orderBy:{ createdAt:'desc' }, skip:(page-1)*pageSize, take:pageSize }),
+      prisma.order.count({ where }),
+    ]);
+    res.json({ success:true, data:orders, total, page, pageSize });
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
 
@@ -206,13 +242,21 @@ router.patch('/:id/status', authStaff, blockViewer, async (req, res) => {
     // The restaurant's note to the customer explaining the cancellation (shown on their order page
     // and in the notification). Capped so a pasted essay can't bloat the notification payload.
     const cancelReason = typeof req.body.cancelReason === 'string' ? req.body.cancelReason.trim().slice(0, 300) : '';
+    // Staff-only note for a correction made from order history (e.g. "customer collected it yesterday")
+    const note = typeof req.body.note === 'string' ? req.body.note.trim().slice(0, 300) : '';
+    // History corrections can opt out of pinging the customer about an order that's long finished
+    const notify = req.body.notify !== false;
+    if (!ALL_STATUSES.includes(status)) return res.status(400).json({ success:false, error:'Invalid status' });
     const order = await prisma.order.findUnique({ where:{ id:req.params.id } });
     if (!order || order.restaurantId !== req.restaurantId) return res.status(403).json({ success:false, error:'Forbidden' });
     if (order.status === 'cancelled') return res.status(400).json({ success:false, error:'This order is already cancelled' });
     if (status === 'cancelled' && order.status === 'picked_up') return res.status(400).json({ success:false, error:'This order was already picked up' });
+    if (status === 'on_the_way' && order.fulfillmentType !== 'delivery') return res.status(400).json({ success:false, error:'Only delivery orders can be on the way' });
     const data = { status };
     // Stamp the time only when the status actually changes, so re-sending 'picked_up' can't move an order's revenue to another day
     if (STATUS_TIMES[status] && order.status !== status) data[STATUS_TIMES[status]] = new Date();
+    // Undoing a mistaken pickup: clear the stamp so the order stops counting toward that day's revenue
+    if (order.status === 'picked_up' && status !== 'picked_up') data.pickedUpAt = null;
     if (status === 'cancelled') { data.cancelReason = cancelReason || 'Cancelled by restaurant'; data.cancelledBy = 'restaurant'; }
     if (estimatedReadyAt) data.estimatedReadyAt = new Date(estimatedReadyAt);
     const updated = await prisma.$transaction(async (tx) => {
@@ -224,14 +268,14 @@ router.patch('/:id/status', authStaff, blockViewer, async (req, res) => {
       } else {
         await tx.order.updateMany({ where:{ id:req.params.id }, data });
       }
-      return tx.order.update({ where:{ id:req.params.id }, data:{ statusHistory:{ create:[{ status, note:status === 'cancelled' ? data.cancelReason : null }] } }, include:ORDER_INCLUDE });
+      return tx.order.update({ where:{ id:req.params.id }, data:{ statusHistory:{ create:[{ status, note:note || (status === 'cancelled' ? data.cancelReason : null) }] } }, include:ORDER_INCLUDE });
     });
     req.app.get('io').to(`order:${req.params.id}`).emit('order:updated', updated);
     req.app.get('io').to(`restaurant:${order.restaurantId}`).emit('order:statusChanged', updated);
     if (updated.fulfillmentType === 'delivery') req.app.get('io').to('superadmin').to('delivery').emit('delivery:order', updated);
     // Only on an actual transition — re-sending the same status must not notify the customer a
     // second time. Fire-and-forget: the push/email shouldn't hold up the response.
-    if (status !== order.status) notifyOrderStatus(req.app.get('io'), updated);
+    if (notify && status !== order.status) notifyOrderStatus(req.app.get('io'), updated);
     res.json({ success:true, data:updated });
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
@@ -255,6 +299,33 @@ router.patch('/:id/cancel', async (req, res) => {
     if (e instanceof OrderValidationError) return res.status(400).json({ success:false, error:e.message });
     res.status(500).json({ success:false, error:e.message });
   }
+});
+
+// ── Customer delete from history ──────────────────────────────────────────────
+// Only hides the order from the customer's history — the restaurant keeps it for sales and
+// analytics. A still-pending order is cancelled first (same as the cancel route above) so the
+// restaurant doesn't make food for an order the customer has thrown away.
+router.delete('/:id', optionalCustomer, async (req, res) => {
+  try {
+    const order = await prisma.order.findUnique({ where:{ id:req.params.id } });
+    if (!order) return res.status(404).json({ success:false, error:'Order not found' });
+    if (!req.customer || req.customer.id !== order.customerId) return res.status(403).json({ success:false, error:'Forbidden' });
+
+    const { cancelled, updated } = await prisma.$transaction(async (tx) => {
+      const guard = await tx.order.updateMany({ where:{ id:order.id, status:'pending' }, data:{ status:'cancelled', cancelledAt:new Date(), cancelReason:'Cancelled by customer', cancelledBy:'customer' } });
+      if (guard.count > 0) {
+        await restoreStock(tx, order.id);
+        await tx.orderStatusHistory.create({ data:{ orderId:order.id, status:'cancelled', note:'Deleted by customer' } });
+      }
+      const updated = await tx.order.update({ where:{ id:order.id }, data:{ hiddenByCustomer:true }, include:ORDER_INCLUDE });
+      return { cancelled: guard.count > 0, updated };
+    });
+    if (cancelled) {
+      req.app.get('io').to(`restaurant:${order.restaurantId}`).emit('order:cancelled', updated);
+      if (updated.fulfillmentType === 'delivery') req.app.get('io').to('superadmin').to('delivery').emit('delivery:order', updated);
+    }
+    res.json({ success:true, data:{ cancelled } });
+  } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
 
 module.exports = router;

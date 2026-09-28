@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { ArrowLeft, Clock, ChevronRight, RotateCcw, Package } from 'lucide-react'
+import { ArrowLeft, Clock, ChevronRight, RotateCcw, Package, Trash2 } from 'lucide-react'
 import { orderAPI } from '../../services/api'
 import { useCustomerStore, useCartStore, useUIStore } from '../../store'
 import { format } from 'date-fns'
@@ -12,6 +12,7 @@ export default function OrderHistoryPage() {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
+  const [deletingId, setDeletingId] = useState(null)
   const { customer: student } = useCustomerStore()
   const { addItem } = useCartStore()
   const navigate = useNavigate()
@@ -39,6 +40,24 @@ export default function OrderHistoryPage() {
     })
     toast.success('Items added to cart!')
     navigate(`/restaurant/${order.restaurantId}`)
+  }
+
+  // Removes the order from this list only. A pending order is cancelled too, so warn about that;
+  // an order the restaurant is already working on still goes ahead.
+  const handleDelete = async (order) => {
+    const warning = order.status === 'pending'
+      ? 'This order is still pending. Deleting it will also cancel it. Continue?'
+      : ['picked_up', 'cancelled'].includes(order.status)
+        ? 'Delete this order from your history?'
+        : 'Delete this order from your history? The restaurant is already working on it, so it will NOT be cancelled.'
+    if (!window.confirm(warning)) return
+    setDeletingId(order.id)
+    try {
+      const res = await orderAPI.removeFromHistory(order.id)
+      setOrders(prev => prev.filter(o => o.id !== order.id))
+      toast.success(res.data.data.cancelled ? 'Order cancelled and deleted' : 'Order deleted')
+    } catch (e) { toast.error(e.response?.data?.error || 'Failed to delete') }
+    finally { setDeletingId(null) }
   }
 
   const filtered = filter === 'all' ? orders : orders.filter(o => o.status === filter)
@@ -107,6 +126,10 @@ export default function OrderHistoryPage() {
                       <RotateCcw size={13} />Reorder
                     </button>
                   )}
+                  <button onClick={() => handleDelete(order)} disabled={deletingId === order.id} aria-label="Delete order" title="Delete order"
+                    className="btn btn-secondary btn-sm btn-icon text-red-400 hover:text-red-300">
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               </div>
             ))}

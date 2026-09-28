@@ -248,6 +248,7 @@ model Order {
   cancelledAt         DateTime?
   cancelReason        String?
   cancelledBy         String?
+  hiddenByCustomer    Boolean     @default(false) // customer deleted it from their history; still counts for the restaurant
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
 

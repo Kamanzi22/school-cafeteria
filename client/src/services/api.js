@@ -86,6 +86,7 @@ export const orderAPI = {
   restaurantOrders: (restaurantId, params) => api.get(`/orders/restaurant/${restaurantId}/all`, { params }),
   updateStatus: (id, d) => api.patch(`/orders/${id}/status`, d),
   cancel: (id, reason) => api.patch(`/orders/${id}/cancel`, { reason }),
+  removeFromHistory: (id) => api.delete(`/orders/${id}`),
 }
 
 export const customerAPI = {
