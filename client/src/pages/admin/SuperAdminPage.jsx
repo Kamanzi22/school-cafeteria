@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Shield, Store, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, EyeOff, Radio, History, MapPin, RefreshCw, Clock, Globe, RotateCcw, Backpack, Download, ToggleRight, ToggleLeft, Lock, Mail, LogOut } from 'lucide-react'
-import { superAdminAPI, authAPI } from '../../services/api'
+import { superAdminAPI, authAPI, restaurantAPI } from '../../services/api'
 import { useAdminStore } from '../../store'
 import { useSocket, getSocket } from '../../hooks/useSocket'
 import InstallApp from '../../components/shared/InstallApp'
@@ -165,6 +165,7 @@ export default function SuperAdminPage() {
   const [historyStats, setHistoryStats] = useState(null)
   const [historyLoading, setHistoryLoading] = useState(false)
   const [deliveryModal, setDeliveryModal] = useState(null) // null | 'enable' | 'disable'
+  const [platformDelivery, setPlatformDelivery] = useState(true) // the platform-wide delivery switch
   const [deliveryFeeInput, setDeliveryFeeInput] = useState('300')
   const [deliverySaving, setDeliverySaving] = useState(false)
   const [campusFeeInput, setCampusFeeInput] = useState('')
@@ -201,6 +202,7 @@ export default function SuperAdminPage() {
   useEffect(() => {
     if (!authed) return
     setLoading(true)
+    restaurantAPI.platformDelivery().then(r => setPlatformDelivery(r.data.data.deliveryEnabled)).catch(() => {})
     superAdminAPI.getRestaurants().then((r) => {
       setRestaurants(r.data.data); setLoading(false)
       if (r.data.data.length) setCampusFeeInput(String(r.data.data[0].campusDeliveryFee ?? 0))
@@ -374,6 +376,7 @@ export default function SuperAdminPage() {
     try {
       const res = await superAdminAPI.updateCampusDeliveryAll({ enabled: true, fee })
       setRestaurants(prev => prev.map(r => ({ ...r, offersDelivery: true, offersCampusDelivery: true, campusDeliveryFee: fee })))
+      setPlatformDelivery(true)
       toast.success(`Enabled ${fee.toLocaleString()} RWF delivery for ${res.data.data.count} store(s)`)
       setDeliveryModal(null)
     } finally { setDeliverySaving(false) }
@@ -384,6 +387,7 @@ export default function SuperAdminPage() {
     try {
       const res = await superAdminAPI.updateCampusDeliveryAll({ enabled: false })
       setRestaurants(prev => prev.map(r => ({ ...r, offersCampusDelivery: false })))
+      setPlatformDelivery(false)
       toast.success(`Disabled delivery for ${res.data.data.count} store(s)`)
       setDeliveryModal(null)
     } finally { setDeliverySaving(false) }
@@ -489,7 +493,7 @@ export default function SuperAdminPage() {
     </div>
   )
 
-  const allDeliveryEnabled = restaurants.length > 0 && restaurants.every(r => r.offersCampusDelivery)
+  const allDeliveryEnabled = platformDelivery
 
   return (
     <div className="min-h-dvh bg-ink-50">
@@ -527,7 +531,7 @@ export default function SuperAdminPage() {
               </div>
               <button
                 onClick={() => { if (allDeliveryEnabled) { setDeliveryModal('disable') } else { setDeliveryFeeInput(campusFeeInput || '300'); setDeliveryModal('enable') } }}
-                title={allDeliveryEnabled ? 'Turn off campus delivery for every store' : 'Turn on campus delivery for every store, with a fee you set'}
+                title={allDeliveryEnabled ? 'Turn off delivery everywhere' : 'Turn on campus delivery for every store, with a fee you set'}
                 className={`btn btn-sm bg-white border ${allDeliveryEnabled ? 'border-emerald-200 text-emerald-600 hover:bg-emerald-50' : 'border-ink-200 text-ink-500 hover:bg-ink-50'}`}>
                 {allDeliveryEnabled ? <ToggleRight size={15}/> : <ToggleLeft size={15}/>} Delivery
               </button>
@@ -748,7 +752,7 @@ export default function SuperAdminPage() {
             ) : (
               <>
                 <h3 className="font-bold text-lg text-ink-900 mb-1">Disable Delivery for All Stores</h3>
-                <p className="text-sm text-ink-400 mb-5">Turns off campus delivery for every store. They can each re-enable it individually later.</p>
+                <p className="text-sm text-ink-400 mb-5">Turns off delivery everywhere. Stores and customers won't see any delivery option until you turn it back on.</p>
                 <div className="flex gap-3">
                   <button onClick={() => setDeliveryModal(null)} className="btn btn-secondary flex-1">Cancel</button>
                   <button onClick={confirmDisableDeliveryForAll} disabled={deliverySaving}

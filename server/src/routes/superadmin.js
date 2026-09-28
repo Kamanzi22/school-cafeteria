@@ -43,6 +43,8 @@ router.patch('/restaurants/campus-delivery-all', authSuperAdmin, async (req, res
       data.campusDeliveryFee = n;
     }
     const { count } = await prisma.restaurant.updateMany({ where:{ isDeleted:false }, data });
+    // The switch itself — while off, delivery is hidden everywhere and stores can't turn it back on
+    if (enabled !== undefined) await prisma.platformSettings.upsert({ where:{ id:'default' }, update:{ deliveryEnabled:!!enabled }, create:{ id:'default', deliveryEnabled:!!enabled } });
     res.json({ success:true, data:{ count } });
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });

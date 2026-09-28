@@ -2,6 +2,7 @@ const router = require('express').Router();
 const { authStaff, optionalCustomer, blockViewer } = require('../middleware/auth');
 const prisma = require('../lib/prisma');
 const { notifyOrderStatus, notifyNewOrder } = require('../lib/notifications');
+const { isDeliveryEnabled, applyPlatformDelivery } = require('../lib/platformDelivery');
 
 // Statuses an order sits in until it's finished (picked up / delivered) or cancelled
 const OPEN_STATUSES = ['pending', 'confirmed', 'preparing', 'ready', 'on_the_way'];
@@ -39,7 +40,7 @@ router.post('/', async (req, res) => {
     const { customerId, guestToken, guestName, guestPhone, restaurantId, items, specialInstructions, paymentMethod, promoCode, fulfillmentType, deliveryLocation, deliveryScope } = req.body;
     if (!items?.length) return res.status(400).json({ success:false, error:'No items in order' });
 
-    const restaurant = await prisma.restaurant.findFirst({ where:{ id:restaurantId, isDeleted:false } });
+    const restaurant = applyPlatformDelivery(await prisma.restaurant.findFirst({ where:{ id:restaurantId, isDeleted:false } }), await isDeliveryEnabled());
     if (!restaurant) return res.status(404).json({ success:false, error:'Restaurant not found' });
     if (!restaurant.isOpen) return res.status(400).json({ success:false, error:'This restaurant is currently closed' });
     if (!restaurant.isAccepting) return res.status(400).json({ success:false, error:'This restaurant is not accepting orders right now' });

@@ -385,6 +385,9 @@ model PlatformSettings {
   supportEmail        String?
   supportPhone        String?
 
+  // Platform-wide delivery switch — off hides delivery at every store (see lib/platformDelivery.js)
+  deliveryEnabled     Boolean  @default(true)
+
   updatedAt           DateTime @updatedAt
 }
 

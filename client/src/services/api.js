@@ -59,6 +59,7 @@ export const restaurantAPI = {
   toggleOpen: () => api.patch('/restaurants/admin/toggle-open'),
   toggleAccepting: () => api.patch('/restaurants/admin/toggle-accepting'),
   updateSettings: (d) => api.put('/restaurants/admin/settings', d),
+  platformDelivery: () => api.get('/restaurants/platform/delivery'),
   getFeaturedMode: () => api.get('/restaurants/admin/featured-mode'),
   setFeaturedMode: (mode) => api.patch('/restaurants/admin/featured-mode', { mode }),
   deleteAccount: (d) => api.delete('/restaurants/admin/account', { data: d }),

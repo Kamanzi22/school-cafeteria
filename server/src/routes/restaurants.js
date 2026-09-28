@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const { authOwner, authStaff, optionalCustomer, blockViewer, requireManager } = require('../middleware/auth');
 const prisma = require('../lib/prisma');
 const { applyAutoFeatured } = require('../lib/featured');
+const { isDeliveryEnabled, applyPlatformDelivery } = require('../lib/platformDelivery');
 
 router.get('/', optionalCustomer, async (req, res) => {
   try {
@@ -12,7 +13,8 @@ router.get('/', optionalCustomer, async (req, res) => {
       select: { id:true, name:true, slug:true, emoji:true, coverColor:true, category:true, description:true, tags:true, location:true, floor:true, phone:true, offersPickup:true, offersDelivery:true, deliveryFee:true, offersCampusDelivery:true, offersOffCampusDelivery:true, campusDeliveryFee:true, offCampusDeliveryFee:true, isOpen:true, isAccepting:true, rating:true, ratingCount:true, prepTimeMin:true, prepTimeMax:true, openTime:true, closeTime:true, totalOrders:true, minOrder:true, notice:true, createdAt:true, _count:{ select:{ items:{ where:{ isAvailable:true } } } } },
       orderBy: [{ isOpen:'desc' }, { rating:'desc' }, { name:'asc' }]
     });
-    res.json({ success: true, data: restaurants });
+    const deliveryEnabled = await isDeliveryEnabled();
+    res.json({ success: true, data: restaurants.map(r => applyPlatformDelivery(r, deliveryEnabled)) });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -45,6 +47,14 @@ router.get('/search', async (req, res) => {
     });
 
     res.json({ success: true, data: restaurants });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// Public — whether delivery is switched on platform-wide. The restaurant settings page hides its
+// delivery options while it's off.
+router.get('/platform/delivery', async (req, res) => {
+  try {
+    res.json({ success: true, data: { deliveryEnabled: await isDeliveryEnabled() } });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -85,7 +95,7 @@ router.get('/:id', optionalCustomer, async (req, res) => {
     // Customers see these as offers on the menu page — hide ones whose usage cap is already hit,
     // since checkout would refuse them anyway.
     safe.promotions = safe.promotions.filter(p => !(p.usageLimit && p.usageCount >= p.usageLimit));
-    res.json({ success: true, data: { ...safe, isFavorited } });
+    res.json({ success: true, data: { ...applyPlatformDelivery(safe, await isDeliveryEnabled()), isFavorited } });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -127,15 +137,17 @@ router.put('/admin/settings', authStaff, blockViewer, requireManager, async (req
     const { name, description, phone, prepTimeMin, prepTimeMax, openTime, closeTime, minOrder, notice, coverColor, ownerPhone, logo, offersPickup, offersDelivery, deliveryFee, deliveryNote, offersCampusDelivery, offersOffCampusDelivery, offCampusDeliveryFee } = req.body;
     const current = await prisma.restaurant.findUnique({ where: { id: req.restaurantId } });
     const bool = (v) => v === true || v === 'true';
+    // While delivery is off platform-wide, a store can't switch it back on for itself
+    const deliveryEnabled = await isDeliveryEnabled();
     const updated = await prisma.restaurant.update({ where: { id: req.restaurantId }, data: {
       name, description, phone, prepTimeMin:parseInt(prepTimeMin)||10, prepTimeMax:parseInt(prepTimeMax)||20, openTime, closeTime, minOrder:parseFloat(minOrder)||0, notice, coverColor, ownerPhone,
       ...(logo !== undefined && { logo }),
       ...(offersPickup !== undefined && { offersPickup: bool(offersPickup) }),
-      ...(offersDelivery !== undefined && { offersDelivery: bool(offersDelivery) }),
+      ...(deliveryEnabled && offersDelivery !== undefined && { offersDelivery: bool(offersDelivery) }),
       ...(deliveryFee !== undefined && { deliveryFee: parseFloat(deliveryFee) || 0 }),
       ...(deliveryNote !== undefined && { deliveryNote }),
-      ...(offersCampusDelivery !== undefined && { offersCampusDelivery: bool(offersCampusDelivery) }),
-      ...(offersOffCampusDelivery !== undefined && { offersOffCampusDelivery: bool(offersOffCampusDelivery) }),
+      ...(deliveryEnabled && offersCampusDelivery !== undefined && { offersCampusDelivery: bool(offersCampusDelivery) }),
+      ...(deliveryEnabled && offersOffCampusDelivery !== undefined && { offersOffCampusDelivery: bool(offersOffCampusDelivery) }),
       // campusDeliveryFee is intentionally not settable here — it's controlled platform-wide
       // by the super admin (see /api/superadmin/restaurants/:id/campus-delivery), not per-store.
       ...(offCampusDeliveryFee !== undefined && { offCampusDeliveryFee: parseFloat(offCampusDeliveryFee) || 0 }),

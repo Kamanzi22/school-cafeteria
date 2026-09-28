@@ -22,6 +22,8 @@ export default function SettingsPage() {
   const logoInputRef = useRef(null)
   const [saving, setSaving] = useState(false)
   const [toggling, setToggling] = useState(false)
+  // Delivery switched off platform-wide by CaféCampus — hide all the delivery options
+  const [platformDelivery, setPlatformDelivery] = useState(true)
   // Login & security: locked until the owner re-enters their current password. That password
   // is kept only in memory and sent with each change so the server checks it again.
   const [currentPassword, setCurrentPassword] = useState('')
@@ -35,6 +37,10 @@ export default function SettingsPage() {
   const [deleteForm, setDeleteForm] = useState({ password:'', reason:'' })
   const [deleting, setDeleting] = useState(false)
   const f = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
+
+  useEffect(() => {
+    restaurantAPI.platformDelivery().then(r => setPlatformDelivery(r.data.data.deliveryEnabled)).catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (restaurant) {
@@ -226,11 +232,11 @@ export default function SettingsPage() {
                   <input type="checkbox" checked={form.offersPickup} onChange={e => setForm(p => ({ ...p, offersPickup: e.target.checked }))} className="w-4 h-4 rounded accent-brand-500" />
                   <span className="text-sm font-medium text-alu-cream">Offer pickup</span>
                 </label>
-                <label className="flex items-center gap-3 cursor-pointer">
+                {platformDelivery && <label className="flex items-center gap-3 cursor-pointer">
                   <input type="checkbox" checked={form.offersDelivery} onChange={e => setForm(p => ({ ...p, offersDelivery: e.target.checked }))} className="w-4 h-4 rounded accent-brand-500" />
                   <span className="text-sm font-medium text-alu-cream">Offer delivery</span>
-                </label>
-                {form.offersDelivery && (
+                </label>}
+                {platformDelivery && form.offersDelivery && (
                   <div className="pl-7 space-y-3">
                     <label className="flex items-center gap-3 cursor-pointer">
                       <input type="checkbox" checked={form.offersCampusDelivery} onChange={e => setForm(p => ({ ...p, offersCampusDelivery: e.target.checked }))} className="w-4 h-4 rounded accent-brand-500" />
