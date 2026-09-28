@@ -328,7 +328,7 @@ export default function MenuPage() {
           <div className="card overflow-hidden">
             {filtered.map((item, idx) => (
               <div key={item.id}
-                className={`flex items-center gap-3 px-4 py-3 hover:bg-ink-50 transition ${idx < filtered.length - 1 ? 'border-b border-ink-100' : ''}`}>
+                className={`flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-2 px-4 py-3 hover:bg-ink-50 transition ${idx < filtered.length - 1 ? 'border-b border-ink-100' : ''}`}>
                 {/* Photo or emoji */}
                 <div className="w-12 h-12 rounded-xl overflow-hidden bg-ink-100 flex items-center justify-center shrink-0">
                   {item.image
@@ -364,9 +364,10 @@ export default function MenuPage() {
                   </div>
                 </div>
 
-                {/* Actions — hidden for a read-only viewer, since the server rejects these anyway */}
+                {/* Actions — hidden for a read-only viewer, since the server rejects these anyway.
+                    On a phone they drop to their own line so they don't squeeze the item name to nothing. */}
                 {!isViewer && (
-                  <div className="flex items-center gap-1 shrink-0">
+                  <div className="flex items-center justify-end gap-1 shrink-0 w-full sm:w-auto">
                     {featuredMode === 'manual' && (
                       <button onClick={() => toggleFeatured(item)}
                         title={item.isFeatured ? 'Remove from featured' : 'Feature this meal'}
