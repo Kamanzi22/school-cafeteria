@@ -64,20 +64,20 @@ export default function AdminLayout({ children, newOrderCount = 0 }) {
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="px-5 py-5 border-b border-white/10">
+      <div className="px-5 py-5 border-b border-ink-100">
         <div className="flex items-center gap-3">
           <span className="text-3xl">{restaurant?.emoji}</span>
           <div className="min-w-0">
-            <p className="font-bold text-white text-sm leading-tight truncate">{restaurant?.name}</p>
+            <p className="font-bold text-ink-900 text-sm leading-tight truncate">{restaurant?.name}</p>
             <p className="text-ink-500 text-xs capitalize">{admin?.role}</p>
           </div>
         </div>
       </div>
 
       {/* Open/Close toggle — read-only status pill for a viewer, real toggle for staff/owner */}
-      <div className="px-4 py-3 border-b border-white/10">
+      <div className="px-4 py-3 border-b border-ink-100">
         {isViewer ? (
-          <div className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-semibold text-sm ${isOpen ? 'bg-emerald-500/10 text-emerald-400/80 border border-emerald-500/20' : 'bg-red-500/10 text-red-400/80 border border-red-500/20'}`}>
+          <div className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-semibold text-sm ${isOpen ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>
             <span className="flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full ${isOpen ? 'bg-emerald-400' : 'bg-red-400'}`} />
               {isOpen ? 'Open for orders' : 'Store closed'}
@@ -86,7 +86,7 @@ export default function AdminLayout({ children, newOrderCount = 0 }) {
           </div>
         ) : (
           <button onClick={handleToggle} disabled={toggling}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-semibold text-sm transition-all ${isOpen ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30'}`}>
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-semibold text-sm transition-all ${isOpen ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100' : 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100'}`}>
             <span className="flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full ${isOpen ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
               {isOpen ? 'Open for orders' : 'Store closed'}
@@ -116,7 +116,7 @@ export default function AdminLayout({ children, newOrderCount = 0 }) {
       </nav>
 
       {/* Footer */}
-      <div className="px-3 py-4 border-t border-white/10 space-y-0.5">
+      <div className="px-3 py-4 border-t border-ink-100 space-y-0.5">
         {/* Desktop only — on mobile the bell lives in the top bar */}
         <button onClick={handleBell} title={pushState === 'on' ? 'Turn off notifications' : 'Turn on new-order notifications'}
           className="nav-item nav-item-inactive w-full hidden md:flex">
@@ -124,11 +124,11 @@ export default function AdminLayout({ children, newOrderCount = 0 }) {
           <span className="flex-1 text-left">{pushState === 'on' ? 'Notifications on' : 'Notifications off'}</span>
         </button>
         {isViewer ? (
-          <button onClick={exitViewer} className="nav-item nav-item-inactive w-full text-brand-400 hover:bg-brand-500/10">
+          <button onClick={exitViewer} className="nav-item nav-item-inactive w-full text-brand-600 hover:bg-brand-50">
             <X size={17} />Exit to Super Admin
           </button>
         ) : (
-          <button onClick={handleLogout} className="nav-item nav-item-inactive w-full text-red-400 hover:bg-red-500/10">
+          <button onClick={handleLogout} className="nav-item nav-item-inactive w-full text-red-500 hover:bg-red-50">
             <LogOut size={17} />Sign Out
           </button>
         )}
@@ -139,15 +139,15 @@ export default function AdminLayout({ children, newOrderCount = 0 }) {
   return (
     <div className="min-h-dvh bg-ink-50 flex">
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-56 gradient-dark flex-col min-h-dvh shrink-0 border-r border-white/5">
+      <aside className="hidden md:flex w-56 bg-white flex-col min-h-dvh shrink-0 border-r border-ink-100">
         <SidebarContent />
       </aside>
 
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div className="md:hidden fixed inset-0 z-40">
-          <div className="absolute inset-0 bg-ink-950/70" onClick={() => setSidebarOpen(false)} />
-          <aside className="absolute left-0 top-0 bottom-0 w-56 gradient-dark z-50">
+          <div className="absolute inset-0 bg-ink-950/40" onClick={() => setSidebarOpen(false)} />
+          <aside className="absolute left-0 top-0 bottom-0 w-56 bg-white z-50">
             <SidebarContent />
           </aside>
         </div>

@@ -286,7 +286,7 @@ export default function MenuPage() {
         <div className="card p-4 mb-5">
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div className="min-w-0 flex-1" style={{ minWidth: '14rem' }}>
-              <p className="font-bold text-sm text-white flex items-center gap-1.5">
+              <p className="font-bold text-sm text-ink-900 flex items-center gap-1.5">
                 <Star size={14} className="text-brand-500 fill-brand-500" /> Featured meals
               </p>
               <p className="text-xs text-ink-400 mt-0.5">
@@ -295,10 +295,10 @@ export default function MenuPage() {
                   : 'Tap the star on the meals you want customers to see first.'}
               </p>
             </div>
-            <div className="inline-flex rounded-xl border border-ink-800 p-0.5 shrink-0">
+            <div className="inline-flex rounded-xl border border-ink-200 p-0.5 shrink-0">
               {[['auto', 'Automatic', Sparkles], ['manual', 'I choose', Hand]].map(([mode, label, Icon]) => (
                 <button key={mode} type="button" disabled={isViewer || modeSaving} onClick={() => changeFeaturedMode(mode)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-xs font-semibold transition disabled:opacity-60 ${featuredMode === mode ? 'bg-brand-500 text-white' : 'text-ink-400 hover:text-white'}`}>
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-xs font-semibold transition disabled:opacity-60 ${featuredMode === mode ? 'bg-brand-500 text-white' : 'text-ink-400 hover:text-ink-900'}`}>
                   <Icon size={13} /> {label}
                 </button>
               ))}
@@ -338,7 +338,7 @@ export default function MenuPage() {
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <span className="font-semibold text-sm text-white truncate block">{item.name}</span>
+                  <span className="font-semibold text-sm text-ink-900 truncate block">{item.name}</span>
                   <div className="flex items-center gap-2 flex-wrap mt-1">
                     {item.isFeatured && (
                       <span className="badge bg-brand-500/15 text-brand-500 text-[10px] shrink-0">

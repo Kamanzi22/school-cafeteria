@@ -145,7 +145,7 @@ export default function SettingsPage() {
 
         {/* Quick controls */}
         <div className="card p-5">
-          <h2 className="font-bold text-white mb-4">Quick Controls</h2>
+          <h2 className="font-bold text-ink-900 mb-4">Quick Controls</h2>
           <div className="flex items-center justify-between">
             <div><p className="font-semibold text-sm">Accept Orders</p><p className="text-xs text-ink-400">Pause ordering without closing</p></div>
             <button onClick={handleToggleAccepting} disabled={toggling || isViewer} className={`btn btn-sm ${restaurant?.isAccepting ? 'btn-secondary text-emerald-600 border-emerald-200' : 'btn-secondary text-red-500 border-red-200'}`}>
@@ -175,7 +175,7 @@ export default function SettingsPage() {
 
         {/* Profile */}
         <div className="card p-5">
-          <h2 className="font-bold text-white mb-4">Restaurant Profile</h2>
+          <h2 className="font-bold text-ink-900 mb-4">Restaurant Profile</h2>
           <form onSubmit={save} className="space-y-4">
           <fieldset disabled={isViewer} className="space-y-4 border-0 p-0 m-0 disabled:opacity-60">
             {/* Logo */}
@@ -270,7 +270,7 @@ export default function SettingsPage() {
         {isOwner && (
         <div className="card p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-bold text-white flex items-center gap-2">{unlocked ? <Unlock size={16}/> : <Lock size={16}/>}Login & Security</h2>
+            <h2 className="font-bold text-ink-900 flex items-center gap-2">{unlocked ? <Unlock size={16}/> : <Lock size={16}/>}Login & Security</h2>
             {unlocked && <button type="button" onClick={lock} className="btn btn-sm btn-secondary"><Lock size={14}/>Lock</button>}
           </div>
           {!unlocked ? (

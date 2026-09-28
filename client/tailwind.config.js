@@ -9,12 +9,9 @@ export default {
         brand: { 50:'#fff5ed',100:'#ffead5',200:'#ffd2aa',300:'#ffb07b',400:'#ff8347',500:'#ff5c1a',600:'#f04010',700:'#c72e0e',800:'#9e2613',900:'#7f2014' },
         flame: { 50:'#fff5ed',100:'#ffead5',200:'#ffd2aa',300:'#ffb07b',400:'#ff8347',500:'#ff5c1a',600:'#f04010',700:'#c72e0e',800:'#9e2613',900:'#7f2014' },
         ink: { 50:'#f7f7f8',100:'#eeeef0',200:'#d9d9de',300:'#b8b8c0',400:'#90909c',500:'#6e6e7a',600:'#5a5a65',700:'#4a4a53',800:'#3e3e45',900:'#1a1a20',950:'#0d0d10' },
-        alu: {
-          bg: '#121212', surface: '#1E1E1E', card: '#252525',
-          red: '#E0432B', 'red-hover': '#C73826',
-          gold: '#D4A04C', cream: '#F5F1E8', muted: '#9A9A95',
-          border: '#2C2C2C', success: '#3E7C59', 'success-fg': '#5aad7e',
-        },
+        // Values live in index.css as CSS variables: dark by default, light in the restaurant app (.theme-light)
+        alu: Object.fromEntries(['bg','surface','card','red','red-hover','gold','cream','muted','border','success','success-fg']
+          .map(k => [k, `rgb(var(--alu-${k}) / <alpha-value>)`])),
       },
       animation: {
         'fade-up':'fadeUp 0.35s cubic-bezier(0.16,1,0.3,1)',

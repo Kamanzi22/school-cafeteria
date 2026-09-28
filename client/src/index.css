@@ -3,6 +3,20 @@
 @tailwind utilities;
 
 @layer base {
+  /* The alu palette as RGB channels (so Tailwind's /opacity modifiers still work). Dark by default. */
+  :root {
+    --alu-bg: 18 18 18; --alu-surface: 30 30 30; --alu-card: 37 37 37;
+    --alu-red: 224 67 43; --alu-red-hover: 199 56 38;
+    --alu-gold: 212 160 76; --alu-cream: 245 241 232; --alu-muted: 154 154 149;
+    --alu-border: 44 44 44; --alu-success: 62 124 89; --alu-success-fg: 90 173 126;
+  }
+  /* The restaurant app is light only — set on <html> by useRestaurantTheme for /admin* and /restaurant/auth* */
+  .theme-light {
+    --alu-bg: 247 247 248; --alu-surface: 255 255 255; --alu-card: 241 241 243;
+    --alu-gold: 168 116 31; --alu-cream: 26 26 32; --alu-muted: 110 110 122;
+    --alu-border: 228 228 232; --alu-success: 62 124 89; --alu-success-fg: 47 122 82;
+    color-scheme: light;
+  }
   * { font-family: 'DM Sans', system-ui, sans-serif; }
   /* Stop iOS/Android from re-scaling text on rotate, and keep stray overflow from widening the page. */
   html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
@@ -54,6 +68,8 @@
   .nav-inactive { @apply text-alu-muted hover:bg-alu-surface hover:text-alu-cream; }
   .nav-item-active { @apply bg-alu-red text-white; }
   .nav-item-inactive { @apply text-alu-muted hover:bg-alu-surface hover:text-alu-cream; }
+  /* Light sidebar is itself white, so hover needs a tint rather than the surface colour */
+  .theme-light .nav-item-inactive:hover { @apply bg-alu-card; }
   .gradient-brand { background: linear-gradient(135deg, #E0432B, #C73826); }
   .gradient-dark { background: linear-gradient(160deg, #121212, #1E1E1E); }
   .text-gradient { background: linear-gradient(135deg, #E0432B, #D4A04C); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
