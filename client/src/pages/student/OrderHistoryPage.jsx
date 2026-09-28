@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft, Clock, ChevronRight, RotateCcw, Package, Trash2 } from 'lucide-react'
 import { orderAPI } from '../../services/api'
+import { useSocket } from '../../hooks/useSocket'
 import { useCustomerStore, useCartStore, useUIStore } from '../../store'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
@@ -25,10 +26,23 @@ export default function OrderHistoryPage() {
     navigate(back?.from || '/')
   }
 
+  const load = () => orderAPI.customerHistory(student.id).then(r => { setOrders(r.data.data); setLoading(false) }).catch(() => setLoading(false))
+
   useEffect(() => {
     if (!student) { navigate('/auth'); return }
-    orderAPI.customerHistory(student.id).then(r => { setOrders(r.data.data); setLoading(false) }).catch(() => setLoading(false))
+    load()
+    // Coming back to the tab/app — the statuses may have moved on while it was in the background
+    const onVisible = () => { if (document.visibilityState === 'visible') load() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
   }, [student])
+
+  // Keep statuses live while the page is open (the customer's socket room gets every change to their orders)
+  useSocket({
+    'order:updated': (updated) => setOrders(prev => prev.map(o => o.id === updated.id
+      ? { ...o, status: updated.status, cancelReason: updated.cancelReason, cancelledBy: updated.cancelledBy }
+      : o))
+  })
 
   const handleReorder = (order) => {
     order.items.forEach(item => {

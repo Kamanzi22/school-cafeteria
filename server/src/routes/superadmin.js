@@ -365,7 +365,7 @@ router.patch('/delivery-orders/:id/on-the-way', authDelivery, async (req, res) =
       data: { status: 'on_the_way', onTheWayAt: new Date(), statusHistory: { create: [{ status: 'on_the_way', note: 'Marked on the way by super admin' }] } },
       include: DELIVERY_ORDER_INCLUDE,
     });
-    req.app.get('io').to(`order:${updated.id}`).emit('order:updated', updated);
+    req.app.get('io').to(`order:${updated.id}`).to(`customer:${updated.customerId}`).emit('order:updated', updated);
     req.app.get('io').to(`restaurant:${updated.restaurantId}`).emit('order:statusChanged', updated);
     req.app.get('io').to('superadmin').to('delivery').emit('delivery:order', updated);
     if (order.status !== updated.status) notifyOrderStatus(req.app.get('io'), updated);
@@ -383,7 +383,7 @@ router.patch('/delivery-orders/:id/delivered', authDelivery, async (req, res) =>
       data: { status: 'picked_up', pickedUpAt: new Date(), statusHistory: { create: [{ status: 'picked_up', note: 'Marked delivered by super admin' }] } },
       include: DELIVERY_ORDER_INCLUDE,
     });
-    req.app.get('io').to(`order:${updated.id}`).emit('order:updated', updated);
+    req.app.get('io').to(`order:${updated.id}`).to(`customer:${updated.customerId}`).emit('order:updated', updated);
     req.app.get('io').to(`restaurant:${updated.restaurantId}`).emit('order:statusChanged', updated);
     req.app.get('io').to('superadmin').to('delivery').emit('delivery:order', updated);
     if (order.status !== updated.status) notifyOrderStatus(req.app.get('io'), updated);

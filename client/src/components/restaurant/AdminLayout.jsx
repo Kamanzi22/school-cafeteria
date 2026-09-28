@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, UtensilsCrossed, Receipt, Tag, Star, Settings, LogOut, ToggleLeft, ToggleRight, Bell, ChevronRight, Eye, X } from 'lucide-react'
+import { LayoutDashboard, History, UtensilsCrossed, Receipt, Tag, Star, Settings, LogOut, ToggleLeft, ToggleRight, Bell, ChevronRight, Eye, X } from 'lucide-react'
 import { useAdminStore } from '../../store'
 import { restaurantAPI } from '../../services/api'
 import { restaurantPush } from '../../services/push'
@@ -8,6 +8,7 @@ import toast from 'react-hot-toast'
 
 const NAV = [
   { path: '/admin', icon: LayoutDashboard, label: 'Live Orders' },
+  { path: '/admin/orders', icon: History, label: 'Order History' },
   { path: '/admin/menu', icon: UtensilsCrossed, label: 'Menu' },
   { path: '/admin/sales-report', icon: Receipt, label: 'Sales Report' },
   { path: '/admin/promotions', icon: Tag, label: 'Promotions' },

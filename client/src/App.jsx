@@ -22,6 +22,7 @@ import RestaurantAuthPage from './pages/restaurant/RestaurantAuthPage'
 import DashboardPage from './pages/restaurant/DashboardPage'
 import MenuPage from './pages/restaurant/MenuPage'
 import SalesReportPage from './pages/restaurant/SalesReportPage'
+import RestaurantOrderHistoryPage from './pages/restaurant/OrderHistoryPage'
 import PromotionsPage from './pages/restaurant/PromotionsPage'
 import ReviewsPage from './pages/restaurant/ReviewsPage'
 import SettingsPage from './pages/restaurant/SettingsPage'
@@ -61,6 +62,7 @@ export default function App() {
       <Route path="/restaurant/auth/:tab" element={<RestaurantAuthPage />} />
       <Route path="/admin" element={<AdminGuard><DashboardPage /></AdminGuard>} />
       <Route path="/admin/menu" element={<AdminGuard><MenuPage /></AdminGuard>} />
+      <Route path="/admin/orders" element={<AdminGuard><RestaurantOrderHistoryPage /></AdminGuard>} />
       <Route path="/admin/sales-report" element={<AdminGuard><SalesReportPage /></AdminGuard>} />
       <Route path="/admin/promotions" element={<AdminGuard><PromotionsPage /></AdminGuard>} />
       <Route path="/admin/reviews" element={<AdminGuard><ReviewsPage /></AdminGuard>} />

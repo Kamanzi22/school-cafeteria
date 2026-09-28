@@ -270,7 +270,8 @@ router.patch('/:id/status', authStaff, blockViewer, async (req, res) => {
       }
       return tx.order.update({ where:{ id:req.params.id }, data:{ statusHistory:{ create:[{ status, note:note || (status === 'cancelled' ? data.cancelReason : null) }] } }, include:ORDER_INCLUDE });
     });
-    req.app.get('io').to(`order:${req.params.id}`).emit('order:updated', updated);
+    // The customer's own room too, so their order history refreshes even when the change was silent
+    req.app.get('io').to(`order:${req.params.id}`).to(`customer:${order.customerId}`).emit('order:updated', updated);
     req.app.get('io').to(`restaurant:${order.restaurantId}`).emit('order:statusChanged', updated);
     if (updated.fulfillmentType === 'delivery') req.app.get('io').to('superadmin').to('delivery').emit('delivery:order', updated);
     // Only on an actual transition — re-sending the same status must not notify the customer a
