@@ -138,6 +138,7 @@ export const superAdminAPI = {
   purgeVisits: () => api.delete('/superadmin/visits/trash'),
   getTrashCount: () => api.get('/superadmin/visits/trash-count'),
   updateCampusDeliveryAll: (d) => api.patch('/superadmin/restaurants/campus-delivery-all', d),
+  deleteAllOrders: () => api.delete('/superadmin/orders/all', { data: { confirm: 'DELETE' } }),
   getDeliveryOrders: () => api.get('/superadmin/delivery-orders'),
   markOnTheWay: (id) => api.patch(`/superadmin/delivery-orders/${id}/on-the-way`),
   markDelivered: (id) => api.patch(`/superadmin/delivery-orders/${id}/delivered`),

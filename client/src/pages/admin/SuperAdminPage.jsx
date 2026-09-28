@@ -171,6 +171,8 @@ export default function SuperAdminPage() {
   const [campusFeeInput, setCampusFeeInput] = useState('')
   const [savingCampusFee, setSavingCampusFee] = useState(false)
   const [pwModal, setPwModal] = useState(false)
+  const [wipeText, setWipeText] = useState('')
+  const [wiping, setWiping] = useState(false)
   const [pwForm, setPwForm] = useState({ currentPassword:'', newPassword:'', confirm:'' })
   const [pwSaving, setPwSaving] = useState(false)
   const [emailSettingsModal, setEmailSettingsModal] = useState(false)
@@ -380,6 +382,19 @@ export default function SuperAdminPage() {
       toast.success(`Enabled ${fee.toLocaleString()} RWF delivery for ${res.data.data.count} store(s)`)
       setDeliveryModal(null)
     } finally { setDeliverySaving(false) }
+  }
+
+  const wipeAllOrders = async () => {
+    if (wipeText !== 'DELETE') return
+    if (!window.confirm('Last check: permanently delete EVERY order and review on the platform?')) return
+    setWiping(true)
+    try {
+      const res = await superAdminAPI.deleteAllOrders()
+      const { orders, reviews } = res.data.data
+      toast.success(`Deleted ${orders} order(s) and ${reviews} review(s)`)
+      setWipeText('')
+    } catch (e) { toast.error(e.response?.data?.error || 'Failed to delete orders') }
+    finally { setWiping(false) }
   }
 
   const confirmDisableDeliveryForAll = async () => {
@@ -727,6 +742,18 @@ export default function SuperAdminPage() {
                 ) : historyVisits.map(v => <HistoryVisitRow key={v.id} v={v} />)}
               </tbody>
             </table>
+          </div>
+        </div>
+
+        {/* Danger zone — wipe every order on the platform */}
+        <div className="bg-red-50/60 rounded-2xl border border-red-200 p-5">
+          <h2 className="font-bold text-red-700 mb-1 flex items-center gap-2"><Trash2 size={16}/>Delete All Orders</h2>
+          <p className="text-sm text-red-600 mb-4">Permanently deletes every order from every store: customer order history, restaurant orders, sales reports and analytics all start from zero. All reviews are deleted too and store ratings reset. <strong>This cannot be undone.</strong></p>
+          <div className="flex gap-2 flex-wrap">
+            <input value={wipeText} onChange={e => setWipeText(e.target.value)} placeholder="Type DELETE to confirm" className="input max-w-xs border-red-200" />
+            <button onClick={wipeAllOrders} disabled={wipeText !== 'DELETE' || wiping} className="btn bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">
+              {wiping ? <Loader size={14} className="animate-spin"/> : <Trash2 size={14}/>}Delete all orders
+            </button>
           </div>
         </div>
       </div>
