@@ -41,6 +41,45 @@ services:
       - key: VAPID_PRIVATE_KEY
         sync: false
 
+  # Same API, hosted in Frankfurt next to the Supabase database (AWS eu-west-3, Paris) so each
+  # query is a ~10 ms hop instead of a ~150 ms Oregon-to-Europe one. Same env vars as above;
+  # JWT_SECRET is copied from the existing service, not generated, so nobody is logged out.
+  - type: web
+    name: cafecampus-api-eu
+    runtime: node
+    region: frankfurt
+    plan: starter
+    rootDir: server
+    buildCommand: npm install && npx prisma generate && npx prisma db push --accept-data-loss
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: NODE_ENV
+        value: production
+      - key: CLIENT_URL
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_APP_PASSWORD
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+
   - type: web
     name: cafecampus-client
     runtime: static
