@@ -84,6 +84,8 @@ model RestaurantStaff {
   createdAt     DateTime   @default(now())
 
   restaurant    Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId])
 }
 
 // ─── MENU ───────────────────────────────────────────────────────────────────
@@ -99,6 +101,8 @@ model MenuCategory {
 
   restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   items        MenuItem[]
+
+  @@index([restaurantId])
 }
 
 model MenuItem {
@@ -135,6 +139,9 @@ model MenuItem {
   category      MenuCategory? @relation(fields: [categoryId], references: [id])
   orderItems    OrderItem[]
   variants      ItemVariant[]
+
+  @@index([restaurantId])
+  @@index([categoryId])
 }
 
 model ItemVariant {
@@ -151,6 +158,8 @@ model ItemVariant {
 
   menuItem    MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
   orderItems  OrderItem[]
+
+  @@index([menuItemId])
 }
 
 // ─── CUSTOMERS ──────────────────────────────────────────────────────────────
@@ -257,6 +266,10 @@ model Order {
   items               OrderItem[]
   review              Review?
   statusHistory       OrderStatusHistory[]
+
+  // The restaurant's live board/history and a customer's order list both filter by owner and sort by date.
+  @@index([restaurantId, createdAt])
+  @@index([customerId, createdAt])
 }
 
 model OrderItem {
@@ -275,6 +288,10 @@ model OrderItem {
   order             Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
   menuItem          MenuItem     @relation(fields: [menuItemId], references: [id])
   variant           ItemVariant? @relation(fields: [variantId], references: [id])
+
+  @@index([orderId])
+  @@index([menuItemId])
+  @@index([variantId])
 }
 
 model OrderStatusHistory {
@@ -285,6 +302,8 @@ model OrderStatusHistory {
   createdAt DateTime @default(now())
 
   order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
 }
 
 // ─── EXTRAS ─────────────────────────────────────────────────────────────────
@@ -305,6 +324,9 @@ model Review {
   order         Order      @relation(fields: [orderId], references: [id])
   customer      Customer   @relation(fields: [customerId], references: [id])
   restaurant    Restaurant @relation(fields: [restaurantId], references: [id])
+
+  @@index([restaurantId, createdAt])
+  @@index([customerId])
 }
 
 model Favorite {
