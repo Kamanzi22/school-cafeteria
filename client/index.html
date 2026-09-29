@@ -8,20 +8,17 @@
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <meta name="apple-mobile-web-app-title" content="CaféCampus" />
-  <!-- restaurant. and superadmin. subdomains are served this same page (Render rewrites can't
-       match on host), so set their app identity here, while the head is still being parsed —
-       before Safari or Chrome read the manifest or home-screen name. usePwaScope keeps them in
-       sync afterwards as routes change. -->
+  <!-- restaurant. and superadmin. subdomains are served this customer page for their short
+       addresses (Render rewrites can't match on host). Safari reads the customer app name and
+       manifest before any script can swap them, so jump straight to the internal address, which
+       Render serves as admin.html / superadmin.html with the right name built in. portal.js then
+       puts the short address back in the address bar. Keep the mapping in step with portal.js. -->
   <script>
     (function () {
-      var apps = {
-        restaurant: ['/manifest-restaurant.webmanifest', 'cafecampus-resto'],
-        superadmin: ['/manifest-superadmin.webmanifest', 'cafecampus-admin']
-      }
-      var app = apps[location.hostname.split('.')[0]]
-      if (!app) return
-      document.querySelector('link[rel="manifest"]').setAttribute('href', app[0])
-      document.querySelector('meta[name="apple-mobile-web-app-title"]').setAttribute('content', app[1])
+      var sub = location.hostname.split('.')[0], path = location.pathname, to
+      if (sub === 'restaurant') to = path.indexOf('/auth') === 0 ? '/restaurant' + path : '/admin' + (path === '/' ? '' : path)
+      else if (sub === 'superadmin') to = '/superadmin' + (path === '/' ? '' : path)
+      if (to) location.replace(to + location.search + location.hash)
     })()
   </script>
   <!-- Static baseline for crawlers/link-preview bots that don't execute JS (Bing, WhatsApp,
