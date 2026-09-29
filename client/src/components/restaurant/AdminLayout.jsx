@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, History, UtensilsCrossed, Receipt, Tag, Star, Settings, LogOut, ToggleLeft, ToggleRight, Bell, ChevronRight, Eye, X } from 'lucide-react'
+import { LayoutDashboard, History, UtensilsCrossed, Receipt, Tag, Star, Settings, LogOut, ToggleLeft, ToggleRight, Bell, BellOff, ChevronRight, Eye, X } from 'lucide-react'
 import { useAdminStore } from '../../store'
 import { restaurantAPI } from '../../services/api'
 import { restaurantPush } from '../../services/push'
@@ -25,7 +25,14 @@ export default function AdminLayout({ children, newOrderCount = 0 }) {
   const [pushState, setPushState] = useState(null)
   const isViewer = role === 'viewer'
 
-  useEffect(() => { restaurantPush.getPushState().then(setPushState).catch(() => setPushState('unsupported')) }, [])
+  useEffect(() => {
+    const check = () => restaurantPush.getPushState().then(setPushState).catch(() => setPushState('unsupported'))
+    check()
+    // They may have allowed (or blocked) notifications in the phone's settings meanwhile
+    const onVisible = () => { if (document.visibilityState === 'visible') check() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [])
 
   // The bell is a one-tap toggle for new-order alerts: off → on prompts for permission, on → off
   // unsubscribes this device. A "blocked" browser permission can only be changed in the
@@ -118,10 +125,10 @@ export default function AdminLayout({ children, newOrderCount = 0 }) {
       {/* Footer */}
       <div className="px-3 py-4 border-t border-ink-100 space-y-0.5">
         {/* Desktop only — on mobile the bell lives in the top bar */}
-        <button onClick={handleBell} title={pushState === 'on' ? 'Turn off notifications' : 'Turn on notifications for new orders and messages'}
+        <button onClick={handleBell} title={pushState === 'on' ? 'Turn off notifications' : pushState === 'blocked' ? 'Notifications are blocked on this device — tap for how to turn them back on' : 'Turn on notifications for new orders and messages'}
           className="nav-item nav-item-inactive w-full hidden md:flex">
-          <Bell size={17} className={pushState === 'on' ? 'text-brand-500 fill-brand-500' : ''} />
-          <span className="flex-1 text-left">{pushState === 'on' ? 'Notifications on' : 'Notifications off'}</span>
+          {pushState === 'blocked' ? <BellOff size={17} className="text-ink-300" /> : <Bell size={17} className={pushState === 'on' ? 'text-brand-500 fill-brand-500' : ''} />}
+          <span className="flex-1 text-left">{pushState === 'on' ? 'Notifications on' : pushState === 'blocked' ? 'Notifications blocked' : 'Notifications off'}</span>
         </button>
         {isViewer ? (
           <button onClick={exitViewer} className="nav-item nav-item-inactive w-full text-brand-600 hover:bg-brand-50">
@@ -171,8 +178,8 @@ export default function AdminLayout({ children, newOrderCount = 0 }) {
           <span className="font-bold text-ink-900 text-sm">{restaurant?.name}</span>
           <div className="flex items-center gap-1">
             {newOrderCount > 0 && <span className="w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">{newOrderCount}</span>}
-            <button onClick={handleBell} title={pushState === 'on' ? 'Turn off notifications' : 'Turn on notifications for new orders and messages'} className="btn btn-ghost btn-icon">
-              <Bell size={18} className={pushState === 'on' ? 'text-brand-500 fill-brand-500' : ''} />
+            <button onClick={handleBell} title={pushState === 'on' ? 'Turn off notifications' : pushState === 'blocked' ? 'Notifications are blocked on this device — tap for how to turn them back on' : 'Turn on notifications for new orders and messages'} className="btn btn-ghost btn-icon">
+              {pushState === 'blocked' ? <BellOff size={18} className="text-ink-300" /> : <Bell size={18} className={pushState === 'on' ? 'text-brand-500 fill-brand-500' : ''} />}
             </button>
           </div>
         </div>

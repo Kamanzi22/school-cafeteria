@@ -27,7 +27,7 @@ export const useRestaurantOrderNotifications = () => {
     const onMessage = (msg) => {
       // The Settings page shows the conversation itself
       if (!msg.fromAdmin || msg.restaurantId !== restaurantId || currentPath().startsWith('/admin/settings')) return
-      toast(`CaféCampus team: ${msg.body.length > 80 ? `${msg.body.slice(0, 77)}…` : msg.body}`, { id: `support-${msg.id}`, icon: '💬', duration: 8000 })
+      toast(`New message from the CaféCampus team: ${msg.body.length > 80 ? `${msg.body.slice(0, 77)}…` : msg.body}`, { id: `support-${msg.id}`, icon: '💬', duration: 8000 })
     }
     socket.on('connect', join)
     socket.on('support:message', onMessage)

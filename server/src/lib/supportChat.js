@@ -16,11 +16,12 @@ const readBody = (req) => {
 const preview = (body) => (body.length > 120 ? `${body.slice(0, 117)}…` : body);
 
 // A customer or restaurant wrote in: update any open super admin panel live, and alert the
-// admins' devices that turned on the bell.
+// admins' devices that turned on the bell. The 💬 and "customer"/"restaurant" in the title tell
+// it apart from order alerts at a glance.
 const notifyAdminsOfMessage = (req, message, senderName) => {
   req.app.get('io').to('superadmin').emit('support:message', { ...message, senderName });
   sendPushToSuperAdmins({
-    title: `New message from ${senderName}`,
+    title: `💬 New message from ${senderName} (${message.restaurantId ? 'restaurant' : 'customer'})`,
     body: preview(message.body),
     url: '/superadmin/messages',
     tag: `support-${message.customerId || message.restaurantId}`,

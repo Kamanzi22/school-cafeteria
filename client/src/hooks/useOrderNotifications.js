@@ -46,7 +46,7 @@ export const useOrderNotifications = () => {
     // conversation itself, so only pop up elsewhere
     const onSupportMessage = (msg) => {
       if (!msg.fromAdmin || msg.customerId !== customerId || currentPath() === '/profile') return
-      toast(`CaféCampus team: ${msg.body.length > 80 ? `${msg.body.slice(0, 77)}…` : msg.body}`, { id: `support-${msg.id}`, icon: '💬', duration: 8000 })
+      toast(`New message from the CaféCampus team: ${msg.body.length > 80 ? `${msg.body.slice(0, 77)}…` : msg.body}`, { id: `support-${msg.id}`, icon: '💬', duration: 8000 })
     }
     socket.on('connect', join)
     socket.on('notification', onNotification)

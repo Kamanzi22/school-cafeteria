@@ -80,7 +80,7 @@ export default function MessagesPage() {
         const [kind, id] = key.split(':')
         superAdminAPI.getConversation(kind, id).catch(() => {})
       } else {
-        toast(`New message from ${msg.senderName || 'a customer'}`, { id: `support-${msg.id}`, icon: '💬' })
+        toast(`New message from ${msg.senderName || 'a customer'} (${msg.restaurantId ? 'restaurant' : 'customer'})`, { id: `support-${msg.id}`, icon: '💬' })
       }
       setConversations(prev => {
         const existing = prev?.find(c => keyOf(c.kind, c.who.id) === key)

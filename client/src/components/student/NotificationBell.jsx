@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bell } from 'lucide-react'
+import { Bell, BellOff } from 'lucide-react'
 import { getPushState, enableNotifications, disablePush } from '../../services/push'
 import toast from 'react-hot-toast'
 
@@ -15,7 +15,12 @@ export default function NotificationBell() {
   // browser that can do push, keep the bell visible as 'off' — tapping re-checks the server.
   const browserCanPush = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
   useEffect(() => {
-    getPushState().catch(() => 'unsupported').then(s => setState(s === 'unsupported' && browserCanPush ? 'off' : s))
+    const check = () => getPushState().catch(() => 'unsupported').then(s => setState(s === 'unsupported' && browserCanPush ? 'off' : s))
+    check()
+    // They may have allowed (or blocked) notifications in the phone's settings meanwhile
+    const onVisible = () => { if (document.visibilityState === 'visible') check() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
   }, [])
 
   const toggle = async () => {
@@ -36,8 +41,9 @@ export default function NotificationBell() {
   if (!state || state === 'unsupported') return null
 
   return (
-    <button onClick={toggle} title={state === 'on' ? 'Turn off notifications' : 'Turn on notifications for your orders and messages'} className="btn btn-ghost btn-icon">
-      <Bell size={18} className={state === 'on' ? 'text-alu-gold fill-alu-gold' : ''} />
+    <button onClick={toggle} title={state === 'on' ? 'Turn off notifications' : state === 'blocked' ? 'Notifications are blocked on this device — tap for how to turn them back on' : 'Turn on notifications for your orders and messages'} className="btn btn-ghost btn-icon">
+      {/* Crossed out while the phone/browser blocks notifications, so it's clear before anyone taps it */}
+      {state === 'blocked' ? <BellOff size={18} className="text-alu-muted/60" /> : <Bell size={18} className={state === 'on' ? 'text-alu-gold fill-alu-gold' : ''} />}
     </button>
   )
 }

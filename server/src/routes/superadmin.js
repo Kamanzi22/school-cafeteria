@@ -224,7 +224,7 @@ router.post('/messages/:kind/:id', authSuperAdmin, async (req, res) => {
     const message = await prisma.supportMessage.create({ data: { [kind.field]: who.id, body, fromAdmin: true } });
     // They see it live if their app is open, and as a phone notification if it isn't
     req.app.get('io').to(kind.room(who.id)).emit('support:message', message);
-    kind.push(who.id, { title: 'CaféCampus support replied', body: preview(body), tag: 'support-chat' });
+    kind.push(who.id, { title: '💬 New message from the CaféCampus team', body: preview(body), tag: 'support-chat' });
     res.status(201).json({ success: true, data: message });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

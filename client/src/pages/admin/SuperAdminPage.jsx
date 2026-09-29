@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Store, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, EyeOff, Radio, History, MapPin, RefreshCw, Clock, Globe, RotateCcw, Backpack, Download, ToggleRight, ToggleLeft, Lock, Mail, LogOut, MessageCircle, Bell } from 'lucide-react'
+import { Store, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, EyeOff, Radio, History, MapPin, RefreshCw, Clock, Globe, RotateCcw, Backpack, Download, ToggleRight, ToggleLeft, Lock, Mail, LogOut, MessageCircle, Bell, BellOff } from 'lucide-react'
 import { superAdminAPI, authAPI, restaurantAPI } from '../../services/api'
 import { useAdminStore } from '../../store'
 import { useSocket, getSocket } from '../../hooks/useSocket'
@@ -230,9 +230,14 @@ export default function SuperAdminPage() {
 
   useEffect(() => {
     if (!authed) return
-    superAdminPush.getPushState().then(setPushState).catch(() => setPushState('unsupported'))
+    const check = () => superAdminPush.getPushState().then(setPushState).catch(() => setPushState('unsupported'))
+    check()
     // A device that already allowed notifications gets (re)attached to this admin account
     superAdminPush.syncPushIfAllowed()
+    // They may have allowed (or blocked) notifications in the phone's settings meanwhile
+    const onVisible = () => { if (document.visibilityState === 'visible') check() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
   }, [authed])
 
   // One-tap toggle, same as the restaurant app's bell
@@ -269,7 +274,7 @@ export default function SuperAdminPage() {
     'support:message': (msg) => {
       if (msg.fromAdmin) return
       setUnreadMessages(n => n + 1)
-      toast(`New message from ${msg.senderName || 'a customer'}`, { id: `support-${msg.id}`, icon: '💬' })
+      toast(`New message from ${msg.senderName || 'a customer'} (${msg.restaurantId ? 'restaurant' : 'customer'})`, { id: `support-${msg.id}`, icon: '💬' })
     },
   })
 
@@ -571,9 +576,10 @@ export default function SuperAdminPage() {
           <div className="flex items-center gap-2 flex-wrap">
             <Link to="/superadmin/delivery" className="btn btn-ghost text-ink-400 text-sm"><Backpack size={14} /> Delivery</Link>
             {pushState && pushState !== 'unsupported' && (
-              <button onClick={handleBell} title={pushState === 'on' ? 'Turn off notifications' : 'Get notified when a customer or restaurant sends a message'}
+              <button onClick={handleBell} title={pushState === 'on' ? 'Turn off notifications' : pushState === 'blocked' ? 'Notifications are blocked on this device — tap for how to turn them back on' : 'Get notified when a customer or restaurant sends a message'}
                 className="btn btn-ghost text-ink-400 text-sm">
-                <Bell size={14} className={pushState === 'on' ? 'text-brand-400 fill-brand-400' : ''} /> {pushState === 'on' ? 'Notifications on' : 'Notifications'}
+                {pushState === 'blocked' ? <BellOff size={14} className="text-ink-500" /> : <Bell size={14} className={pushState === 'on' ? 'text-brand-400 fill-brand-400' : ''} />}
+                {pushState === 'on' ? 'Notifications on' : pushState === 'blocked' ? 'Notifications blocked' : 'Notifications'}
               </button>
             )}
             <Link to="/superadmin/messages" className="btn btn-ghost text-ink-400 text-sm">
