@@ -18,7 +18,7 @@ import { check, sleep, group } from 'k6';
 import { Rate } from 'k6/metrics';
 
 const BASE_URL = __ENV.BASE_URL;
-const PROD_URL = 'https://cafecampus-api-feu3.onrender.com';
+const PROD_URL = 'https://cafecampus-api-eu.onrender.com';
 if (!BASE_URL) throw new Error('Set -e BASE_URL=<target api url> (staging or a disposable env — never prod)');
 if (BASE_URL.replace(/\/$/, '') === PROD_URL) {
   throw new Error('Refusing to run against the production API. Point BASE_URL at staging instead.');

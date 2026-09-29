@@ -135,6 +135,6 @@ services:
         value: public, max-age=31536000, immutable
     envVars:
       - key: VITE_BACKEND_URL
-        value: https://cafecampus-api-feu3.onrender.com
+        value: https://cafecampus-api-eu.onrender.com
       - key: VITE_GOOGLE_CLIENT_ID
         sync: false
