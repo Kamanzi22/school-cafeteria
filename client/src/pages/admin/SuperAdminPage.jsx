@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Store, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, EyeOff, Radio, History, MapPin, RefreshCw, Clock, Globe, RotateCcw, Backpack, Download, ToggleRight, ToggleLeft, Lock, Mail, LogOut } from 'lucide-react'
+import { Store, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, EyeOff, Radio, History, MapPin, RefreshCw, Clock, Globe, RotateCcw, Backpack, Download, ToggleRight, ToggleLeft, Lock, Mail, LogOut, MessageCircle } from 'lucide-react'
 import { superAdminAPI, authAPI, restaurantAPI } from '../../services/api'
 import { useAdminStore } from '../../store'
 import { useSocket, getSocket } from '../../hooks/useSocket'
@@ -222,12 +222,14 @@ export default function SuperAdminPage() {
 
   // Live visitor feed — seed with a snapshot, then keep it current via socket updates.
   const [trashCount, setTrashCount] = useState(0)
+  const [unreadMessages, setUnreadMessages] = useState(0) // customer help-chat messages not yet read
 
   useEffect(() => {
     if (!authed || !token) return
     getSocket().emit('join:superadmin', { token })
     superAdminAPI.getLiveVisits().then(r => setLiveVisits(r.data.data)).catch(() => {})
     superAdminAPI.getTrashCount().then(r => setTrashCount(r.data.data.count)).catch(() => {})
+    superAdminAPI.getUnreadMessageCount().then(r => setUnreadMessages(r.data.data.count)).catch(() => {})
   }, [authed, token])
 
   useSocket({
@@ -236,7 +238,8 @@ export default function SuperAdminPage() {
         const withoutIt = prev.filter(v => v.id !== visit.id)
         return visit.leftAt ? withoutIt : [visit, ...withoutIt]
       })
-    }
+    },
+    'support:message': (msg) => { if (!msg.fromAdmin) setUnreadMessages(n => n + 1) },
   })
 
   // The anchor date sent to the backend depends on which period type is selected — day/week
@@ -536,6 +539,10 @@ export default function SuperAdminPage() {
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <Link to="/superadmin/delivery" className="btn btn-ghost text-ink-400 text-sm"><Backpack size={14} /> Delivery</Link>
+            <Link to="/superadmin/messages" className="btn btn-ghost text-ink-400 text-sm">
+              <MessageCircle size={14} /> Messages
+              {unreadMessages > 0 && <span className="badge bg-brand-500 text-white text-[10px] px-1.5">{unreadMessages}</span>}
+            </Link>
             <InstallApp variant="button" title="Get the CaféCampus admin app" installedToast="Admin app installed 🎉" />
             <button onClick={() => setPwModal(true)} className="btn btn-ghost text-ink-400 text-sm"><Lock size={14} /> Change Password</button>
             <button onClick={openEmailSettings} className="btn btn-ghost text-ink-400 text-sm"><Mail size={14} /> Support Contact</button>

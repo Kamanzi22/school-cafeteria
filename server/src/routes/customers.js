@@ -42,6 +42,30 @@ router.delete('/:id/guest', optionalCustomer, requireSelf, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// ─── Help chat with the super admin ─────────────────────────────────────────
+const MAX_MESSAGE_LENGTH = 2000;
+
+// The customer's conversation. Opening it marks the admin's replies as read.
+router.get('/:id/messages', optionalCustomer, requireSelf, async (req, res) => {
+  try {
+    await prisma.supportMessage.updateMany({ where:{ customerId:req.params.id, fromAdmin:true, readAt:null }, data:{ readAt:new Date() } });
+    const messages = await prisma.supportMessage.findMany({ where:{ customerId:req.params.id }, orderBy:{ createdAt:'asc' } });
+    res.json({ success:true, data:messages });
+  } catch(e){ res.status(500).json({ success:false, error:e.message }); }
+});
+
+router.post('/:id/messages', optionalCustomer, requireSelf, async (req, res) => {
+  try {
+    const body = String(req.body?.body || '').trim();
+    if (!body) return res.status(400).json({ success:false, error:'Message is empty' });
+    if (body.length > MAX_MESSAGE_LENGTH) return res.status(400).json({ success:false, error:`Message is too long (max ${MAX_MESSAGE_LENGTH} characters)` });
+    const message = await prisma.supportMessage.create({ data:{ customerId:req.params.id, body } });
+    // Live inbox update for any open super admin panel
+    req.app.get('io').to('superadmin').emit('support:message', { ...message, customerName:req.customer.name });
+    res.status(201).json({ success:true, data:message });
+  } catch(e){ res.status(500).json({ success:false, error:e.message }); }
+});
+
 router.post('/:id/favorite/:restaurantId', optionalCustomer, requireSelf, async (req, res) => {
   try {
     const existing = await prisma.favorite.findUnique({ where:{ customerId_restaurantId:{ customerId:req.params.id, restaurantId:req.params.restaurantId } } });

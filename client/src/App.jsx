@@ -32,6 +32,7 @@ const SettingsPage = lazy(() => import('./pages/restaurant/SettingsPage'))
 
 const SuperAdminPage = lazy(() => import('./pages/admin/SuperAdminPage'))
 const DeliveryPage = lazy(() => import('./pages/admin/DeliveryPage'))
+const MessagesPage = lazy(() => import('./pages/admin/MessagesPage'))
 const DeliveryAuthPage = lazy(() => import('./pages/admin/DeliveryAuthPage'))
 
 function AdminGuard({ children }) {
@@ -74,6 +75,7 @@ export default function App() {
       {/* ── Super admin ────────────────────────────────── */}
       <Route path="/superadmin" element={<SuperAdminPage />} />
       <Route path="/superadmin/delivery" element={<DeliveryPage />} />
+      <Route path="/superadmin/messages" element={<MessagesPage />} />
 
       {/* ── Delivery runner (scoped, standalone) ───────── */}
       <Route path="/delivery/login" element={<DeliveryAuthPage />} />

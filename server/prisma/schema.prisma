@@ -189,6 +189,23 @@ model Customer {
   reviews       Review[]
   favorites     Favorite[]
   pushSubscriptions PushSubscription[]
+  supportMessages SupportMessage[]
+}
+
+// The customer ↔ super admin help chat (Profile → "Message us"). One conversation per customer,
+// so there's no thread table — a customer's messages and the admin's replies are the rows with
+// that customerId, ordered by time. readAt is set when the *other* side opens the conversation.
+model SupportMessage {
+  id         String    @id @default(uuid())
+  customerId String
+  fromAdmin  Boolean   @default(false)
+  body       String
+  readAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId, createdAt])
 }
 
 // One row per browser/phone a customer has allowed notifications on. `endpoint` is the push

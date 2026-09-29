@@ -5,6 +5,7 @@ const { encrypt } = require('../lib/crypto');
 const prisma = require('../lib/prisma');
 const { notifyOrderStatus } = require('../lib/notifications');
 const { broadcastCatalogChange } = require('../lib/liveUpdates');
+const { sendPushToCustomer } = require('../lib/push');
 
 router.get('/restaurants', authSuperAdmin, async (req, res) => {
   try {
@@ -146,6 +147,67 @@ router.get('/contact', async (req, res) => {
       supportEmail: s?.showSupportEmail === false ? null : s?.supportEmail || null,
       supportPhone: s?.showSupportPhone === false ? null : s?.supportPhone || null,
     } });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// ─── Help chat inbox (customer ↔ super admin) ───────────────────────────────
+// One conversation per customer; see the SupportMessage model.
+
+// Conversations, most recently active first, each with its latest message and how many of the
+// customer's messages the admin hasn't read yet.
+router.get('/messages', authSuperAdmin, async (req, res) => {
+  try {
+    const customers = await prisma.customer.findMany({
+      where: { supportMessages: { some: {} } },
+      select: {
+        id: true, name: true, email: true, phone: true, accountType: true,
+        supportMessages: { orderBy: { createdAt: 'desc' }, take: 1 },
+        _count: { select: { supportMessages: { where: { fromAdmin: false, readAt: null } } } },
+      },
+    });
+    const conversations = customers
+      .map(({ supportMessages, _count, ...customer }) => ({ customer, lastMessage: supportMessages[0], unread: _count.supportMessages }))
+      .sort((a, b) => new Date(b.lastMessage.createdAt) - new Date(a.lastMessage.createdAt));
+    res.json({ success: true, data: conversations });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// For the "Messages" badge on the main panel
+router.get('/messages/unread-count', authSuperAdmin, async (req, res) => {
+  try {
+    const count = await prisma.supportMessage.count({ where: { fromAdmin: false, readAt: null } });
+    res.json({ success: true, data: { count } });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// One conversation. Opening it marks the customer's messages as read.
+router.get('/messages/:customerId', authSuperAdmin, async (req, res) => {
+  try {
+    const customer = await prisma.customer.findUnique({ where: { id: req.params.customerId }, select: { id: true, name: true, email: true, phone: true, accountType: true } });
+    if (!customer) return res.status(404).json({ success: false, error: 'Customer not found' });
+    await prisma.supportMessage.updateMany({ where: { customerId: customer.id, fromAdmin: false, readAt: null }, data: { readAt: new Date() } });
+    const messages = await prisma.supportMessage.findMany({ where: { customerId: customer.id }, orderBy: { createdAt: 'asc' } });
+    res.json({ success: true, data: { customer, messages } });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+router.post('/messages/:customerId', authSuperAdmin, async (req, res) => {
+  try {
+    const body = String(req.body?.body || '').trim();
+    if (!body) return res.status(400).json({ success: false, error: 'Message is empty' });
+    if (body.length > 2000) return res.status(400).json({ success: false, error: 'Message is too long (max 2000 characters)' });
+    const customer = await prisma.customer.findUnique({ where: { id: req.params.customerId }, select: { id: true } });
+    if (!customer) return res.status(404).json({ success: false, error: 'Customer not found' });
+    const message = await prisma.supportMessage.create({ data: { customerId: customer.id, body, fromAdmin: true } });
+    // The customer sees it live if the app is open, and as a phone notification if it isn't
+    req.app.get('io').to(`customer:${customer.id}`).emit('support:message', message);
+    sendPushToCustomer(customer.id, {
+      title: 'CaféCampus support replied',
+      body: body.length > 120 ? `${body.slice(0, 117)}…` : body,
+      url: '/profile#messages',
+      tag: 'support-chat',
+    });
+    res.status(201).json({ success: true, data: message });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
