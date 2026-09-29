@@ -120,7 +120,7 @@ export default function HomePage() {
       <header className="sticky top-0 z-30 bg-alu-bg/90 backdrop-blur-xl border-b border-alu-border">
         <div className="page-container py-3 flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-2.5">
           <Link to="/" className="flex items-center gap-2 mr-1 shrink-0">
-            <span className="text-2xl">🍽️</span>
+            <img src="/logo-mark.svg" alt="" className="w-8 h-8" />
             <div>
               <p className="font-bold text-alu-cream leading-none text-base">CaféCampus</p>
               <p className="text-[10px] text-alu-muted leading-none">School Cafeteria</p>

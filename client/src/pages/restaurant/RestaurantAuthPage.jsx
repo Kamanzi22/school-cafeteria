@@ -64,7 +64,7 @@ export default function RestaurantAuthPage() {
         </Link>
 
         <div className="text-center mb-6">
-          <div className="text-5xl mb-3">🏪</div>
+          <img src="/logo.svg" alt="CaféCampus" className="w-20 h-20 mx-auto mb-3" />
           <h1 className="text-2xl font-black text-ink-900">Seller Portal</h1>
           <p className="text-ink-500 text-sm mt-1">Manage your cafeteria stall</p>
         </div>

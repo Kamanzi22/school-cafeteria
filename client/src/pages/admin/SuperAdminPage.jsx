@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Shield, Store, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, EyeOff, Radio, History, MapPin, RefreshCw, Clock, Globe, RotateCcw, Backpack, Download, ToggleRight, ToggleLeft, Lock, Mail, LogOut } from 'lucide-react'
+import { Store, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, EyeOff, Radio, History, MapPin, RefreshCw, Clock, Globe, RotateCcw, Backpack, Download, ToggleRight, ToggleLeft, Lock, Mail, LogOut } from 'lucide-react'
 import { superAdminAPI, authAPI, restaurantAPI } from '../../services/api'
 import { useAdminStore } from '../../store'
 import { useSocket, getSocket } from '../../hooks/useSocket'
@@ -485,7 +485,7 @@ export default function SuperAdminPage() {
     <div className="min-h-dvh bg-ink-950 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <Shield size={40} className="text-brand-500 mx-auto mb-3" />
+          <img src="/logo.svg" alt="CaféCampus" className="w-20 h-20 mx-auto mb-3 rounded-[22%] ring-1 ring-white/10" />
           <h1 className="text-2xl font-black text-white">Super Admin</h1>
           <p className="text-ink-500 text-sm mt-1">Platform administration</p>
         </div>
@@ -531,7 +531,7 @@ export default function SuperAdminPage() {
       <div className="gradient-dark text-white px-6 py-5">
         <div className="max-w-5xl mx-auto flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
-            <Shield size={24} className="text-brand-400" />
+            <img src="/logo-mark.svg" alt="" className="w-9 h-9 rounded-[22%] ring-1 ring-white/10" />
             <div><p className="font-black text-lg">Super Admin Panel</p><p className="text-ink-400 text-xs">CaféCampus Platform</p></div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
