@@ -88,3 +88,38 @@ Home → pick restaurant → add to cart → "Continue as Guest" → place order
 
 ### Customer registers:
 `/auth` → Create Account tab → email + password → full account
+
+---
+
+## Deployment
+
+Everything deploys from this repo (`Kamanzi22/school-cafeteria`, branch `main`) through the
+Render Blueprint in `render.yaml`. Pushing to `main` redeploys the site and the API.
+
+| Part | Where | Address |
+|---|---|---|
+| Website (customer, restaurant and super admin apps) | Render static site `cafecampus-client` | https://cafecampus.org.rw (also `www.`, `restaurant.`, `superadmin.`) |
+| API | Render web service `cafecampus-api-eu`, Frankfurt | https://cafecampus-api-eu.onrender.com |
+| Database and file storage | Supabase, AWS Paris (eu-west-3) | — |
+| Daily database backup | GitHub Actions `backup-db.yml`, into the private Supabase `backups` bucket, kept 14 days | — |
+
+The API runs in Frankfurt because it is next to the database (about 10 ms per query) and the
+closest Render region to users in Kigali (about 150 ms). It moved there from Oregon on
+2026-09-29, which made database-backed requests 2–3 times faster.
+
+`kamanzi2025/school-cafeteria` is an old copy of this project with its workflows disabled. It is
+not connected to the live app.
+
+### Still to do
+
+- **Delete the old Oregon API.** The service `cafecampus-api` (address `cafecampus-api-feu3.onrender.com`)
+  is suspended: it costs nothing and nothing uses it. To remove it for good:
+  1. Remove its entry (the first service) from `render.yaml` and push, so the Blueprint
+     does not recreate it. Don't touch `cafecampus-api-eu`.
+  2. In the Render dashboard, open `cafecampus-api` → Settings → Delete Web Service.
+  Until then, don't click **Resume** on it, since that would start billing again.
+- **Delete the temporary Render API key** once no more Render changes are needed:
+  Render → Account Settings → API Keys → delete `claude-frankfurt-move`, then run
+  `rm ~/.render_key` on the Mac.
+- **Remove the unused `VERCEL_TOKEN`** secret from this repo's GitHub settings
+  (Settings → Secrets and variables → Actions), and revoke it in Vercel.
