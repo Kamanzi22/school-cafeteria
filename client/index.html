@@ -8,6 +8,9 @@
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <meta name="apple-mobile-web-app-title" content="CaféCampus" />
+  <!-- An iPhone home-screen app ignores theme-color and draws a white status bar (time,
+       battery) unless told otherwise; "black" matches the dark customer app. -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   <!-- restaurant. and superadmin. subdomains are served this customer page for their short
        addresses (Render rewrites can't match on host). Safari reads the customer app name and
        manifest before any script can swap them, so jump straight to the internal address, which
