@@ -1,6 +1,6 @@
 {
   "name": "CaféCampus Admin",
-  "short_name": "CC Admin",
+  "short_name": "cafecampus-admin",
   "description": "Manage restaurants, delivery, and platform activity on CaféCampus.",
   "start_url": "/superadmin",
   "scope": "/",
