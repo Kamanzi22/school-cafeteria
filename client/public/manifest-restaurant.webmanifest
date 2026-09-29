@@ -1,5 +1,5 @@
 {
-  "name": "CaféCampus for Restaurants",
+  "name": "cafecampus-resto",
   "short_name": "cafecampus-resto",
   "description": "Manage your restaurant's orders and menu on CaféCampus, with live order alerts.",
   "start_url": "/admin",
