@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
-import { ArrowLeft, CheckCircle, Clock, X, Star, Loader } from 'lucide-react'
+import { ArrowLeft, CheckCircle, Clock, X, Star, Loader, Phone } from 'lucide-react'
 import { orderAPI, reviewAPI } from '../../services/api'
 import { useSocket } from '../../hooks/useSocket'
 import { useCustomerStore } from '../../store'
@@ -127,6 +127,11 @@ export default function TrackOrderPage() {
             <p className="text-white/50 text-xs mb-1">Order Number</p>
             <p className="font-black text-2xl font-mono text-alu-gold">{order.orderNumber}</p>
             <p className="text-white/60 text-sm mt-1">{order.restaurant?.name} · {order.totalPrice.toLocaleString()} RWF</p>
+            {order.restaurant?.phone && (
+              <a href={`tel:${order.restaurant.phone.replace(/\s+/g, '')}`} className="inline-flex items-center gap-1.5 text-white/80 text-sm mt-2 hover:text-white hover:underline">
+                <Phone size={13} />Call {order.restaurant.name}: {order.restaurant.phone}
+              </a>
+            )}
           </div>
         </div>
       </div>

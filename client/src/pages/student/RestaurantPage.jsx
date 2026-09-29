@@ -216,10 +216,13 @@ export default function RestaurantPage() {
               </div>
               <h1 className="font-black text-2xl text-white leading-tight">{restaurant.name}</h1>
               <p className="text-white/70 text-sm mt-0.5 line-clamp-2">{restaurant.description}</p>
-              <div className="flex items-center gap-4 mt-2 text-white/70 text-xs">
+              <div className="flex items-center flex-wrap gap-x-4 gap-y-1 mt-2 text-white/70 text-xs">
                 {restaurant.ratingCount > 0 && <span className="flex items-center gap-1"><Star size={11} className="fill-amber-300 text-amber-300" />{restaurant.rating} ({restaurant.ratingCount})</span>}
                 <span className="flex items-center gap-1"><Clock size={11} />{restaurant.prepTimeMin}–{restaurant.prepTimeMax} min</span>
                 <span className="flex items-center gap-1"><MapPin size={11} />{restaurant.location}</span>
+                {restaurant.phone && (
+                  <a href={`tel:${restaurant.phone.replace(/\s+/g, '')}`} className="flex items-center gap-1 hover:text-white hover:underline"><Phone size={11} />{restaurant.phone}</a>
+                )}
                 {restaurant.offersDelivery && restaurant.offersCampusDelivery && (
                   <span className="flex items-center gap-1"><Backpack size={11} />Delivery {restaurant.campusDeliveryFee > 0 ? `+${restaurant.campusDeliveryFee.toLocaleString()} RWF` : 'free'}</span>
                 )}
