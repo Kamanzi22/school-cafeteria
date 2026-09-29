@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom'
 import InstallApp from '../../components/shared/InstallApp'
 import NotificationSettings from '../../components/shared/NotificationSettings'
 import SupportContact from '../../components/shared/SupportContact'
+import { useLiveRefresh } from '../../hooks/useLiveRefresh'
 import PasswordInput from '../../components/shared/PasswordInput'
 import toast from 'react-hot-toast'
 
@@ -41,6 +42,9 @@ export default function SettingsPage() {
   useEffect(() => {
     restaurantAPI.platformDelivery().then(r => setPlatformDelivery(r.data.data.deliveryEnabled)).catch(() => {})
   }, [])
+  // The super admin flipping the platform-wide delivery switch while this page is open.
+  useLiveRefresh(() => restaurantAPI.platformDelivery().then(r => setPlatformDelivery(r.data.data.deliveryEnabled)).catch(() => {}),
+    { events: ['catalog:changed'], matches: () => false })
 
   useEffect(() => {
     if (restaurant) {

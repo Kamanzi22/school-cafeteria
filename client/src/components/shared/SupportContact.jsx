@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { LifeBuoy, Mail, Phone } from 'lucide-react'
 import { contactAPI } from '../../services/api'
+import { useLiveRefresh } from '../../hooks/useLiveRefresh'
 
 // "Need help?" card showing the phone/email the super admin has configured under Email
 // Settings → Support. Renders nothing until loaded, and nothing at all if neither field is
@@ -9,6 +10,9 @@ export default function SupportContact({ title = 'Need help?' }) {
   const [contact, setContact] = useState(null)
 
   useEffect(() => { contactAPI.get().then(res => setContact(res.data.data)).catch(() => setContact(null)) }, [])
+  // The super admin editing or hiding the support details — platform-wide changes only.
+  useLiveRefresh(() => contactAPI.get().then(res => setContact(res.data.data)).catch(() => {}),
+    { events: ['catalog:changed'], matches: () => false })
 
   if (!contact || (!contact.supportEmail && !contact.supportPhone)) return null
 

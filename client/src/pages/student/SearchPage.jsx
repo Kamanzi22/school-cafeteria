@@ -7,6 +7,20 @@ import {
 import { restaurantAPI, menuAPI } from '../../services/api'
 import { useCartStore, useCustomerStore, useUIStore } from '../../store'
 import CartDrawer from '../../components/student/CartDrawer'
+import { useLiveRefresh } from '../../hooks/useLiveRefresh'
+
+// Merchants and/or products matching q, depending on the active filter tab.
+function searchFor(q, filter) {
+  const fetchMerchants = (filter === 'all' || filter === 'merchants')
+    ? restaurantAPI.search(q).then(r => r.data.data || [])
+    : Promise.resolve([])
+
+  const fetchProducts = (filter === 'all' || filter === 'products')
+    ? menuAPI.search(q).then(r => r.data.data || [])
+    : Promise.resolve([])
+
+  return Promise.all([fetchMerchants, fetchProducts])
+}
 
 const HISTORY_KEY = 'cc-search-history'
 const MAX_HISTORY = 8
@@ -179,15 +193,7 @@ export default function SearchPage() {
     let stale = false
 
     debounceRef.current = setTimeout(() => {
-      const fetchMerchants = (filter === 'all' || filter === 'merchants')
-        ? restaurantAPI.search(q).then(r => r.data.data || [])
-        : Promise.resolve([])
-
-      const fetchProducts = (filter === 'all' || filter === 'products')
-        ? menuAPI.search(q).then(r => r.data.data || [])
-        : Promise.resolve([])
-
-      Promise.all([fetchMerchants, fetchProducts]).then(([rests, items]) => {
+      searchFor(q, filter).then(([rests, items]) => {
         if (stale) return
         setRestaurants(rests)
         setProducts(items)
@@ -201,6 +207,22 @@ export default function SearchPage() {
 
     return () => { stale = true; clearTimeout(debounceRef.current) }
   }, [query, filter])
+
+  // A restaurant or the super admin changing what matches (renamed, sold out, deleted…) while
+  // results are showing — rerun the current search quietly, without the spinner, and drop the
+  // answer if the customer has typed something else by the time it arrives.
+  const latestSearch = useRef('')
+  latestSearch.current = `${query.trim()}|${filter}`
+  useLiveRefresh(() => {
+    const q = query.trim()
+    if (!q) return
+    const key = `${q}|${filter}`
+    searchFor(q, filter).then(([rests, items]) => {
+      if (latestSearch.current !== key) return
+      setRestaurants(rests)
+      setProducts(items)
+    }).catch(() => {})
+  })
 
   const handleHistoryClick = (term) => {
     setQuery(term)

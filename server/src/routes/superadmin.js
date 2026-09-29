@@ -4,6 +4,7 @@ const { authSuperAdmin, authDelivery } = require('../middleware/auth');
 const { encrypt } = require('../lib/crypto');
 const prisma = require('../lib/prisma');
 const { notifyOrderStatus } = require('../lib/notifications');
+const { broadcastCatalogChange } = require('../lib/liveUpdates');
 
 router.get('/restaurants', authSuperAdmin, async (req, res) => {
   try {
@@ -16,6 +17,7 @@ router.patch('/restaurants/:id/approve', authSuperAdmin, async (req, res) => {
   try {
     const r = await prisma.restaurant.findUnique({ where:{ id:req.params.id } });
     const updated = await prisma.restaurant.update({ where:{ id:req.params.id }, data:{ isApproved:!r.isApproved } });
+    broadcastCatalogChange(req, updated.id);
     res.json({ success:true, data:{ isApproved:updated.isApproved } });
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
@@ -23,6 +25,7 @@ router.patch('/restaurants/:id/approve', authSuperAdmin, async (req, res) => {
 router.delete('/restaurants/:id', authSuperAdmin, async (req, res) => {
   try {
     await prisma.restaurant.update({ where:{ id:req.params.id }, data:{ isDeleted:true, isOpen:false, deletedAt:new Date() } });
+    broadcastCatalogChange(req, req.params.id);
     res.json({ success:true, data:null });
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
@@ -45,6 +48,7 @@ router.patch('/restaurants/campus-delivery-all', authSuperAdmin, async (req, res
     const { count } = await prisma.restaurant.updateMany({ where:{ isDeleted:false }, data });
     // The switch itself — while off, delivery is hidden everywhere and stores can't turn it back on
     if (enabled !== undefined) await prisma.platformSettings.upsert({ where:{ id:'default' }, update:{ deliveryEnabled:!!enabled }, create:{ id:'default', deliveryEnabled:!!enabled } });
+    broadcastCatalogChange(req);
     res.json({ success:true, data:{ count } });
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
@@ -62,6 +66,7 @@ router.delete('/orders/all', authSuperAdmin, async (req, res) => {
       prisma.customer.updateMany({ data:{ totalSpent:0, orderCount:0 } }),
       prisma.promotion.updateMany({ data:{ usageCount:0 } }),
     ]);
+    broadcastCatalogChange(req);
     res.json({ success:true, data:{ orders:orders.count, reviews:reviews.count } });
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
@@ -71,6 +76,7 @@ router.delete('/orders/all', authSuperAdmin, async (req, res) => {
 router.patch('/restaurants/location-all', authSuperAdmin, async (req, res) => {
   try {
     const { count } = await prisma.restaurant.updateMany({ where: { isDeleted: false }, data: { location: 'Cafeteria' } });
+    broadcastCatalogChange(req);
     res.json({ success: true, data: { count } });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -124,6 +130,7 @@ router.put('/settings', authSuperAdmin, async (req, res) => {
     if (showSupportEmail !== undefined) data.showSupportEmail = !!showSupportEmail;
     if (showSupportPhone !== undefined) data.showSupportPhone = !!showSupportPhone;
     const s = await prisma.platformSettings.upsert({ where: { id: 'default' }, update: data, create: { id: 'default', ...data } });
+    broadcastCatalogChange(req);
     res.json({ success: true, data: stripEncFields(s) });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

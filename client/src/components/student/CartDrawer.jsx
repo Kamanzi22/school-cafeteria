@@ -6,6 +6,7 @@ import { orderAPI, restaurantAPI, promoAPI } from '../../services/api'
 import { promoDiscount, promoHeadline } from '../../lib/promo'
 import { enableNotifications } from '../../services/push'
 import toast from 'react-hot-toast'
+import { useLiveRefresh } from '../../hooks/useLiveRefresh'
 
 export default function CartDrawer() {
   const { cartOpen, closeCart } = useUIStore()
@@ -29,11 +30,15 @@ export default function CartDrawer() {
 
   const rawGroups = byRestaurant()
   const restaurantIds = rawGroups.map(g => g.id).join(',')
-  useEffect(() => {
+  const refreshLiveRestaurants = () => {
     if (!cartOpen || !restaurantIds) return
     Promise.all(restaurantIds.split(',').map(id => restaurantAPI.get(id).then(r => [id, r.data.data]).catch(() => null)))
       .then(pairs => setLiveRestaurants(prev => ({ ...prev, ...Object.fromEntries(pairs.filter(Boolean)) })))
-  }, [cartOpen, restaurantIds])
+  }
+  useEffect(refreshLiveRestaurants, [cartOpen, restaurantIds])
+  // ...and while the cart is open, whenever one of those stores (or the super admin's platform
+  // settings) changes delivery options, fees or promos.
+  useLiveRefresh(refreshLiveRestaurants, { matches: rid => restaurantIds.split(',').includes(rid), spread: 300 })
 
   const groups = rawGroups.map(g => {
     const live = liveRestaurants[g.id]

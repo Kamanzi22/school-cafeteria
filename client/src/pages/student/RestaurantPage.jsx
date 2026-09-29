@@ -7,7 +7,7 @@ import CartDrawer from '../../components/student/CartDrawer'
 import Seo from '../../components/Seo'
 import { useBackNavigate } from '../../hooks/useBackNavigate'
 import { useVisitTracking } from '../../hooks/useVisitTracking'
-import { useSocket } from '../../hooks/useSocket'
+import { useLiveRefresh } from '../../hooks/useLiveRefresh'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 import { promoHeadline, promoTerms } from '../../lib/promo'
@@ -95,25 +95,14 @@ export default function RestaurantPage() {
     }).catch(() => { setLoading(false); navigate('/') })
   }, [id])
 
-  // A restaurant editing its menu (sold out, price, new item…) while this customer already has
-  // the page open — refetch quietly rather than making them reload to see it.
-  useSocket({
-    'menu:updated': ({ restaurantId } = {}) => {
-      if (restaurantId !== id) return
-      restaurantAPI.get(id).then(r => setRestaurant(r.data.data)).catch(() => {})
-    }
-  })
-
-  // Phones drop the socket while the tab/app is backgrounded (locked screen, app-switch), so a
-  // menu:updated sent during that window is missed. Catch up the moment it's foregrounded again
-  // instead of relying on the customer to leave and come back.
-  useEffect(() => {
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') restaurantAPI.get(id).then(r => setRestaurant(r.data.data)).catch(() => {})
-    }
-    document.addEventListener('visibilitychange', onVisible)
-    return () => document.removeEventListener('visibilitychange', onVisible)
-  }, [id])
+  // The restaurant editing its menu, promos or settings, opening/closing, or the super admin
+  // changing or removing it while this customer has the page open — refetch quietly rather than
+  // making them reload, including when the phone brings the app back to the foreground. The URL
+  // may hold the slug instead of the id, so match events against the loaded restaurant's id too.
+  // A 404 means it was deleted or suspended: send the customer home instead of a dead menu.
+  useLiveRefresh(() => restaurantAPI.get(id).then(r => setRestaurant(r.data.data)).catch(err => {
+    if (err.response?.status === 404) { toast('This restaurant is no longer available'); navigate('/', { replace: true }) }
+  }), { matches: rid => rid === id || rid === restaurant?.id, spread: 300 })
 
   useEffect(() => {
     if (loading || !restaurant || !focusItemId) return

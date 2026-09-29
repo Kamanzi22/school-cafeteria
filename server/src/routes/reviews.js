@@ -2,6 +2,7 @@
 const router = require('express').Router();
 const { optionalCustomer } = require('../middleware/auth');
 const prisma = require('../lib/prisma');
+const { broadcastCatalogChange } = require('../lib/liveUpdates');
 
 router.post('/', optionalCustomer, async (req, res) => {
   try {
@@ -17,6 +18,7 @@ router.post('/', optionalCustomer, async (req, res) => {
     const reviews = await prisma.review.findMany({ where:{ restaurantId:order.restaurantId } });
     const avg = reviews.reduce((s,r)=>s+r.overallRating,0)/reviews.length;
     await prisma.restaurant.update({ where:{ id:order.restaurantId }, data:{ rating:Math.round(avg*10)/10, ratingCount:reviews.length } });
+    broadcastCatalogChange(req, order.restaurantId);
     res.json({ success:true, data:review });
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });

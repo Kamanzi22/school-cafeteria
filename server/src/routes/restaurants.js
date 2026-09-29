@@ -4,6 +4,7 @@ const { authOwner, authStaff, optionalCustomer, blockViewer, requireManager } = 
 const prisma = require('../lib/prisma');
 const { applyAutoFeatured } = require('../lib/featured');
 const { isDeliveryEnabled, applyPlatformDelivery } = require('../lib/platformDelivery');
+const { broadcastCatalogChange } = require('../lib/liveUpdates');
 
 router.get('/', optionalCustomer, async (req, res) => {
   try {
@@ -111,6 +112,7 @@ router.patch('/admin/featured-mode', authStaff, blockViewer, requireManager, asy
     const { mode } = req.body;
     if (mode !== 'auto' && mode !== 'manual') return res.status(400).json({ success: false, error: 'mode must be "auto" or "manual"' });
     const updated = await prisma.restaurant.update({ where: { id: req.restaurantId }, data: { featuredMode: mode }, select: { featuredMode: true } });
+    broadcastCatalogChange(req, req.restaurantId);
     res.json({ success: true, data: { featuredMode: updated.featuredMode } });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -128,6 +130,7 @@ router.patch('/admin/toggle-accepting', authStaff, blockViewer, async (req, res)
   try {
     const current = await prisma.restaurant.findUnique({ where: { id: req.restaurantId } });
     const updated = await prisma.restaurant.update({ where: { id: req.restaurantId }, data: { isAccepting: !current.isAccepting } });
+    broadcastCatalogChange(req, req.restaurantId);
     res.json({ success: true, data: { isAccepting: updated.isAccepting } });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -183,6 +186,7 @@ router.patch('/admin/reviews/:reviewId/reply', authStaff, blockViewer, async (re
     const { count } = await prisma.review.updateMany({ where:{ id: req.params.reviewId, restaurantId: req.restaurantId }, data:{ reply: req.body.reply, repliedAt: new Date() } });
     if (!count) return res.status(404).json({ success: false, error: 'Review not found' });
     const r = await prisma.review.findUnique({ where:{ id: req.params.reviewId } });
+    broadcastCatalogChange(req, req.restaurantId);
     res.json({ success: true, data: r });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

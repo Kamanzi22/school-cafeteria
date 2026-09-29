@@ -4,6 +4,7 @@ import { Search, ShoppingBag, User, Star, Clock, MapPin, TrendingUp } from 'luci
 import { restaurantAPI } from '../../services/api'
 import { useCartStore, useCustomerStore, useUIStore, useAdminStore } from '../../store'
 import { useSocket } from '../../hooks/useSocket'
+import { useLiveRefresh } from '../../hooks/useLiveRefresh'
 import CartDrawer from '../../components/student/CartDrawer'
 import NotificationBell from '../../components/student/NotificationBell'
 import InstallApp from '../../components/shared/InstallApp'
@@ -110,6 +111,12 @@ export default function HomePage() {
       .then(r => { setRestaurants(r.data.data || []); setLoading(false) })
       .catch(() => setLoading(false))
   }, [])
+
+  // A restaurant changing its settings or being approved, suspended or deleted, or the super
+  // admin changing platform settings — reload the list quietly (no spinner). Open/closed is
+  // already patched in live above, and menu edits don't change this list.
+  useLiveRefresh(() => restaurantAPI.list().then(r => setRestaurants(r.data.data || [])).catch(() => {}),
+    { events: ['catalog:changed', 'restaurant:updated', 'restaurant:deleted'] })
 
   const displayed = restaurants
 
