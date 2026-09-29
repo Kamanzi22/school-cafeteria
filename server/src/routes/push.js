@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const { optionalCustomer, authStaff } = require('../middleware/auth');
+const { optionalCustomer, authStaff, authSuperAdmin } = require('../middleware/auth');
 const { pushEnabled, publicKey, isAllowedEndpoint } = require('../lib/push');
 const prisma = require('../lib/prisma');
 
@@ -61,6 +61,31 @@ router.post('/restaurant/unsubscribe', authStaff, async (req, res) => {
     const { endpoint } = req.body || {};
     if (!endpoint) return res.status(400).json({ success:false, error:'Endpoint required' });
     await prisma.restaurantPushSubscription.deleteMany({ where:{ endpoint, restaurantId:req.restaurantId } });
+    res.json({ success:true });
+  } catch(e){ res.status(500).json({ success:false, error:e.message }); }
+});
+
+// Super admin side — "a customer sent a message" alerts, filed under the signed-in super admin.
+router.post('/superadmin/subscribe', authSuperAdmin, async (req, res) => {
+  try {
+    if (!pushEnabled) return res.status(503).json({ success:false, error:'Push notifications are not configured' });
+    const { endpoint, keys } = req.body || {};
+    if (!endpoint || !keys?.p256dh || !keys?.auth) return res.status(400).json({ success:false, error:'Invalid subscription' });
+    if (!isAllowedEndpoint(endpoint)) return res.status(400).json({ success:false, error:'Unsupported push service' });
+    await prisma.superAdminPushSubscription.upsert({
+      where: { endpoint },
+      create: { superAdminId:req.decoded.id, endpoint, p256dh:keys.p256dh, auth:keys.auth },
+      update: { superAdminId:req.decoded.id, p256dh:keys.p256dh, auth:keys.auth },
+    });
+    res.json({ success:true });
+  } catch(e){ res.status(500).json({ success:false, error:e.message }); }
+});
+
+router.post('/superadmin/unsubscribe', authSuperAdmin, async (req, res) => {
+  try {
+    const { endpoint } = req.body || {};
+    if (!endpoint) return res.status(400).json({ success:false, error:'Endpoint required' });
+    await prisma.superAdminPushSubscription.deleteMany({ where:{ endpoint, superAdminId:req.decoded.id } });
     res.json({ success:true });
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });

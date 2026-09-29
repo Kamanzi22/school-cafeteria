@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Store, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, EyeOff, Radio, History, MapPin, RefreshCw, Clock, Globe, RotateCcw, Backpack, Download, ToggleRight, ToggleLeft, Lock, Mail, LogOut, MessageCircle } from 'lucide-react'
+import { Store, ShoppingBag, CheckCircle, XCircle, Trash2, Loader, LogIn, Eye, EyeOff, Radio, History, MapPin, RefreshCw, Clock, Globe, RotateCcw, Backpack, Download, ToggleRight, ToggleLeft, Lock, Mail, LogOut, MessageCircle, Bell } from 'lucide-react'
 import { superAdminAPI, authAPI, restaurantAPI } from '../../services/api'
 import { useAdminStore } from '../../store'
 import { useSocket, getSocket } from '../../hooks/useSocket'
 import InstallApp from '../../components/shared/InstallApp'
+import { superAdminPush } from '../../services/push'
 import PasswordInput from '../../components/shared/PasswordInput'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
@@ -185,7 +186,9 @@ export default function SuperAdminPage() {
   const { loginViewer, logout: exitAdminSession, role: adminRole } = useAdminStore()
 
   // Full reload so in-memory state and the live socket connection are dropped along with the saved token.
-  const signOut = () => {
+  // Push is turned off first (while the token still works) so this device stops getting admin alerts.
+  const signOut = async () => {
+    await superAdminPush.disablePush()
     localStorage.removeItem('cc-superadmin-v1')
     if (adminRole === 'viewer') exitAdminSession()
     window.location.replace('/superadmin')
@@ -223,6 +226,30 @@ export default function SuperAdminPage() {
   // Live visitor feed — seed with a snapshot, then keep it current via socket updates.
   const [trashCount, setTrashCount] = useState(0)
   const [unreadMessages, setUnreadMessages] = useState(0) // customer help-chat messages not yet read
+  const [pushState, setPushState] = useState(null) // phone/browser notifications for this device
+
+  useEffect(() => {
+    if (!authed) return
+    superAdminPush.getPushState().then(setPushState).catch(() => setPushState('unsupported'))
+    // A device that already allowed notifications gets (re)attached to this admin account
+    superAdminPush.syncPushIfAllowed()
+  }, [authed])
+
+  // One-tap toggle, same as the restaurant app's bell
+  const handleBell = async () => {
+    if (pushState === 'on') {
+      await superAdminPush.disablePush()
+      setPushState('off')
+      toast.success('Notifications off')
+      return
+    }
+    if (pushState === 'blocked') { toast.error('Notifications are blocked for this site — allow them in your browser or phone settings'); return }
+    if (pushState === 'needs-install') { toast('On iPhone, first add this admin app to your Home Screen (Share → Add to Home Screen), then turn on notifications from there.', { icon: '📱', duration: 8000 }); return }
+    const next = await superAdminPush.enableNotifications()
+    if (next === 'unsupported') { toast.error("Couldn't turn on notifications — try again in a moment"); return }
+    setPushState(next)
+    if (next === 'on') toast.success("Notifications on 🔔 — you'll be alerted when a customer sends a message")
+  }
 
   useEffect(() => {
     if (!authed || !token) return
@@ -539,6 +566,12 @@ export default function SuperAdminPage() {
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <Link to="/superadmin/delivery" className="btn btn-ghost text-ink-400 text-sm"><Backpack size={14} /> Delivery</Link>
+            {pushState && pushState !== 'unsupported' && (
+              <button onClick={handleBell} title={pushState === 'on' ? 'Turn off notifications' : 'Get notified when a customer sends a message'}
+                className="btn btn-ghost text-ink-400 text-sm">
+                <Bell size={14} className={pushState === 'on' ? 'text-brand-400 fill-brand-400' : ''} /> {pushState === 'on' ? 'Notifications on' : 'Notifications'}
+              </button>
+            )}
             <Link to="/superadmin/messages" className="btn btn-ghost text-ink-400 text-sm">
               <MessageCircle size={14} /> Messages
               {unreadMessages > 0 && <span className="badge bg-brand-500 text-white text-[10px] px-1.5">{unreadMessages}</span>}

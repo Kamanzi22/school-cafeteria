@@ -59,4 +59,21 @@ async function sendPushToRestaurant(restaurantId, payload) {
   } catch (e) { console.error('Restaurant push notification failed:', e.message); }
 }
 
-module.exports = { pushEnabled: enabled, publicKey: VAPID_PUBLIC_KEY || null, isAllowedEndpoint, sendPushToCustomer, sendPushToRestaurant };
+// Same again, to every device any super admin has subscribed ("a customer sent a message").
+async function sendPushToSuperAdmins(payload) {
+  if (!enabled) return;
+  try {
+    const subs = await prisma.superAdminPushSubscription.findMany();
+    const body = JSON.stringify(payload);
+    await Promise.all(subs.map(async (s) => {
+      try {
+        await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, body, { TTL: 60 * 60 });
+      } catch (e) {
+        if (e.statusCode === 404 || e.statusCode === 410) await prisma.superAdminPushSubscription.deleteMany({ where: { id: s.id } });
+        else console.error('Super admin push send failed:', e.statusCode || '', e.message);
+      }
+    }));
+  } catch (e) { console.error('Super admin push notification failed:', e.message); }
+}
+
+module.exports = { pushEnabled: enabled, publicKey: VAPID_PUBLIC_KEY || null, isAllowedEndpoint, sendPushToCustomer, sendPushToRestaurant, sendPushToSuperAdmins };

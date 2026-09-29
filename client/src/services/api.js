@@ -109,6 +109,8 @@ export const pushAPI = {
   unsubscribe: (endpoint) => api.post('/push/unsubscribe', { endpoint }),
   restaurantSubscribe: (subscription) => api.post('/push/restaurant/subscribe', subscription),
   restaurantUnsubscribe: (endpoint) => api.post('/push/restaurant/unsubscribe', { endpoint }),
+  superAdminSubscribe: (subscription) => api.post('/push/superadmin/subscribe', subscription),
+  superAdminUnsubscribe: (endpoint) => api.post('/push/superadmin/unsubscribe', { endpoint }),
 }
 
 export const analyticsAPI = { salesReport: (range, params = {}) => api.get('/analytics/sales-report', { params: { range, ...params } }) }

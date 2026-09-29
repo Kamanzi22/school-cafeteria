@@ -112,3 +112,6 @@ export const disablePush = customerPush.disablePush
 // Restaurant dashboard ("new order" alerts) — same states/behavior, filed under the signed-in
 // restaurant instead of a customer.
 export const restaurantPush = createPushClient(pushAPI.restaurantSubscribe, pushAPI.restaurantUnsubscribe)
+
+// Super admin panel ("a customer sent a message" alerts) — filed under the signed-in super admin.
+export const superAdminPush = createPushClient(pushAPI.superAdminSubscribe, pushAPI.superAdminUnsubscribe)

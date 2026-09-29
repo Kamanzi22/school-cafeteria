@@ -2,6 +2,7 @@
 const router = require('express').Router();
 const { optionalCustomer } = require('../middleware/auth');
 const prisma = require('../lib/prisma');
+const { sendPushToSuperAdmins } = require('../lib/push');
 
 // All routes here act on a specific customer record, so require a valid customer/guest
 // token whose id matches the :id in the URL — otherwise anyone could read or overwrite
@@ -62,6 +63,13 @@ router.post('/:id/messages', optionalCustomer, requireSelf, async (req, res) => 
     const message = await prisma.supportMessage.create({ data:{ customerId:req.params.id, body } });
     // Live inbox update for any open super admin panel
     req.app.get('io').to('superadmin').emit('support:message', { ...message, customerName:req.customer.name });
+    // Phone notification for admins who turned on the bell
+    sendPushToSuperAdmins({
+      title: `New message from ${req.customer.name}`,
+      body: body.length > 120 ? `${body.slice(0, 117)}…` : body,
+      url: '/superadmin/messages',
+      tag: `support-${req.params.id}`,
+    });
     res.status(201).json({ success:true, data:message });
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });

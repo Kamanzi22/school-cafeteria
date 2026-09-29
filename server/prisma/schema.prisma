@@ -386,6 +386,22 @@ model SuperAdmin {
   username     String   @unique
   passwordHash String
   createdAt    DateTime @default(now())
+
+  pushSubscriptions SuperAdminPushSubscription[]
+}
+
+// Same idea as RestaurantPushSubscription, for the super admin's devices — the header bell turns
+// it on. Alerts are platform-wide (e.g. "a customer sent a message"), so every subscribed admin
+// device gets them; superAdminId only scopes who can unsubscribe the device.
+model SuperAdminPushSubscription {
+  id           String     @id @default(uuid())
+  superAdminId String
+  endpoint     String     @unique
+  p256dh       String
+  auth         String
+  createdAt    DateTime   @default(now())
+
+  superAdmin   SuperAdmin @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
 }
 
 // Scoped login for the delivery runner — a JWT type of its own (see authDelivery), restricted
