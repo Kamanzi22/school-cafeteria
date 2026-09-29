@@ -8,6 +8,22 @@
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <meta name="apple-mobile-web-app-title" content="CaféCampus" />
+  <!-- restaurant. and superadmin. subdomains are served this same page (Render rewrites can't
+       match on host), so set their app identity here, while the head is still being parsed —
+       before Safari or Chrome read the manifest or home-screen name. usePwaScope keeps them in
+       sync afterwards as routes change. -->
+  <script>
+    (function () {
+      var apps = {
+        restaurant: ['/manifest-restaurant.webmanifest', 'cafecampus-resto'],
+        superadmin: ['/manifest-superadmin.webmanifest', 'cafecampus-admin']
+      }
+      var app = apps[location.hostname.split('.')[0]]
+      if (!app) return
+      document.querySelector('link[rel="manifest"]').setAttribute('href', app[0])
+      document.querySelector('meta[name="apple-mobile-web-app-title"]').setAttribute('content', app[1])
+    })()
+  </script>
   <!-- Static baseline for crawlers/link-preview bots that don't execute JS (Bing, WhatsApp,
        iMessage, Twitter, Facebook). Helmet (see src/components/Seo.jsx) overrides these per
        route for JS-capable crawlers like Googlebot — this tag is what everyone else sees. -->
