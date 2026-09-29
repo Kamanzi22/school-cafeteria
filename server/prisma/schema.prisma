@@ -384,6 +384,10 @@ model PlatformSettings {
   supportName         String?
   supportEmail        String?
   supportPhone        String?
+  // Super admin's show/hide switches for each support contact — off keeps the value saved but
+  // leaves it out of the public /superadmin/contact response
+  showSupportEmail    Boolean  @default(true)
+  showSupportPhone    Boolean  @default(true)
 
   // Platform-wide delivery switch — off hides delivery at every store (see lib/platformDelivery.js)
   deliveryEnabled     Boolean  @default(true)

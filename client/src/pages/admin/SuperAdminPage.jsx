@@ -177,6 +177,8 @@ export default function SuperAdminPage() {
   const [pwSaving, setPwSaving] = useState(false)
   const [emailSettingsModal, setEmailSettingsModal] = useState(false)
   const [emailSettingsForm, setEmailSettingsForm] = useState({ supportName:'', supportEmail:'', supportPhone:'' })
+  const [contactVisibility, setContactVisibility] = useState({ showSupportEmail:true, showSupportPhone:true })
+  const [visibilitySaving, setVisibilitySaving] = useState(null) // which switch is saving
   const [emailSettingsLoading, setEmailSettingsLoading] = useState(false)
   const [emailSettingsSaving, setEmailSettingsSaving] = useState(false)
   const navigate = useNavigate()
@@ -439,8 +441,22 @@ export default function SuperAdminPage() {
     try {
       const d = (await superAdminAPI.getSettings()).data.data
       setEmailSettingsForm({ supportName: d.supportName || '', supportEmail: d.supportEmail || '', supportPhone: d.supportPhone || '' })
+      setContactVisibility({ showSupportEmail: d.showSupportEmail !== false, showSupportPhone: d.showSupportPhone !== false })
     } catch { toast.error('Could not load settings') }
     finally { setEmailSettingsLoading(false) }
+  }
+
+  // Shows or hides one support contact (email or phone) for customers and restaurant owners.
+  // Saves straight away, separately from the Save button, so it never sends half-typed fields.
+  const toggleContactVisibility = async (key, label) => {
+    const next = !contactVisibility[key]
+    setVisibilitySaving(key)
+    try {
+      await superAdminAPI.updateSettings({ [key]: next })
+      setContactVisibility(p => ({ ...p, [key]: next }))
+      toast.success(`${label} ${next ? 'visible' : 'hidden'}`)
+    } catch (e2) { toast.error(e2.response?.data?.error || 'Could not update visibility') }
+    finally { setVisibilitySaving(null) }
   }
 
   const saveEmailSettings = async (e) => {
@@ -831,8 +847,23 @@ export default function SuperAdminPage() {
               <form onSubmit={saveEmailSettings} className="space-y-5">
                 <div className="space-y-3">
                   <div><label className="label">Display Name</label><input value={emailSettingsForm.supportName} onChange={e => setEmailSettingsForm(p => ({ ...p, supportName:e.target.value }))} className="input" placeholder="CaféCampus Support" /></div>
-                  <div><label className="label">Email</label><input type="email" value={emailSettingsForm.supportEmail} onChange={e => setEmailSettingsForm(p => ({ ...p, supportEmail:e.target.value }))} className="input" placeholder="support@yourbusiness.com" /></div>
-                  <div><label className="label">Phone</label><input type="tel" value={emailSettingsForm.supportPhone} onChange={e => setEmailSettingsForm(p => ({ ...p, supportPhone:e.target.value }))} className="input" placeholder="+250 7xx xxx xxx" /></div>
+                  {[['Email','supportEmail','showSupportEmail','email','support@yourbusiness.com'],['Phone','supportPhone','showSupportPhone','tel','+250 7xx xxx xxx']].map(([label, field, visKey, type, placeholder]) => {
+                    const visible = contactVisibility[visKey]
+                    return (
+                      <div key={field}>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="label mb-0">{label}</label>
+                          <button type="button" onClick={() => toggleContactVisibility(visKey, label)} disabled={visibilitySaving === visKey}
+                            className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-lg ${visible ? 'bg-green-50 text-green-700 hover:bg-green-100' : 'bg-ink-100 text-ink-500 hover:bg-ink-200'}`}>
+                            {visibilitySaving === visKey ? <Loader size={12} className="animate-spin" /> : visible ? <Eye size={12} /> : <EyeOff size={12} />}
+                            {visible ? 'Visible' : 'Hidden'}
+                          </button>
+                        </div>
+                        <input type={type} value={emailSettingsForm[field]} onChange={e => setEmailSettingsForm(p => ({ ...p, [field]:e.target.value }))} className="input" placeholder={placeholder} />
+                        {!visible && <p className="text-xs text-ink-400 mt-1">Hidden from customers and restaurant owners.</p>}
+                      </div>
+                    )
+                  })}
                 </div>
 
                 <div className="flex gap-3 pt-1">
