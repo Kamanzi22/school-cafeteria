@@ -229,8 +229,11 @@ export default function TrackOrderPage() {
           <h3 className="font-bold text-alu-cream mb-3">Order Summary</h3>
           <div className="space-y-1.5">
             {order.items?.map(item => (
-              <div key={item.id} className="flex justify-between text-sm">
-                <span className="text-alu-muted">{item.quantity}× {item.menuItemName}</span>
+              <div key={item.id} className="flex justify-between gap-3 text-sm">
+                <span className="text-alu-muted min-w-0">
+                  {item.quantity}× {item.menuItemName}
+                  {item.notes && <span className="block text-xs italic break-words">“{item.notes}”</span>}
+                </span>
                 <span className="font-medium text-alu-cream">{item.subtotal.toLocaleString()} RWF</span>
               </div>
             ))}

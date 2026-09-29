@@ -23,6 +23,8 @@ export const useCartStore = create(persist((set, get) => ({
   },
   setQty: (key, qty) => { if (qty < 1) { get().remove(key); return } set({ items: get().items.map(i => i.key===key ? { ...i, qty } : i) }) },
   remove: (key) => set({ items: get().items.filter(i => i.key!==key) }),
+  // The customer's request for one cart line ("no onions"), sent with the order as that item's note
+  setNote: (key, notes) => set({ items: get().items.map(i => i.key===key ? { ...i, notes } : i) }),
   // Promo code chosen per restaurant ({ [restaurantId]: 'CODE' }) — set from the offers on a
   // restaurant's page or typed in the cart, and sent with that restaurant's order.
   promoCodes: {},

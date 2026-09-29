@@ -125,13 +125,16 @@ function OrderCard({ order, onUpdate, isViewer }) {
       {/* Items */}
       <div className="bg-ink-50 rounded-xl p-3 mb-3 space-y-1.5">
         {order.items.map(item => (
-          <div key={item.id} className="flex items-center justify-between text-sm">
-            <span className="text-ink-700 font-medium">
-              <span className="text-base mr-1">{item.menuItemEmoji}</span>
-              {item.quantity}× {item.menuItemName}
-              {item.variantName && <span className="text-ink-400 font-normal"> ({item.variantName})</span>}
-            </span>
-            <span className="text-ink-500 shrink-0">{item.subtotal.toLocaleString()}</span>
+          <div key={item.id} className="text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-ink-700 font-medium">
+                <span className="text-base mr-1">{item.menuItemEmoji}</span>
+                {item.quantity}× {item.menuItemName}
+                {item.variantName && <span className="text-ink-400 font-normal"> ({item.variantName})</span>}
+              </span>
+              <span className="text-ink-500 shrink-0">{item.subtotal.toLocaleString()}</span>
+            </div>
+            {item.notes && <p className="ml-7 mt-0.5 text-xs font-semibold text-amber-700 break-words">📝 {item.notes}</p>}
           </div>
         ))}
       </div>

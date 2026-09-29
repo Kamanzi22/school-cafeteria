@@ -85,7 +85,7 @@ router.post('/', async (req, res) => {
       }
       const sub = unitPrice * item.quantity;
       subtotal += sub;
-      return { menuItemId:m.id, menuItemName:m.name, menuItemEmoji:m.emoji, variantId:variant?.id||null, variantName:variant?.name||null, quantity:item.quantity, unitPrice, subtotal:sub, notes:item.notes||null };
+      return { menuItemId:m.id, menuItemName:m.name, menuItemEmoji:m.emoji, variantId:variant?.id||null, variantName:variant?.name||null, quantity:item.quantity, unitPrice, subtotal:sub, notes:String(item.notes||'').trim().slice(0, 200)||null };
     });
 
     if (subtotal < restaurant.minOrder) return res.status(400).json({ success:false, error:`Minimum order is ${restaurant.minOrder.toLocaleString()} RWF` });

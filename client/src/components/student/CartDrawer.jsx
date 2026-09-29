@@ -10,7 +10,7 @@ import { useLiveRefresh } from '../../hooks/useLiveRefresh'
 
 export default function CartDrawer() {
   const { cartOpen, closeCart } = useUIStore()
-  const { items, setQty, remove, clear, subtotal, count, byRestaurant, promoCodes, setPromoCode } = useCartStore()
+  const { items, setQty, setNote, remove, clear, subtotal, count, byRestaurant, promoCodes, setPromoCode } = useCartStore()
   const { customer } = useCustomerStore()
   const [placing, setPlacing] = useState(false)
   // Per-restaurant fulfillment choice: { [restaurantId]: { type: 'pickup'|'delivery', scope: 'campus'|'off_campus', location: '' } }
@@ -106,7 +106,7 @@ export default function CartDrawer() {
         return orderAPI.place({
           customerId: customer.id,
           restaurantId: group.id,
-          items: group.items.map(i => ({ menuItemId: i.id, variantId: i.variantId || undefined, quantity: i.qty })),
+          items: group.items.map(i => ({ menuItemId: i.id, variantId: i.variantId || undefined, quantity: i.qty, notes: i.notes?.trim() || undefined })),
           paymentMethod: 'cash',
           fulfillmentType: f.type,
           deliveryScope: f.type === 'delivery' ? f.scope : undefined,
@@ -160,7 +160,7 @@ export default function CartDrawer() {
                   <div key={group.id} className="mb-4">
                     <p className="text-xs font-bold text-ink-500 uppercase tracking-wider mb-2">{group.emoji} {group.name}</p>
                     {group.items.map(item => (
-                      <div key={item.key} className="flex items-center gap-3 bg-ink-50 rounded-2xl p-3 mb-2">
+                      <div key={item.key} className="flex flex-wrap items-center gap-3 bg-ink-50 rounded-2xl p-3 mb-2">
                         <span className="text-2xl">{item.emoji}</span>
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-sm text-ink-900 truncate">{item.name}</p>
@@ -177,6 +177,14 @@ export default function CartDrawer() {
                           </button>
                         </div>
                         <p className="font-bold text-sm text-ink-900 w-20 text-right">{(item.price * item.qty).toLocaleString()}</p>
+                        <input
+                          value={item.notes || ''}
+                          onChange={e => setNote(item.key, e.target.value)}
+                          maxLength={200}
+                          placeholder="Add a note, e.g. no onions"
+                          aria-label={`Note for ${item.name}`}
+                          className="basis-full w-full bg-white border border-ink-200 rounded-xl px-3 py-2 text-xs text-ink-900 placeholder-ink-400 focus:outline-none focus:ring-2 focus:ring-flame-500/30 focus:border-flame-500"
+                        />
                       </div>
                     ))}
 

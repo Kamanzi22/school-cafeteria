@@ -208,7 +208,7 @@ export default function OrderHistoryPage() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-ink-500 max-w-[240px]">
-                        <span className="line-clamp-2">{o.items.map(i => `${i.quantity}× ${i.menuItemName}${i.variantName ? ` (${i.variantName})` : ''}`).join(', ')}</span>
+                        <span className="line-clamp-2">{o.items.map(i => `${i.quantity}× ${i.menuItemName}${i.variantName ? ` (${i.variantName})` : ''}${i.notes ? ` — “${i.notes}”` : ''}`).join(', ')}</span>
                       </td>
                       <td className="px-4 py-3 text-right font-semibold text-ink-900 whitespace-nowrap">{o.totalPrice.toLocaleString()} RWF</td>
                       <td className="px-4 py-3">
