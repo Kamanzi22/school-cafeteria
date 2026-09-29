@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom'
 import InstallApp from '../../components/shared/InstallApp'
 import NotificationSettings from '../../components/shared/NotificationSettings'
 import SupportContact from '../../components/shared/SupportContact'
+import SupportChat from '../../components/shared/SupportChat'
 import { useLiveRefresh } from '../../hooks/useLiveRefresh'
 import PasswordInput from '../../components/shared/PasswordInput'
 import toast from 'react-hot-toast'
@@ -181,6 +182,12 @@ export default function SettingsPage() {
             appName="the CaféCampus restaurant app"
           />
           <SupportContact title="Need help running your store?" />
+          <SupportChat
+            load={() => restaurantAPI.getMessages().then(r => r.data.data)}
+            send={(body) => restaurantAPI.sendMessage(body).then(r => r.data.data)}
+            isMine={(m) => m.restaurantId === restaurant?.id}
+            readOnly={isViewer}
+          />
         </div>
 
         {/* Profile */}

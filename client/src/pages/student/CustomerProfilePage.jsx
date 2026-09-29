@@ -8,7 +8,7 @@ import { disablePush } from '../../services/push'
 import NotificationSettings from '../../components/shared/NotificationSettings'
 import InstallApp from '../../components/shared/InstallApp'
 import SupportContact from '../../components/shared/SupportContact'
-import SupportChat from '../../components/student/SupportChat'
+import SupportChat from '../../components/shared/SupportChat'
 import toast from 'react-hot-toast'
 
 export default function CustomerProfilePage() {
@@ -117,7 +117,11 @@ export default function CustomerProfilePage() {
         <InstallApp />
         <NotificationSettings />
         <SupportContact />
-        <SupportChat />
+        <SupportChat
+          load={() => customerAPI.getMessages(customer.id).then(r => r.data.data)}
+          send={(body) => customerAPI.sendMessage(customer.id, body).then(r => r.data.data)}
+          isMine={(m) => m.customerId === customer.id}
+        />
 
         <button onClick={handleLogout} className="btn btn-danger w-full"><LogOut size={16}/>Sign Out</button>
       </div>

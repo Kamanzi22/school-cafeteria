@@ -5,6 +5,7 @@ const prisma = require('../lib/prisma');
 const { applyAutoFeatured } = require('../lib/featured');
 const { isDeliveryEnabled, applyPlatformDelivery } = require('../lib/platformDelivery');
 const { broadcastCatalogChange } = require('../lib/liveUpdates');
+const { readBody, notifyAdminsOfMessage } = require('../lib/supportChat');
 
 router.get('/', optionalCustomer, async (req, res) => {
   try {
@@ -105,6 +106,27 @@ router.get('/admin/featured-mode', authStaff, async (req, res) => {
     const r = await prisma.restaurant.findUnique({ where: { id: req.restaurantId }, select: { featuredMode: true } });
     res.json({ success: true, data: { featuredMode: r.featuredMode } });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// ─── Help chat with the super admin (Settings → "Message us") ───────────────
+// One conversation per restaurant, shared by the owner and staff. Opening it marks the admin's
+// replies as read — except for the super admin's own read-only "view store" session.
+router.get('/admin/messages', authStaff, async (req, res) => {
+  try {
+    if (req.role !== 'viewer') await prisma.supportMessage.updateMany({ where:{ restaurantId:req.restaurantId, fromAdmin:true, readAt:null }, data:{ readAt:new Date() } });
+    const messages = await prisma.supportMessage.findMany({ where:{ restaurantId:req.restaurantId }, orderBy:{ createdAt:'asc' } });
+    res.json({ success:true, data:messages });
+  } catch(e){ res.status(500).json({ success:false, error:e.message }); }
+});
+
+router.post('/admin/messages', authStaff, blockViewer, async (req, res) => {
+  try {
+    const { body, error } = readBody(req);
+    if (error) return res.status(400).json({ success:false, error });
+    const message = await prisma.supportMessage.create({ data:{ restaurantId:req.restaurantId, body } });
+    notifyAdminsOfMessage(req, message, req.restaurant.name);
+    res.status(201).json({ success:true, data:message });
+  } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
 
 router.patch('/admin/featured-mode', authStaff, blockViewer, requireManager, async (req, res) => {

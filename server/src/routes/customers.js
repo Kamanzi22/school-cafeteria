@@ -2,7 +2,7 @@
 const router = require('express').Router();
 const { optionalCustomer } = require('../middleware/auth');
 const prisma = require('../lib/prisma');
-const { sendPushToSuperAdmins } = require('../lib/push');
+const { readBody, notifyAdminsOfMessage } = require('../lib/supportChat');
 
 // All routes here act on a specific customer record, so require a valid customer/guest
 // token whose id matches the :id in the URL — otherwise anyone could read or overwrite
@@ -44,8 +44,6 @@ router.delete('/:id/guest', optionalCustomer, requireSelf, async (req, res) => {
 });
 
 // ─── Help chat with the super admin ─────────────────────────────────────────
-const MAX_MESSAGE_LENGTH = 2000;
-
 // The customer's conversation. Opening it marks the admin's replies as read.
 router.get('/:id/messages', optionalCustomer, requireSelf, async (req, res) => {
   try {
@@ -57,19 +55,10 @@ router.get('/:id/messages', optionalCustomer, requireSelf, async (req, res) => {
 
 router.post('/:id/messages', optionalCustomer, requireSelf, async (req, res) => {
   try {
-    const body = String(req.body?.body || '').trim();
-    if (!body) return res.status(400).json({ success:false, error:'Message is empty' });
-    if (body.length > MAX_MESSAGE_LENGTH) return res.status(400).json({ success:false, error:`Message is too long (max ${MAX_MESSAGE_LENGTH} characters)` });
+    const { body, error } = readBody(req);
+    if (error) return res.status(400).json({ success:false, error });
     const message = await prisma.supportMessage.create({ data:{ customerId:req.params.id, body } });
-    // Live inbox update for any open super admin panel
-    req.app.get('io').to('superadmin').emit('support:message', { ...message, customerName:req.customer.name });
-    // Phone notification for admins who turned on the bell
-    sendPushToSuperAdmins({
-      title: `New message from ${req.customer.name}`,
-      body: body.length > 120 ? `${body.slice(0, 117)}…` : body,
-      url: '/superadmin/messages',
-      tag: `support-${req.params.id}`,
-    });
+    notifyAdminsOfMessage(req, message, req.customer.name);
     res.status(201).json({ success:true, data:message });
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });

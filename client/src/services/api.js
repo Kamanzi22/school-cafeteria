@@ -65,6 +65,9 @@ export const restaurantAPI = {
   deleteAccount: (d) => api.delete('/restaurants/admin/account', { data: d }),
   getReviews: (id) => api.get(`/restaurants/${id}/reviews`),
   replyReview: (reviewId, reply) => api.patch(`/restaurants/admin/reviews/${reviewId}/reply`, { reply }),
+  // Help chat with the super admin
+  getMessages: () => api.get('/restaurants/admin/messages'),
+  sendMessage: (body) => api.post('/restaurants/admin/messages', { body }),
 }
 
 export const menuAPI = {
@@ -153,8 +156,9 @@ export const superAdminAPI = {
   // Help chat inbox
   getConversations: () => api.get('/superadmin/messages'),
   getUnreadMessageCount: () => api.get('/superadmin/messages/unread-count'),
-  getConversation: (customerId) => api.get(`/superadmin/messages/${customerId}`),
-  replyToCustomer: (customerId, body) => api.post(`/superadmin/messages/${customerId}`, { body }),
+  // kind is 'customer' or 'restaurant'
+  getConversation: (kind, id) => api.get(`/superadmin/messages/${kind}/${id}`),
+  reply: (kind, id, body) => api.post(`/superadmin/messages/${kind}/${id}`, { body }),
 }
 
 // Public support contact (phone/email) shown on the customer and restaurant apps — no auth needed.

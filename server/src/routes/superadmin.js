@@ -5,7 +5,8 @@ const { encrypt } = require('../lib/crypto');
 const prisma = require('../lib/prisma');
 const { notifyOrderStatus } = require('../lib/notifications');
 const { broadcastCatalogChange } = require('../lib/liveUpdates');
-const { sendPushToCustomer } = require('../lib/push');
+const { sendPushToCustomer, sendPushToRestaurant } = require('../lib/push');
+const { readBody, preview } = require('../lib/supportChat');
 
 router.get('/restaurants', authSuperAdmin, async (req, res) => {
   try {
@@ -150,23 +151,41 @@ router.get('/contact', async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-// ─── Help chat inbox (customer ↔ super admin) ───────────────────────────────
-// One conversation per customer; see the SupportMessage model.
+// ─── Help chat inbox (customers and restaurants ↔ super admin) ───────────────
+// One conversation per customer or restaurant; see the SupportMessage model. A conversation is
+// addressed as /messages/customer/:id or /messages/restaurant/:id.
+const CHAT_KINDS = {
+  customer: {
+    field: 'customerId',
+    load: (id) => prisma.customer.findUnique({ where: { id }, select: { id: true, name: true, email: true, phone: true, accountType: true } }),
+    // The customer's personal socket room, joined app-wide by the customer app
+    room: (id) => `customer:${id}`,
+    push: (id, payload) => sendPushToCustomer(id, { ...payload, url: '/profile#messages' }),
+  },
+  restaurant: {
+    field: 'restaurantId',
+    load: async (id) => {
+      const r = await prisma.restaurant.findUnique({ where: { id }, select: { id: true, name: true, emoji: true, ownerName: true, ownerEmail: true, ownerPhone: true, phone: true } });
+      return r && { id: r.id, name: r.name, emoji: r.emoji, ownerName: r.ownerName, email: r.ownerEmail, phone: r.ownerPhone || r.phone };
+    },
+    // Joined app-wide by the restaurant app (owner/staff)
+    room: (id) => `restaurant:${id}`,
+    push: (id, payload) => sendPushToRestaurant(id, { ...payload, url: '/admin/settings#messages' }),
+  },
+};
 
 // Conversations, most recently active first, each with its latest message and how many of the
-// customer's messages the admin hasn't read yet.
+// sender's messages the admin hasn't read yet.
 router.get('/messages', authSuperAdmin, async (req, res) => {
   try {
-    const customers = await prisma.customer.findMany({
-      where: { supportMessages: { some: {} } },
-      select: {
-        id: true, name: true, email: true, phone: true, accountType: true,
-        supportMessages: { orderBy: { createdAt: 'desc' }, take: 1 },
-        _count: { select: { supportMessages: { where: { fromAdmin: false, readAt: null } } } },
-      },
-    });
-    const conversations = customers
-      .map(({ supportMessages, _count, ...customer }) => ({ customer, lastMessage: supportMessages[0], unread: _count.supportMessages }))
+    const latest = { supportMessages: { orderBy: { createdAt: 'desc' }, take: 1 } };
+    const unread = { _count: { select: { supportMessages: { where: { fromAdmin: false, readAt: null } } } } };
+    const [customers, restaurants] = await Promise.all([
+      prisma.customer.findMany({ where: { supportMessages: { some: {} } }, select: { id: true, name: true, email: true, phone: true, accountType: true, ...latest, ...unread } }),
+      prisma.restaurant.findMany({ where: { supportMessages: { some: {} } }, select: { id: true, name: true, emoji: true, ownerName: true, ...latest, ...unread } }),
+    ]);
+    const toConversation = (kind) => ({ supportMessages, _count, ...who }) => ({ kind, who, lastMessage: supportMessages[0], unread: _count.supportMessages });
+    const conversations = [...customers.map(toConversation('customer')), ...restaurants.map(toConversation('restaurant'))]
       .sort((a, b) => new Date(b.lastMessage.createdAt) - new Date(a.lastMessage.createdAt));
     res.json({ success: true, data: conversations });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
@@ -180,33 +199,32 @@ router.get('/messages/unread-count', authSuperAdmin, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-// One conversation. Opening it marks the customer's messages as read.
-router.get('/messages/:customerId', authSuperAdmin, async (req, res) => {
+// One conversation. Opening it marks the sender's messages as read.
+router.get('/messages/:kind/:id', authSuperAdmin, async (req, res) => {
   try {
-    const customer = await prisma.customer.findUnique({ where: { id: req.params.customerId }, select: { id: true, name: true, email: true, phone: true, accountType: true } });
-    if (!customer) return res.status(404).json({ success: false, error: 'Customer not found' });
-    await prisma.supportMessage.updateMany({ where: { customerId: customer.id, fromAdmin: false, readAt: null }, data: { readAt: new Date() } });
-    const messages = await prisma.supportMessage.findMany({ where: { customerId: customer.id }, orderBy: { createdAt: 'asc' } });
-    res.json({ success: true, data: { customer, messages } });
+    const kind = CHAT_KINDS[req.params.kind];
+    if (!kind) return res.status(404).json({ success: false, error: 'Unknown conversation type' });
+    const who = await kind.load(req.params.id);
+    if (!who) return res.status(404).json({ success: false, error: 'Not found' });
+    const where = { [kind.field]: who.id };
+    await prisma.supportMessage.updateMany({ where: { ...where, fromAdmin: false, readAt: null }, data: { readAt: new Date() } });
+    const messages = await prisma.supportMessage.findMany({ where, orderBy: { createdAt: 'asc' } });
+    res.json({ success: true, data: { kind: req.params.kind, who, messages } });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.post('/messages/:customerId', authSuperAdmin, async (req, res) => {
+router.post('/messages/:kind/:id', authSuperAdmin, async (req, res) => {
   try {
-    const body = String(req.body?.body || '').trim();
-    if (!body) return res.status(400).json({ success: false, error: 'Message is empty' });
-    if (body.length > 2000) return res.status(400).json({ success: false, error: 'Message is too long (max 2000 characters)' });
-    const customer = await prisma.customer.findUnique({ where: { id: req.params.customerId }, select: { id: true } });
-    if (!customer) return res.status(404).json({ success: false, error: 'Customer not found' });
-    const message = await prisma.supportMessage.create({ data: { customerId: customer.id, body, fromAdmin: true } });
-    // The customer sees it live if the app is open, and as a phone notification if it isn't
-    req.app.get('io').to(`customer:${customer.id}`).emit('support:message', message);
-    sendPushToCustomer(customer.id, {
-      title: 'CaféCampus support replied',
-      body: body.length > 120 ? `${body.slice(0, 117)}…` : body,
-      url: '/profile#messages',
-      tag: 'support-chat',
-    });
+    const kind = CHAT_KINDS[req.params.kind];
+    if (!kind) return res.status(404).json({ success: false, error: 'Unknown conversation type' });
+    const { body, error } = readBody(req);
+    if (error) return res.status(400).json({ success: false, error });
+    const who = await kind.load(req.params.id);
+    if (!who) return res.status(404).json({ success: false, error: 'Not found' });
+    const message = await prisma.supportMessage.create({ data: { [kind.field]: who.id, body, fromAdmin: true } });
+    // They see it live if their app is open, and as a phone notification if it isn't
+    req.app.get('io').to(kind.room(who.id)).emit('support:message', message);
+    kind.push(who.id, { title: 'CaféCampus support replied', body: preview(body), tag: 'support-chat' });
     res.status(201).json({ success: true, data: message });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

@@ -1,28 +1,31 @@
 import { useState, useEffect, useRef } from 'react'
 import { MessageCircle, Send, Loader } from 'lucide-react'
 import { format, isToday } from 'date-fns'
-import { customerAPI } from '../../services/api'
 import { useSocket } from '../../hooks/useSocket'
-import { useCustomerStore } from '../../store'
 import toast from 'react-hot-toast'
 
 const MAX_LENGTH = 2000
 const fmtTime = (d) => format(new Date(d), isToday(new Date(d)) ? 'HH:mm' : 'd MMM, HH:mm')
 
-// "Message us" card on the profile page — the customer's one conversation with the super admin.
-// The admin's replies arrive live on the customer's socket room (joined app-wide by
-// useOrderNotifications) and as a push notification that links back here (/profile#messages).
-export default function SupportChat() {
-  const customer = useCustomerStore(s => s.customer)
+// "Message us" card — a customer's (profile page) or restaurant's (settings page) one
+// conversation with the super admin. The admin's replies arrive live on the account's socket
+// room and as a push notification that links back here (#messages).
+//   load()      → Promise of the conversation's messages (also marks the admin's replies read)
+//   send(body)  → Promise of the created message
+//   isMine(msg) → whether a live 'support:message' belongs to this conversation — the same socket
+//                 can carry other apps' rooms when they're signed in on this browser too
+//   readOnly    → the super admin's "view store" session: can read, can't write
+export default function SupportChat({ load, send, isMine, description = "Write to the CaféCampus team — we'll reply here.", readOnly = false }) {
   const [messages, setMessages] = useState(null)
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const listRef = useRef(null)
   const cardRef = useRef(null)
+  const loadRef = useRef(load); loadRef.current = load
 
-  const load = () => customerAPI.getMessages(customer.id).then(res => setMessages(res.data.data)).catch(() => setMessages(m => m || []))
+  const refresh = () => loadRef.current().then(setMessages).catch(() => setMessages(m => m || []))
 
-  useEffect(() => { if (customer?.id) load() }, [customer?.id])
+  useEffect(() => { refresh() }, [])
 
   // Arrived from the "support replied" notification
   useEffect(() => {
@@ -31,19 +34,17 @@ export default function SupportChat() {
 
   // Replies may have come in while the app was in the background (socket dropped)
   useEffect(() => {
-    const onVisible = () => { if (document.visibilityState === 'visible' && customer?.id) load() }
+    const onVisible = () => { if (document.visibilityState === 'visible') refresh() }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
-  }, [customer?.id])
+  }, [])
 
   useSocket({
     'support:message': (msg) => {
-      // The same socket also carries the super admin room when that app is signed in on this
-      // browser, so only take this customer's replies from the admin
-      if (!msg.fromAdmin || msg.customerId !== customer?.id) return
+      if (!msg.fromAdmin || !isMine(msg)) return
       setMessages(prev => prev && !prev.some(m => m.id === msg.id) ? [...prev, msg] : prev)
       // They're looking at the conversation, so the reply counts as read
-      if (document.visibilityState === 'visible') customerAPI.getMessages(msg.customerId).catch(() => {})
+      if (document.visibilityState === 'visible') loadRef.current().catch(() => {})
     },
   })
 
@@ -51,20 +52,18 @@ export default function SupportChat() {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight
   }, [messages?.length])
 
-  const send = async (e) => {
+  const submit = async (e) => {
     e.preventDefault()
     const body = draft.trim()
     if (!body || sending) return
     setSending(true)
     try {
-      const res = await customerAPI.sendMessage(customer.id, body)
-      setMessages(prev => [...(prev || []), res.data.data])
+      const msg = await send(body)
+      setMessages(prev => [...(prev || []), msg])
       setDraft('')
     } catch (err) { toast.error(err.response?.data?.error || 'Could not send your message') }
     finally { setSending(false) }
   }
-
-  if (!customer) return null
 
   return (
     <div id="messages" ref={cardRef} className="card p-5 scroll-mt-20">
@@ -72,7 +71,7 @@ export default function SupportChat() {
         <MessageCircle size={20} className="text-alu-muted mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="font-bold text-alu-cream text-sm">Message us</p>
-          <p className="text-xs text-alu-muted mt-0.5">Write to the CaféCampus team — we'll reply here.</p>
+          <p className="text-xs text-alu-muted mt-0.5">{description}</p>
         </div>
       </div>
 
@@ -92,20 +91,22 @@ export default function SupportChat() {
         </div>
       )}
 
-      <form onSubmit={send} className="mt-4 flex items-end gap-2">
-        <textarea
-          value={draft}
-          onChange={e => setDraft(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) send(e) }}
-          placeholder="Type your message…"
-          rows={2}
-          maxLength={MAX_LENGTH}
-          className="input resize-none flex-1"
-        />
-        <button type="submit" disabled={!draft.trim() || sending} className="btn btn-primary btn-icon h-11 w-11 shrink-0" aria-label="Send">
-          {sending ? <Loader size={16} className="animate-spin" /> : <Send size={16} />}
-        </button>
-      </form>
+      {!readOnly && (
+        <form onSubmit={submit} className="mt-4 flex items-end gap-2">
+          <textarea
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) submit(e) }}
+            placeholder="Type your message…"
+            rows={2}
+            maxLength={MAX_LENGTH}
+            className="input resize-none flex-1"
+          />
+          <button type="submit" disabled={!draft.trim() || sending} className="btn btn-primary btn-icon h-11 w-11 shrink-0" aria-label="Send">
+            {sending ? <Loader size={16} className="animate-spin" /> : <Send size={16} />}
+          </button>
+        </form>
+      )}
     </div>
   )
 }

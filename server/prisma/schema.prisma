@@ -70,6 +70,7 @@ model Restaurant {
   promotions    Promotion[]
   visits        RestaurantVisit[]
   pushSubscriptions RestaurantPushSubscription[]
+  supportMessages SupportMessage[]
 }
 
 model RestaurantStaff {
@@ -192,20 +193,24 @@ model Customer {
   supportMessages SupportMessage[]
 }
 
-// The customer ↔ super admin help chat (Profile → "Message us"). One conversation per customer,
-// so there's no thread table — a customer's messages and the admin's replies are the rows with
-// that customerId, ordered by time. readAt is set when the *other* side opens the conversation.
+// The help chat with the super admin — customers (Profile → "Message us") and restaurants
+// (Settings → "Message us"). One conversation per customer or restaurant, so there's no thread
+// table: exactly one of customerId / restaurantId is set, and a conversation is its rows ordered
+// by time. readAt is set when the *other* side opens the conversation.
 model SupportMessage {
-  id         String    @id @default(uuid())
-  customerId String
-  fromAdmin  Boolean   @default(false)
-  body       String
-  readAt     DateTime?
-  createdAt  DateTime  @default(now())
+  id           String      @id @default(uuid())
+  customerId   String?
+  restaurantId String?
+  fromAdmin    Boolean     @default(false)
+  body         String
+  readAt       DateTime?
+  createdAt    DateTime    @default(now())
 
-  customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customer     Customer?   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  restaurant   Restaurant? @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 
   @@index([customerId, createdAt])
+  @@index([restaurantId, createdAt])
 }
 
 // One row per browser/phone a customer has allowed notifications on. `endpoint` is the push

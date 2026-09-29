@@ -3,6 +3,7 @@ import toast from 'react-hot-toast'
 import { getSocket } from './useSocket'
 import { useCustomerStore } from '../store'
 import { syncPushIfAllowed } from '../services/push'
+import { currentPath } from '../portal'
 
 // While the site is open in a hidden tab (desktop), show a system notification. When the site
 // is *closed*, the push notification from the service worker (see services/push.js) covers it;
@@ -29,6 +30,7 @@ export const showOrderStatusToast = ({ orderId, status, title, body }) => {
 // keeps this device's push subscription attached to their account.
 export const useOrderNotifications = () => {
   const token = useCustomerStore(s => s.token)
+  const customerId = useCustomerStore(s => s.customer?.id)
 
   useEffect(() => {
     if (!token) return
@@ -40,9 +42,16 @@ export const useOrderNotifications = () => {
       showOrderStatusToast(n)
       showSystemNotification(n)
     }
+    // A reply from the CaféCampus team in the profile help chat — the profile page shows the
+    // conversation itself, so only pop up elsewhere
+    const onSupportMessage = (msg) => {
+      if (!msg.fromAdmin || msg.customerId !== customerId || currentPath() === '/profile') return
+      toast(`CaféCampus team: ${msg.body.length > 80 ? `${msg.body.slice(0, 77)}…` : msg.body}`, { id: `support-${msg.id}`, icon: '💬', duration: 8000 })
+    }
     socket.on('connect', join)
     socket.on('notification', onNotification)
+    socket.on('support:message', onSupportMessage)
     if (socket.connected) join()
-    return () => { socket.off('connect', join); socket.off('notification', onNotification) }
-  }, [token])
+    return () => { socket.off('connect', join); socket.off('notification', onNotification); socket.off('support:message', onSupportMessage) }
+  }, [token, customerId])
 }

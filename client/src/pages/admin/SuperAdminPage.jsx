@@ -266,7 +266,11 @@ export default function SuperAdminPage() {
         return visit.leftAt ? withoutIt : [visit, ...withoutIt]
       })
     },
-    'support:message': (msg) => { if (!msg.fromAdmin) setUnreadMessages(n => n + 1) },
+    'support:message': (msg) => {
+      if (msg.fromAdmin) return
+      setUnreadMessages(n => n + 1)
+      toast(`New message from ${msg.senderName || 'a customer'}`, { id: `support-${msg.id}`, icon: '💬' })
+    },
   })
 
   // The anchor date sent to the backend depends on which period type is selected — day/week
