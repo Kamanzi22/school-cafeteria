@@ -1,49 +1,7 @@
 services:
-  - type: web
-    name: cafecampus-api
-    env: node
-    plan: free
-    rootDir: server
-    buildCommand: npm install && npx prisma generate && npx prisma db push --accept-data-loss
-    startCommand: npm start
-    envVars:
-      # Database lives in the Supabase project (see SUPABASE_URL below), not a
-      # Render-managed Postgres - set directly in the Render dashboard.
-      - key: DATABASE_URL
-        sync: false
-      - key: DIRECT_URL
-        sync: false
-      - key: SUPABASE_URL
-        sync: false
-      - key: SUPABASE_SERVICE_ROLE_KEY
-        sync: false
-      - key: JWT_SECRET
-        generateValue: true
-      - key: JWT_EXPIRES_IN
-        value: 7d
-      - key: NODE_ENV
-        value: production
-      - key: CLIENT_URL
-        sync: false
-      # OAuth 2.0 Web client ID from Google Cloud Console — same value as VITE_GOOGLE_CLIENT_ID
-      # on the client. Without it "Continue with Google" is unavailable.
-      - key: GOOGLE_CLIENT_ID
-        sync: false
-      - key: EMAIL_USER
-        sync: false
-      - key: EMAIL_APP_PASSWORD
-        sync: false
-      # Phone/browser push notifications ("your order is ready" with the app closed). Generate a
-      # pair once with `npx web-push generate-vapid-keys` — they can't be auto-generated values.
-      # Without them push is simply off; in-app toasts and email still work.
-      - key: VAPID_PUBLIC_KEY
-        sync: false
-      - key: VAPID_PRIVATE_KEY
-        sync: false
-
-  # Same API, hosted in Frankfurt next to the Supabase database (AWS eu-west-3, Paris) so each
-  # query is a ~10 ms hop instead of a ~150 ms Oregon-to-Europe one. Same env vars as above;
-  # JWT_SECRET is copied from the existing service, not generated, so nobody is logged out.
+  # The API, hosted in Frankfurt next to the Supabase database (AWS eu-west-3, Paris) so each
+  # query is a ~10 ms hop. It replaced an Oregon service of the same app on 2026-09-29; its
+  # JWT_SECRET was copied from that service rather than generated, so nobody was logged out.
   - type: web
     name: cafecampus-api-eu
     runtime: node
@@ -53,6 +11,8 @@ services:
     buildCommand: npm install && npx prisma generate && npx prisma db push --accept-data-loss
     startCommand: npm start
     envVars:
+      # Database lives in the Supabase project (see SUPABASE_URL below), not a
+      # Render-managed Postgres - set directly in the Render dashboard.
       - key: DATABASE_URL
         sync: false
       - key: DIRECT_URL
@@ -74,12 +34,17 @@ services:
         value: "5000"
       - key: CLIENT_URL
         sync: false
+      # OAuth 2.0 Web client ID from Google Cloud Console — same value as VITE_GOOGLE_CLIENT_ID
+      # on the client. Without it "Continue with Google" is unavailable.
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: EMAIL_USER
         sync: false
       - key: EMAIL_APP_PASSWORD
         sync: false
+      # Phone/browser push notifications ("your order is ready" with the app closed). Generate a
+      # pair once with `npx web-push generate-vapid-keys` — they can't be auto-generated values.
+      # Without them push is simply off; in-app toasts and email still work.
       - key: VAPID_PUBLIC_KEY
         sync: false
       - key: VAPID_PRIVATE_KEY

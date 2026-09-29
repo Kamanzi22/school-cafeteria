@@ -112,12 +112,6 @@ not connected to the live app.
 
 ### Still to do
 
-- **Delete the old Oregon API.** The service `cafecampus-api` (address `cafecampus-api-feu3.onrender.com`)
-  is suspended: it costs nothing and nothing uses it. To remove it for good:
-  1. Remove its entry (the first service) from `render.yaml` and push, so the Blueprint
-     does not recreate it. Don't touch `cafecampus-api-eu`.
-  2. In the Render dashboard, open `cafecampus-api` → Settings → Delete Web Service.
-  Until then, don't click **Resume** on it, since that would start billing again.
 - **Delete the temporary Render API key** once no more Render changes are needed:
   Render → Account Settings → API Keys → delete `claude-frankfurt-move`, then run
   `rm ~/.render_key` on the Mac.
