@@ -36,7 +36,7 @@ export default function NotificationBell() {
   if (!state || state === 'unsupported') return null
 
   return (
-    <button onClick={toggle} title={state === 'on' ? 'Turn off notifications' : 'Turn on order notifications'} className="btn btn-ghost btn-icon">
+    <button onClick={toggle} title={state === 'on' ? 'Turn off notifications' : 'Turn on notifications for your orders and messages'} className="btn btn-ghost btn-icon">
       <Bell size={18} className={state === 'on' ? 'text-alu-gold fill-alu-gold' : ''} />
     </button>
   )

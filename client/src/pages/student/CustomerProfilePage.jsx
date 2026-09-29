@@ -115,7 +115,11 @@ export default function CustomerProfilePage() {
         )}
 
         <InstallApp />
-        <NotificationSettings />
+        <NotificationSettings
+          title="Notifications"
+          onDescription="On — this device will be alerted when your order is ready or the CaféCampus team replies to you, even if the app is closed."
+          offDescription="Get an alert on this device when your order is ready or the CaféCampus team replies to you, even if the app is closed."
+        />
         <SupportContact />
         <SupportChat
           load={() => customerAPI.getMessages(customer.id).then(r => r.data.data)}

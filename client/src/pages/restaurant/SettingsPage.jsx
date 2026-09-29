@@ -176,9 +176,9 @@ export default function SettingsPage() {
           />
           <NotificationSettings
             push={restaurantPush}
-            title="New order notifications"
-            onDescription="On — this device will be alerted the moment a customer places an order, even if the app is closed."
-            offDescription="Get an alert on this device the moment a customer places an order, even if the app is closed."
+            title="Order and message notifications"
+            onDescription="On — this device will be alerted the moment a customer places an order or the CaféCampus team replies to you, even if the app is closed."
+            offDescription="Get an alert on this device the moment a customer places an order or the CaféCampus team replies to you, even if the app is closed."
             appName="the CaféCampus restaurant app"
           />
           <SupportContact title="Need help running your store?" />

@@ -248,7 +248,7 @@ export default function SuperAdminPage() {
     const next = await superAdminPush.enableNotifications()
     if (next === 'unsupported') { toast.error("Couldn't turn on notifications — try again in a moment"); return }
     setPushState(next)
-    if (next === 'on') toast.success("Notifications on 🔔 — you'll be alerted when a customer sends a message")
+    if (next === 'on') toast.success("Notifications on 🔔 — you'll be alerted when a customer or restaurant sends a message")
   }
 
   useEffect(() => {
@@ -571,7 +571,7 @@ export default function SuperAdminPage() {
           <div className="flex items-center gap-2 flex-wrap">
             <Link to="/superadmin/delivery" className="btn btn-ghost text-ink-400 text-sm"><Backpack size={14} /> Delivery</Link>
             {pushState && pushState !== 'unsupported' && (
-              <button onClick={handleBell} title={pushState === 'on' ? 'Turn off notifications' : 'Get notified when a customer sends a message'}
+              <button onClick={handleBell} title={pushState === 'on' ? 'Turn off notifications' : 'Get notified when a customer or restaurant sends a message'}
                 className="btn btn-ghost text-ink-400 text-sm">
                 <Bell size={14} className={pushState === 'on' ? 'text-brand-400 fill-brand-400' : ''} /> {pushState === 'on' ? 'Notifications on' : 'Notifications'}
               </button>

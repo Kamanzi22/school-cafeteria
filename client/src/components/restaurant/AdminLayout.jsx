@@ -118,7 +118,7 @@ export default function AdminLayout({ children, newOrderCount = 0 }) {
       {/* Footer */}
       <div className="px-3 py-4 border-t border-ink-100 space-y-0.5">
         {/* Desktop only — on mobile the bell lives in the top bar */}
-        <button onClick={handleBell} title={pushState === 'on' ? 'Turn off notifications' : 'Turn on new-order notifications'}
+        <button onClick={handleBell} title={pushState === 'on' ? 'Turn off notifications' : 'Turn on notifications for new orders and messages'}
           className="nav-item nav-item-inactive w-full hidden md:flex">
           <Bell size={17} className={pushState === 'on' ? 'text-brand-500 fill-brand-500' : ''} />
           <span className="flex-1 text-left">{pushState === 'on' ? 'Notifications on' : 'Notifications off'}</span>
@@ -171,7 +171,7 @@ export default function AdminLayout({ children, newOrderCount = 0 }) {
           <span className="font-bold text-ink-900 text-sm">{restaurant?.name}</span>
           <div className="flex items-center gap-1">
             {newOrderCount > 0 && <span className="w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">{newOrderCount}</span>}
-            <button onClick={handleBell} title={pushState === 'on' ? 'Turn off notifications' : 'Turn on new-order notifications'} className="btn btn-ghost btn-icon">
+            <button onClick={handleBell} title={pushState === 'on' ? 'Turn off notifications' : 'Turn on notifications for new orders and messages'} className="btn btn-ghost btn-icon">
               <Bell size={18} className={pushState === 'on' ? 'text-brand-500 fill-brand-500' : ''} />
             </button>
           </div>
