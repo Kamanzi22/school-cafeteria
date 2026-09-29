@@ -117,3 +117,34 @@ not connected to the live app.
   `rm ~/.render_key` on the Mac.
 - **Remove the unused `VERCEL_TOKEN`** secret from this repo's GitHub settings
   (Settings → Secrets and variables → Actions), and revoke it in Vercel.
+- **Turn on Dependabot alerts** (Settings → Code security) so GitHub warns about new
+  vulnerable dependencies automatically. They are currently off.
+
+### Small fixes (optional)
+
+None of these affect the live app today; they are listed so they aren't forgotten.
+
+- **Visits opened by name aren't counted.** A restaurant opened through a typed or shared
+  address like `/restaurant/dragon-wok` sends the name instead of the restaurant's id to
+  `POST /api/visits/start`, which fails, so that visit is missing from the super admin's
+  visitor stats. The menu itself works, and links from the home page and search use the id.
+  Fix: in `client/src/pages/student/RestaurantPage.jsx`, pass the loaded restaurant's id to
+  `useVisitTracking` instead of the URL parameter.
+- **Replace `uuid` with Node's built-in `crypto.randomUUID()`.** `npm audit` flags `uuid`
+  (moderate), but the advisory is about `v3`/`v5`/`v6` with a buffer argument; the app only
+  calls `v4()`, once, for guest tokens in `server/src/routes/orders.js`. Swapping that call
+  for `require('crypto').randomUUID()` (same format) and removing the package clears it.
+- **Upgrade Vite** (currently 5; `npm audit` suggests 8). The advisories for `vite` and
+  `esbuild` only affect the local dev server (`npm run dev`), never the built app users
+  download, and two are Windows-only. Because `client/vite.config.js` sets `host: true`,
+  the dev server is reachable from other devices on the same network, so until then **don't
+  run `npm run dev` on public or school Wi-Fi**. An upgrade changes how the app is built, so
+  test every app shell (customer, restaurant, super admin, delivery) after it.
+- **React Router 7** (currently 6). Its two advisories need server-side rendering or
+  navigation to an attacker-controlled address (e.g. `?redirect=`), neither of which the app
+  has. Version 7 is a major upgrade touching every page and link; only do it if a new
+  advisory affects how this app uses the router.
+- **Google sign-in limit on shared Wi-Fi.** `POST /api/auth/customer/google` allows 30
+  attempts per 15 minutes per visitor IP (`googleLimiter` in `server/src/routes/auth.js`).
+  Students on the same school Wi-Fi share one IP, so if "Too many sign-in attempts" shows up
+  at rush hour, raise that limit.
