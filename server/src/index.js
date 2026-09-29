@@ -6,6 +6,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
+const { clientIpKey } = require('./lib/clientIp');
 
 // Comma-separated list, e.g. "https://cafecampus-client.onrender.com". An empty/unset
 // CLIENT_URL denies all cross-origin requests instead of falling back to the cors package's
@@ -26,7 +27,7 @@ app.use(express.json({ limit: '10mb' }));
 if (process.env.NODE_ENV === 'development') app.use(morgan('dev'));
 // Overridable via RATE_LIMIT_MAX so a staging env can be raised for load testing
 // (see load-tests/rush-hour.js) without changing the production default.
-app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, max: parseInt(process.env.RATE_LIMIT_MAX) || 1000 }));
+app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, max: parseInt(process.env.RATE_LIMIT_MAX) || 1000, keyGenerator: clientIpKey }));
 app.set('io', io);
 
 app.use('/api/auth', require('./routes/auth'));

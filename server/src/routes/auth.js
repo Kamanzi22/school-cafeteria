@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const rateLimit = require('express-rate-limit');
+const { clientIpKey } = require('../lib/clientIp');
 const { OAuth2Client } = require('google-auth-library');
 const { authStaff, authSuperAdmin, blockViewer } = require('../middleware/auth');
 const { uploadImage } = require('../lib/supabaseStorage');
@@ -154,6 +155,7 @@ const googleLimiter = rateLimit({
   max: 30,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: clientIpKey,
   message: { success: false, error: 'Too many sign-in attempts — try again later' },
 });
 
@@ -226,6 +228,7 @@ const accountLimiter = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: clientIpKey,
   message: { success: false, error: 'Too many attempts — try again later' },
 });
 

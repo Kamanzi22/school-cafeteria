@@ -67,6 +67,11 @@ services:
         value: 7d
       - key: NODE_ENV
         value: production
+      # Requests per 15 minutes per visitor IP. Students on the same school Wi-Fi share one
+      # public IP, so a lunch rush of ~100 customers (~35 requests each) needs well over the
+      # code's default of 1000.
+      - key: RATE_LIMIT_MAX
+        value: "5000"
       - key: CLIENT_URL
         sync: false
       - key: GOOGLE_CLIENT_ID
