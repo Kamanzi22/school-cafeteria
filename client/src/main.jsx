@@ -8,6 +8,18 @@ import { portalHistory } from './portal'
 import './index.css'
 import './services/install'
 
+// A tab left open across a deploy still references the previous build's lazily loaded page
+// chunks (see App.jsx), which the new deploy no longer serves — reload onto the new build
+// instead of failing. The timestamp guard stops a reload loop if a chunk is genuinely broken.
+window.addEventListener('vite:preloadError', (event) => {
+  let last = 0
+  try { last = Number(sessionStorage.getItem('chunkReloadAt')) || 0 } catch {}
+  if (Date.now() - last < 10000) return
+  try { sessionStorage.setItem('chunkReloadAt', String(Date.now())) } catch {}
+  event.preventDefault()
+  window.location.reload()
+})
+
 // On restaurant./superadmin. subdomains the router reads and writes short addresses (see portal.js)
 const Router = ({ children }) => portalHistory
   ? <HistoryRouter history={portalHistory}>{children}</HistoryRouter>

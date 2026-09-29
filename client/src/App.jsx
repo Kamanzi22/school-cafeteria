@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAdminStore } from './store'
 import { useOrderNotifications } from './hooks/useOrderNotifications'
@@ -18,20 +19,20 @@ import CustomerProfilePage from './pages/student/CustomerProfilePage'
 import SearchPage from './pages/student/SearchPage'
 import PrivacyPage from './pages/PrivacyPage'
 
-// Restaurant admin
-import RestaurantAuthPage from './pages/restaurant/RestaurantAuthPage'
-import DashboardPage from './pages/restaurant/DashboardPage'
-import MenuPage from './pages/restaurant/MenuPage'
-import SalesReportPage from './pages/restaurant/SalesReportPage'
-import RestaurantOrderHistoryPage from './pages/restaurant/OrderHistoryPage'
-import PromotionsPage from './pages/restaurant/PromotionsPage'
-import ReviewsPage from './pages/restaurant/ReviewsPage'
-import SettingsPage from './pages/restaurant/SettingsPage'
+// Restaurant admin, super admin and delivery screens are split into their own chunks so
+// customers don't download them — they load the first time one of those routes is opened.
+const RestaurantAuthPage = lazy(() => import('./pages/restaurant/RestaurantAuthPage'))
+const DashboardPage = lazy(() => import('./pages/restaurant/DashboardPage'))
+const MenuPage = lazy(() => import('./pages/restaurant/MenuPage'))
+const SalesReportPage = lazy(() => import('./pages/restaurant/SalesReportPage'))
+const RestaurantOrderHistoryPage = lazy(() => import('./pages/restaurant/OrderHistoryPage'))
+const PromotionsPage = lazy(() => import('./pages/restaurant/PromotionsPage'))
+const ReviewsPage = lazy(() => import('./pages/restaurant/ReviewsPage'))
+const SettingsPage = lazy(() => import('./pages/restaurant/SettingsPage'))
 
-// Super admin
-import SuperAdminPage from './pages/admin/SuperAdminPage'
-import DeliveryPage from './pages/admin/DeliveryPage'
-import DeliveryAuthPage from './pages/admin/DeliveryAuthPage'
+const SuperAdminPage = lazy(() => import('./pages/admin/SuperAdminPage'))
+const DeliveryPage = lazy(() => import('./pages/admin/DeliveryPage'))
+const DeliveryAuthPage = lazy(() => import('./pages/admin/DeliveryAuthPage'))
 
 function AdminGuard({ children }) {
   const { restaurant } = useAdminStore()
@@ -46,6 +47,7 @@ export default function App() {
   return (
     <>
     <OfflineScreen />
+    <Suspense fallback={null}>
     <Routes>
       {/* ── Customer side ──────────────────────────────── */}
       <Route path="/" element={<HomePage />} />
@@ -79,6 +81,7 @@ export default function App() {
 
       <Route path="*" element={<Navigate to={portalHome || '/'} replace />} />
     </Routes>
+    </Suspense>
     </>
   )
 }
