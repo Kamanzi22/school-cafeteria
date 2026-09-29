@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Loader, Pencil, X, Search, ChevronLeft, ChevronRight, Backpack } from 'lucide-react'
+import { Loader, Pencil, X, Search, ChevronLeft, ChevronRight, Backpack, Phone, Mail } from 'lucide-react'
 import { orderAPI } from '../../services/api'
 import { useAdminStore } from '../../store'
 import AdminLayout from '../../components/restaurant/AdminLayout'
@@ -198,7 +198,15 @@ export default function OrderHistoryPage() {
                         {o.fulfillmentType === 'delivery' && <span className="flex items-center gap-1 text-[11px] text-indigo-600 mt-0.5"><Backpack size={10} />Delivery</span>}
                       </td>
                       <td className="px-4 py-3 text-ink-500 whitespace-nowrap">{format(new Date(o.createdAt), 'd MMM yyyy · HH:mm')}</td>
-                      <td className="px-4 py-3 text-ink-700">{o.customer?.name || o.guestName || 'Customer'}</td>
+                      <td className="px-4 py-3 text-ink-700">
+                        {o.customer?.name || o.guestName || 'Customer'}
+                        {(o.guestPhone || o.customer?.phone) && (
+                          <a href={`tel:${o.guestPhone || o.customer.phone}`} className="flex items-center gap-1 text-[11px] text-ink-400 hover:text-flame-500 mt-0.5 whitespace-nowrap"><Phone size={10} />{o.guestPhone || o.customer.phone}</a>
+                        )}
+                        {o.customer?.email && (
+                          <a href={`mailto:${o.customer.email}`} className="flex items-center gap-1 text-[11px] text-ink-400 hover:text-flame-500 mt-0.5 break-all"><Mail size={10} />{o.customer.email}</a>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-ink-500 max-w-[240px]">
                         <span className="line-clamp-2">{o.items.map(i => `${i.quantity}× ${i.menuItemName}${i.variantName ? ` (${i.variantName})` : ''}`).join(', ')}</span>
                       </td>

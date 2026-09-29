@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect } from 'react'
 import { Link, useNavigate, Navigate } from 'react-router-dom'
 import { ArrowLeft, LogOut, User, Mail, Phone, UserPlus } from 'lucide-react'
 import { useCustomerStore } from '../../store'
@@ -11,9 +11,15 @@ import SupportContact from '../../components/shared/SupportContact'
 import toast from 'react-hot-toast'
 
 export default function CustomerProfilePage() {
-  const { customer, logout, login } = useCustomerStore()
+  const { customer, logout, update } = useCustomerStore()
   const navigate = useNavigate()
   const goBack = useBackNavigate()
+
+  // The stored copy is from sign-in time — refresh it so the contact details shown are current
+  useEffect(() => {
+    if (!customer?.id) return
+    customerAPI.get(customer.id).then(res => update(res.data.data)).catch(() => {})
+  }, [customer?.id])
 
   if (!customer) return <Navigate to="/auth" replace />
   const isGuest = customer.accountType === 'guest'
@@ -55,6 +61,31 @@ export default function CustomerProfilePage() {
             </>
           )}
         </div>
+
+        {/* Contact details */}
+        {(customer.email || customer.phone) && (
+          <div className="card p-5 space-y-3">
+            <p className="font-bold text-alu-cream text-sm">Contact details</p>
+            {customer.email && (
+              <div className="flex items-center gap-3">
+                <Mail size={16} className="text-alu-muted shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs text-alu-muted">Email</p>
+                  <p className="text-sm text-alu-cream break-all">{customer.email}</p>
+                </div>
+              </div>
+            )}
+            {customer.phone && (
+              <div className="flex items-center gap-3">
+                <Phone size={16} className="text-alu-muted shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs text-alu-muted">Phone number</p>
+                  <p className="text-sm text-alu-cream">{customer.phone}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Guest upgrade prompt */}
         {isGuest && (

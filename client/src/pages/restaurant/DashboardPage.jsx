@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { CheckCircle, ChefHat, Bell, DollarSign, ShoppingBag, Clock, X, RefreshCw, Loader, Backpack, MapPin } from 'lucide-react'
+import { CheckCircle, ChefHat, Bell, DollarSign, ShoppingBag, Clock, X, RefreshCw, Loader, Backpack, MapPin, Phone, Mail } from 'lucide-react'
 import { orderAPI } from '../../services/api'
 import { useAdminStore } from '../../store'
 import { useSocket, getSocket } from '../../hooks/useSocket'
@@ -106,7 +106,13 @@ function OrderCard({ order, onUpdate, isViewer }) {
               <span className="badge bg-indigo-100 text-indigo-600"><Backpack size={10} className="mr-0.5" />Delivery · {order.deliveryScope === 'off_campus' ? 'Off campus' : 'On campus'}</span>
             )}
           </div>
-          <p className="font-bold text-ink-900 text-sm mt-0.5">{order.customer?.name}</p>
+          <p className="font-bold text-ink-900 text-sm mt-0.5">{order.customer?.name || order.guestName || 'Customer'}</p>
+          {(order.guestPhone || order.customer?.phone) && (
+            <a href={`tel:${order.guestPhone || order.customer.phone}`} className="flex items-center gap-1 text-xs text-ink-500 hover:text-flame-500"><Phone size={11} />{order.guestPhone || order.customer.phone}</a>
+          )}
+          {order.customer?.email && (
+            <a href={`mailto:${order.customer.email}`} className="flex items-center gap-1 text-xs text-ink-500 hover:text-flame-500 break-all"><Mail size={11} />{order.customer.email}</a>
+          )}
           <p className="text-xs text-ink-400">{formatDistanceToNow(new Date(order.createdAt), { addSuffix: true })}</p>
         </div>
         <div className="text-right shrink-0 ml-2">
