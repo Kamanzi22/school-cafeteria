@@ -11,8 +11,8 @@ import { useLocation } from 'react-router-dom'
 // (restaurant admin, super admin) — the customer scope leaves document.title alone so it
 // doesn't fight with Seo.jsx's more specific per-page titles.
 const SCOPES = [
-  { test: (p) => p.startsWith('/superadmin'), manifest: '/manifest-superadmin.webmanifest', homeScreenTitle: 'CaféCampus Admin', pageTitle: 'CaféCampus Admin — Super Admin Panel' },
-  { test: (p) => p.startsWith('/admin') || p.startsWith('/restaurant/auth'), manifest: '/manifest-restaurant.webmanifest', homeScreenTitle: 'CaféCampus Restaurant', pageTitle: 'CaféCampus Restaurant — Manage your store', light: true },
+  { test: (p) => p.startsWith('/superadmin'), manifest: '/manifest-superadmin.webmanifest', homeScreenTitle: 'cafecampus-admin', pageTitle: 'cafecampus-admin' },
+  { test: (p) => p.startsWith('/admin') || p.startsWith('/restaurant/auth'), manifest: '/manifest-restaurant.webmanifest', homeScreenTitle: 'cafecampus-resto', pageTitle: 'cafecampus-resto', light: true },
 ]
 const DEFAULT_SCOPE = { manifest: '/manifest.webmanifest', homeScreenTitle: 'CaféCampus', pageTitle: null }
 // The restaurant app is light only; everything else keeps the dark palette (see .theme-light in index.css)
