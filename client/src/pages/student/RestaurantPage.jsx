@@ -11,6 +11,7 @@ import { useLiveRefresh } from '../../hooks/useLiveRefresh'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 import { promoHeadline, promoTerms } from '../../lib/promo'
+import { getCachedRestaurant, setCachedRestaurant } from '../../lib/catalogCache'
 
 // Category names that actually have meals, in the restaurant's own category order (Food, then Drinks)
 const usedCategoryNames = (r) => {
@@ -20,6 +21,13 @@ const usedCategoryNames = (r) => {
 
 // Internal id for the catch-all tab; never clashes with a category the owner names "Other"
 const OTHER_TAB = '__other__'
+
+// The tab to open on: the one holding the meal linked to (?item=), otherwise the first category
+const initialCategory = (r, focusItemId) => {
+  const cats = usedCategoryNames(r)
+  const target = focusItemId && r.items.find(i => i.id === focusItemId)
+  return target ? (target.category?.name || (cats.length > 0 ? OTHER_TAB : null)) : (cats[0] || null)
+}
 
 function VariantPickerModal({ item, onPick, onClose }) {
   const [selected, setSelected] = useState(null)
@@ -71,29 +79,44 @@ export default function RestaurantPage() {
   const focusItemId = searchParams.get('item')
   const navigate = useNavigate()
   const goBack = useBackNavigate()
-  const [restaurant, setRestaurant] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [activeCategory, setActiveCategory] = useState(null)
+  const { customer: student } = useCustomerStore()
+  // A menu opened before in this session shows straight away while the fetch below refreshes it
+  const [restaurant, setRestaurant] = useState(() => getCachedRestaurant(id, student?.id))
+  const [loading, setLoading] = useState(() => !getCachedRestaurant(id, student?.id))
+  const [activeCategory, setActiveCategory] = useState(() => {
+    const cached = getCachedRestaurant(id, student?.id)
+    return cached ? initialCategory(cached, focusItemId) : null
+  })
   const [search, setSearch] = useState('')
-  const [favorited, setFavorited] = useState(false)
+  const [favorited, setFavorited] = useState(() => !!getCachedRestaurant(id, student?.id)?.isFavorited)
   const [variantItem, setVariantItem] = useState(null)
   const { items, addItem, setQty, promoCodes, setPromoCode } = useCartStore()
-  const { customer: student } = useCustomerStore()
   const { openCart } = useUIStore()
   const cartCount = items.reduce((s, i) => s + i.qty, 0)
 
   useVisitTracking(id)
 
   useEffect(() => {
+    const cached = getCachedRestaurant(id, student?.id)
+    if (cached) {
+      setRestaurant(cached)
+      setFavorited(!!cached.isFavorited)
+      setActiveCategory(initialCategory(cached, focusItemId))
+      setLoading(false)
+    }
     restaurantAPI.get(id).then(r => {
-      setRestaurant(r.data.data)
-      setFavorited(r.data.data.isFavorited)
-      const cats = usedCategoryNames(r.data.data)
-      const target = focusItemId && r.data.data.items.find(i => i.id === focusItemId)
-      setActiveCategory(target ? (target.category?.name || (cats.length > 0 ? OTHER_TAB : null)) : (cats[0] || null))
+      const fresh = r.data.data
+      setRestaurant(fresh)
+      setFavorited(fresh.isFavorited)
+      // Keep the tab the customer is already on when the menu was shown from the cache
+      setActiveCategory(prev => cached && (prev === OTHER_TAB || usedCategoryNames(fresh).includes(prev)) ? prev : initialCategory(fresh, focusItemId))
       setLoading(false)
     }).catch(() => { setLoading(false); navigate('/') })
   }, [id])
+
+  useEffect(() => {
+    if (restaurant) setCachedRestaurant({ ...restaurant, isFavorited: favorited }, student?.id)
+  }, [restaurant, favorited])
 
   // The restaurant editing its menu, promos or settings, opening/closing, or the super admin
   // changing or removing it while this customer has the page open — refetch quietly rather than

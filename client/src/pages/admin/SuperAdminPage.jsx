@@ -9,8 +9,6 @@ import { superAdminPush } from '../../services/push'
 import PasswordInput from '../../components/shared/PasswordInput'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
-import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
 
 const fmtDuration = (sec) => {
   if (sec == null) return '—'
@@ -327,7 +325,12 @@ export default function SuperAdminPage() {
     return `Year: ${historyYear}`
   }
 
-  const downloadHistoryPDF = () => {
+  // The PDF library is ~100 KB (compressed), so it's only downloaded when a report is actually made
+  const downloadHistoryPDF = async () => {
+    let jsPDF, autoTable
+    try {
+      [{ default: jsPDF }, { default: autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')])
+    } catch { toast.error('Could not load the PDF tool — check your connection'); return }
     const doc = new jsPDF()
     doc.setFontSize(16)
     doc.text('CaféCampus — Visitor History Report', 14, 16)

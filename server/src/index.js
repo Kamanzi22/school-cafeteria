@@ -22,7 +22,11 @@ const io = new Server(httpServer, {
 });
 
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
-app.use(cors({ origin: corsOrigin, credentials: true }));
+// maxAge lets the browser remember the CORS preflight (the OPTIONS check sent before every request
+// that carries a login token or a JSON body) for 2 hours, Chrome's cap. Without it Chrome only
+// remembers it for 5 seconds, so nearly every signed-in request cost two round trips to the
+// server instead of one — about half a second each from Rwanda.
+app.use(cors({ origin: corsOrigin, credentials: true, maxAge: 7200 }));
 app.use(express.json({ limit: '10mb' }));
 if (process.env.NODE_ENV === 'development') app.use(morgan('dev'));
 // Overridable via RATE_LIMIT_MAX so a staging env can be raised for load testing

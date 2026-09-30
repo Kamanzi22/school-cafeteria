@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Search, ShoppingBag, User, Star, Clock, MapPin, TrendingUp } from 'lucide-react'
 import { restaurantAPI } from '../../services/api'
+import { getCachedRestaurantList, setCachedRestaurantList, fetchRestaurantList } from '../../lib/catalogCache'
 import { useCartStore, useCustomerStore, useUIStore, useAdminStore } from '../../store'
 import { useSocket } from '../../hooks/useSocket'
 import { useLiveRefresh } from '../../hooks/useLiveRefresh'
@@ -75,9 +76,10 @@ function RestaurantCard({ r, index, matchedItems }) {
 }
 
 export default function HomePage() {
-  const [restaurants, setRestaurants] = useState([])
-  const [loading, setLoading] = useState(true)
+  // Coming back to the home screen shows the last list right away; the fetch below refreshes it
   const { customer: student } = useCustomerStore()
+  const [restaurants, setRestaurants] = useState(() => getCachedRestaurantList(student?.id) || [])
+  const [loading, setLoading] = useState(() => !getCachedRestaurantList(student?.id))
   const { restaurant: adminRestaurant, token: adminToken } = useAdminStore()
   const { count } = useCartStore()
   const { cartOpen, openCart, closeCart } = useUIStore()
@@ -106,11 +108,12 @@ export default function HomePage() {
   })
 
   useEffect(() => {
-    setLoading(true)
-    restaurantAPI.list()
-      .then(r => { setRestaurants(r.data.data || []); setLoading(false) })
+    fetchRestaurantList()
+      .then(list => { setRestaurants(list); setLoading(false) })
       .catch(() => setLoading(false))
   }, [])
+
+  useEffect(() => { if (restaurants.length > 0) setCachedRestaurantList(restaurants, student?.id) }, [restaurants])
 
   // A restaurant changing its settings or being approved, suspended or deleted, or the super
   // admin changing platform settings — reload the list quietly (no spinner). Open/closed is

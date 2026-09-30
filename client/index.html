@@ -40,9 +40,29 @@
   <meta name="twitter:description" content="Order food from campus restaurants, track your order live, and skip the line." />
   <link rel="icon" type="image/svg+xml" href="/logo-mark.svg" />
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+  <!-- Opens the connection to the API while the app's code is still downloading, so the first
+       request doesn't also pay for the connection setup (~0.3 s from Rwanda). -->
+  <link rel="preconnect" href="%VITE_BACKEND_URL%" crossorigin />
+  <!-- The customer home screen's restaurant list, requested now rather than after the app's code
+       has downloaded and started (~1 s later on a phone). src/lib/catalogCache.js hands it to the
+       home screen; on any other page it's simply never used. Only on the customer site's own
+       home address — the restaurant./superadmin. redirect above has already navigated away. -->
+  <script>
+    (function () {
+      var api = '%VITE_BACKEND_URL%'
+      if (api.charAt(0) === '%' || location.pathname !== '/' || !window.fetch) return
+      if (/^(restaurant|superadmin)\./.test(location.hostname)) return
+      // Signed-in customers get their favorites flagged in the list, so send their login as the app would
+      var token = null
+      try { token = JSON.parse(localStorage.getItem('cc-customer-v4') || '{}').state.token || null } catch (e) {}
+      window.__ccRestaurantList = fetch(api + '/api/restaurants', token ? { headers: { Authorization: 'Bearer ' + token } } : undefined)
+        .then(function (r) { return r.ok ? r.json() : null })
+        .catch(function () { return null })
+    })()
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
 </head>
 <body>
   <div id="root"></div>

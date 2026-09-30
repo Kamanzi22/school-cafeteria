@@ -240,8 +240,22 @@ export default function DashboardPage() {
   useEffect(() => {
     getSocket().emit('join:restaurant', { id: restaurant.id, token })
     fetch()
-    const iv = setInterval(() => fetch(true), 30000)
-    return () => clearInterval(iv)
+    // New orders and status changes arrive live over the socket; this reload of the full order
+    // list is only a safety net. It runs while the dashboard is on screen, and catches up straight
+    // away when the screen comes back or the connection returns, instead of every 30 s even in the
+    // background — each reload is up to 200 orders over a slow phone connection.
+    const visible = () => document.visibilityState === 'visible'
+    const iv = setInterval(() => { if (visible()) fetch(true) }, 60000)
+    const onVisible = () => { if (visible()) fetch(true) }
+    const onReconnect = () => fetch(true)
+    const socket = getSocket()
+    document.addEventListener('visibilitychange', onVisible)
+    socket.io.on('reconnect', onReconnect)
+    return () => {
+      clearInterval(iv)
+      document.removeEventListener('visibilitychange', onVisible)
+      socket.io.off('reconnect', onReconnect)
+    }
   }, [fetch])
 
   const updateOrder = (updated) => setOrders(prev => prev.map(o => o.id === updated.id ? updated : o))

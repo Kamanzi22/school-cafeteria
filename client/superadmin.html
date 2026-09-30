@@ -13,9 +13,12 @@
   <title>cafecampus-admin</title>
   <link rel="icon" type="image/svg+xml" href="/logo-mark.svg" />
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+  <!-- Opens the connection to the API while the app's code is still downloading, so the first
+       request doesn't also pay for the connection setup (~0.3 s from Rwanda). -->
+  <link rel="preconnect" href="%VITE_BACKEND_URL%" crossorigin />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
 </head>
 <body>
   <div id="root"></div>
