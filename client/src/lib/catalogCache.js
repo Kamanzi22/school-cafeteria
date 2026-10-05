@@ -1,23 +1,29 @@
 import { restaurantAPI } from '../services/api'
 
-// Last loaded restaurant list and menus, so going back to a screen shows it straight away while
-// a fresh copy loads quietly, instead of a spinner for every round trip to the server (~0.5 s
-// from Rwanda). Kept for the browser tab's session only; every screen still refetches on open,
-// so this is never shown for longer than one request.
+// Last loaded restaurant list and menus, so opening the app or going back to a screen shows them
+// straight away while a fresh copy loads quietly, instead of a spinner for every round trip to the
+// server (~0.5 s from Rwanda). Kept on the phone between visits; every screen still refetches on
+// open, so a saved copy is never shown for longer than one request.
 const mem = new Map()
-const STORE_KEY = 'cc-catalog-cache-v1'
+const STORE_KEY = 'cc-catalog-cache-v2'
+// Menus are a few KB each — keep the most recently opened ones only
+const MAX_MENU_ENTRIES = 24
 
 try {
-  const saved = JSON.parse(sessionStorage.getItem(STORE_KEY) || '{}')
+  const saved = JSON.parse(localStorage.getItem(STORE_KEY) || '{}')
   Object.entries(saved).forEach(([k, v]) => mem.set(k, v))
 } catch {}
 
 const persist = () => {
-  try { sessionStorage.setItem(STORE_KEY, JSON.stringify(Object.fromEntries(mem))) } catch {}
+  const menus = [...mem.keys()].filter(k => k.startsWith('menu:'))
+  menus.slice(0, Math.max(0, menus.length - MAX_MENU_ENTRIES)).forEach(k => mem.delete(k))
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(Object.fromEntries(mem))) } catch {}
 }
 
 const get = (key) => mem.get(key) ?? null
-const set = (key, value) => { mem.set(key, value); persist() }
+// Re-inserted so the Map's order is least to most recently saved
+const put = (key, value) => { mem.delete(key); mem.set(key, value) }
+const set = (key, value) => { put(key, value); persist() }
 
 // The list flags the signed-in customer's favorites, so it's kept per customer too
 export const getCachedRestaurantList = (customerId) => get(`list:${customerId || 'anon'}`)
@@ -29,8 +35,8 @@ const menuKey = (idOrSlug, customerId) => `menu:${customerId || 'anon'}:${idOrSl
 export const getCachedRestaurant = (idOrSlug, customerId) => get(menuKey(idOrSlug, customerId))
 export const setCachedRestaurant = (restaurant, customerId) => {
   if (!restaurant?.id) return
-  mem.set(menuKey(restaurant.id, customerId), restaurant)
-  if (restaurant.slug) mem.set(menuKey(restaurant.slug, customerId), restaurant)
+  put(menuKey(restaurant.id, customerId), restaurant)
+  if (restaurant.slug) put(menuKey(restaurant.slug, customerId), restaurant)
   persist()
 }
 

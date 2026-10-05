@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAdminStore } from './store'
 import { useOrderNotifications } from './hooks/useOrderNotifications'
@@ -13,11 +13,25 @@ import HomePage from './pages/student/HomePage'
 import RestaurantPage from './pages/student/RestaurantPage'
 import OrderConfirmPage from './pages/student/OrderConfirmPage'
 import TrackOrderPage from './pages/student/TrackOrderPage'
-import OrderHistoryPage from './pages/student/OrderHistoryPage'
-import CustomerAuthPage from './pages/student/CustomerAuthPage'
-import CustomerProfilePage from './pages/student/CustomerProfilePage'
-import SearchPage from './pages/student/SearchPage'
-import PrivacyPage from './pages/PrivacyPage'
+
+// Customer screens nobody needs the moment the app opens are left out of the first download (less
+// for a phone to download and run before the home screen shows) and fetched quietly right after
+// it — see prefetchCustomerPages — so they still open instantly when tapped. Order tracking and
+// confirmation stay in the main download: notification taps open those directly.
+const loadSearchPage = () => import('./pages/student/SearchPage')
+const loadCustomerAuthPage = () => import('./pages/student/CustomerAuthPage')
+const loadCustomerProfilePage = () => import('./pages/student/CustomerProfilePage')
+const loadOrderHistoryPage = () => import('./pages/student/OrderHistoryPage')
+const loadPrivacyPage = () => import('./pages/PrivacyPage')
+const SearchPage = lazy(loadSearchPage)
+const CustomerAuthPage = lazy(loadCustomerAuthPage)
+const CustomerProfilePage = lazy(loadCustomerProfilePage)
+const OrderHistoryPage = lazy(loadOrderHistoryPage)
+const PrivacyPage = lazy(loadPrivacyPage)
+const prefetchCustomerPages = () => {
+  if (/^\/(admin|superadmin|delivery|restaurant\/auth)/.test(window.location.pathname)) return
+  ;[loadSearchPage, loadCustomerAuthPage, loadCustomerProfilePage, loadOrderHistoryPage, loadPrivacyPage].forEach(load => load().catch(() => {}))
+}
 
 // Restaurant admin, super admin and delivery screens are split into their own chunks so
 // customers don't download them — they load the first time one of those routes is opened.
@@ -45,6 +59,10 @@ export default function App() {
   useRestaurantOrderNotifications()
   usePwaScope()
   useAppUpdateCheck()
+  useEffect(() => {
+    const t = setTimeout(prefetchCustomerPages, 1500)
+    return () => clearTimeout(t)
+  }, [])
   return (
     <>
     <OfflineScreen />

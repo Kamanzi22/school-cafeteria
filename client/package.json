@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource/dm-sans": "^5.3.0",
     "axios": "^1.6.7",
     "date-fns": "^3.3.1",
     "jspdf": "^4.2.1",

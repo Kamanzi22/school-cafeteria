@@ -24,8 +24,9 @@ window.addEventListener('appinstalled', () => {
   notify()
 })
 
-// Some Chrome versions only treat a site as installable once a service worker is registered.
-// /sw.js is the push worker and does no caching, so registering it up front is harmless.
+// Some Chrome versions only treat a site as installable once a service worker is registered, and
+// /sw.js also keeps a copy of the app on the phone so it opens without waiting on the network —
+// so it's registered up front for everyone, not only once notifications are turned on.
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {})
 
 // 'installed' | 'available' (native prompt ready) | 'ios' (show manual steps) | 'unavailable'

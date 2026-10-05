@@ -60,12 +60,18 @@
         .catch(function () { return null })
     })()
   </script>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <!-- Painted the moment the page arrives, before the app's code has downloaded: the app's
+       background and logo instead of a blank screen. React replaces the logo when the app starts. -->
+  <style>
+    /* :where() has no specificity, so the app's own body colours always win once its CSS loads */
+    :where(body) { background: #121212; margin: 0; }
+    #boot-splash { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+    #boot-splash img { width: 56px; height: 56px; animation: boot-pulse 1.4s ease-in-out infinite; }
+    @keyframes boot-pulse { 50% { opacity: .45; } }
+  </style>
 </head>
 <body>
-  <div id="root"></div>
+  <div id="root"><div id="boot-splash"><img src="/logo-mark.svg" alt="" /></div></div>
   <script type="module" src="/src/main.jsx"></script>
 </body>
 </html>
