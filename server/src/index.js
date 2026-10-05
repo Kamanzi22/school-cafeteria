@@ -33,6 +33,21 @@ app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors({ origin: corsOrigin, credentials: true, maxAge: 7200 }));
 app.use(express.json({ limit: '10mb' }));
 if (process.env.NODE_ENV === 'development') app.use(morgan('dev'));
+// Everywhere else, one log line per failed request (5xx) — most routes answer an error with a
+// 500 and its message without logging anything, so the Render logs never showed what broke.
+// The query string is left out (it can hold what people searched for).
+else app.use((req, res, next) => {
+  const started = Date.now();
+  const json = res.json.bind(res);
+  res.json = (body) => { if (res.statusCode >= 500) res.locals.failure = body?.error; return json(body); };
+  res.on('finish', () => {
+    if (res.statusCode < 500) return;
+    // Database errors run to many lines and can quote the values queried — keep one short line
+    const why = res.locals.failure ? `: ${String(res.locals.failure).replace(/\s+/g, ' ').trim().slice(0, 300)}` : '';
+    console.error(`${req.method} ${req.originalUrl.split('?')[0]} → ${res.statusCode} in ${Date.now() - started}ms${why}`);
+  });
+  next();
+});
 // Overridable via RATE_LIMIT_MAX so a staging env can be raised for load testing
 // (see load-tests/rush-hour.js) without changing the production default.
 app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, max: parseInt(process.env.RATE_LIMIT_MAX) || 1000, keyGenerator: clientIpKey }));

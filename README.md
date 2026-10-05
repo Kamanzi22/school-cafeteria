@@ -42,6 +42,10 @@ npm run dev
 
 ## 🔑 Credentials
 
+These are the **local demo** logins created by the seed script (`node src/prisma/seed.js`) for a
+local database. They are public, so the live site must never use them — the live super admin
+password is set from the super admin panel (Change Password) and isn't written down here.
+
 ### Super Admin
 - URL: `/superadmin`
 - Username: `superadmin` · Password: `super123`
@@ -125,6 +129,11 @@ database.
    the data in it — edit the SQL to `ALTER TABLE … RENAME COLUMN …` instead.
 4. Commit the migration folder together with the schema change.
 
+Supabase's public API roles (`anon`, `authenticated`) have no access to any table, and tables
+added later are locked the same way automatically (migration `20261005170000_lock_public_api_roles`).
+The app doesn't use those roles — the API connects as the tables' owner — so nothing else is needed
+when adding a table.
+
 The deploy also compares the live database with `schema.prisma` after migrating, and fails
 (leaving the previous version running) if they differ — that's what happens if step 2 was
 skipped. `0_init` is the starting point: it matches the database as it was on 2026-10-05 and
@@ -144,12 +153,6 @@ was marked as already applied there, so it never runs on the live database.
 
 None of these affect the live app today; they are listed so they aren't forgotten.
 
-- **Visits opened by name aren't counted.** A restaurant opened through a typed or shared
-  address like `/restaurant/dragon-wok` sends the name instead of the restaurant's id to
-  `POST /api/visits/start`, which fails, so that visit is missing from the super admin's
-  visitor stats. The menu itself works, and links from the home page and search use the id.
-  Fix: in `client/src/pages/student/RestaurantPage.jsx`, pass the loaded restaurant's id to
-  `useVisitTracking` instead of the URL parameter.
 - **Replace `uuid` with Node's built-in `crypto.randomUUID()`.** `npm audit` flags `uuid`
   (moderate), but the advisory is about `v3`/`v5`/`v6` with a buffer argument; the app only
   calls `v4()`, once, for guest tokens in `server/src/routes/orders.js`. Swapping that call
