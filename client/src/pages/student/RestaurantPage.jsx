@@ -13,6 +13,7 @@ import { format } from 'date-fns'
 import { promoHeadline, promoTerms } from '../../lib/promo'
 import { getCachedRestaurant, setCachedRestaurant } from '../../lib/catalogCache'
 import { fetchRestaurant } from '../../lib/earlyData'
+import { availableSides, isSide } from '../../lib/sides'
 
 // Category names that actually have meals, in the restaurant's own category order (Food, then Drinks)
 const usedCategoryNames = (r) => {
@@ -179,8 +180,9 @@ export default function RestaurantPage() {
 
   const getQty = (itemId) => items.filter(i => i.id === itemId).reduce((s, i) => s + i.qty, 0)
 
-  const sides = restaurant?.sides || []
-  const takesSides = (item) => item.allowsSides && sides.length > 0
+  // Anything in the "Sides" category can be added to any other meal
+  const sides = availableSides(restaurant?.items)
+  const takesSides = (item) => !isSide(item) && sides.length > 0
   const needsPicker = (item) => item.hasVariants || takesSides(item)
 
   // pickedSides stays null until the customer has been through the options sheet

@@ -110,7 +110,7 @@ router.get('/admin', authStaff, async (req, res) => {
 
 router.post('/', authStaff, blockViewer, requireManager, async (req, res) => {
   try {
-    const { name, description, price, image, isAvailable, prepTime, sortOrder, trackStock, stock, hasVariants, sku, variants, categoryId, isVeg, isVegan, isSpicy, isPopular, allowsSides } = req.body;
+    const { name, description, price, image, isAvailable, prepTime, sortOrder, trackStock, stock, hasVariants, sku, variants, categoryId, isVeg, isVegan, isSpicy, isPopular } = req.body;
     if (!name?.trim() || price === undefined || price === null || price === '') return res.status(400).json({ success:false, error:'Name and price required' });
     if (!validPrice(price)) return res.status(400).json({ success:false, error:'Price must be a number, 0 or more' });
     if (categoryId && !(await ownsCategory(req.restaurantId, categoryId))) return res.status(400).json({ success:false, error:'Category not found' });
@@ -119,7 +119,7 @@ router.post('/', authStaff, blockViewer, requireManager, async (req, res) => {
         restaurantId: req.restaurantId, categoryId: categoryId || null, name:name.trim(), description:description?.trim(), price:parseFloat(price),
         image:image||null, isAvailable:isAvailable!==false&&isAvailable!=='false', prepTime:parseInt(prepTime)||10, sortOrder:parseInt(sortOrder)||0,
         trackStock: !!trackStock, stock: parseStock(stock),
-        hasVariants: !!hasVariants, sku: sku || null, allowsSides: !!allowsSides,
+        hasVariants: !!hasVariants, sku: sku || null,
         ...dietaryTags({ isVeg, isVegan, isSpicy, isPopular }),
       } });
       if (hasVariants) await syncVariants(tx, created.id, variants);
@@ -134,7 +134,7 @@ router.put('/:id', authStaff, blockViewer, requireManager, async (req, res) => {
   try {
     const item = await prisma.menuItem.findFirst({ where:{ id:req.params.id, restaurantId:req.restaurantId } });
     if (!item) return res.status(404).json({ success:false, error:'Not found' });
-    const { name, description, price, image, isAvailable, prepTime, sortOrder, trackStock, stock, hasVariants, sku, variants, categoryId, isVeg, isVegan, isSpicy, isPopular, allowsSides } = req.body;
+    const { name, description, price, image, isAvailable, prepTime, sortOrder, trackStock, stock, hasVariants, sku, variants, categoryId, isVeg, isVegan, isSpicy, isPopular } = req.body;
     if (name !== undefined && !String(name).trim()) return res.status(400).json({ success:false, error:'Name can\'t be empty' });
     if (price !== undefined && !validPrice(price)) return res.status(400).json({ success:false, error:'Price must be a number, 0 or more' });
     if (categoryId && !(await ownsCategory(req.restaurantId, categoryId))) return res.status(400).json({ success:false, error:'Category not found' });
@@ -149,7 +149,6 @@ router.put('/:id', authStaff, blockViewer, requireManager, async (req, res) => {
         stock: stock!==undefined ? parseStock(stock) : undefined,
         hasVariants: hasVariants!==undefined ? !!hasVariants : undefined,
         sku: sku!==undefined ? (sku || null) : undefined,
-        allowsSides: allowsSides!==undefined ? !!allowsSides : undefined,
         ...dietaryTags({ isVeg, isVegan, isSpicy, isPopular }),
       } });
       if (variants !== undefined) await syncVariants(tx, req.params.id, hasVariants ? variants : []);
@@ -229,52 +228,6 @@ router.put('/categories/:id', authStaff, blockViewer, requireManager, async (req
 router.delete('/categories/:id', authStaff, blockViewer, requireManager, async (req, res) => {
   try {
     await prisma.menuCategory.deleteMany({ where:{ id:req.params.id, restaurantId:req.restaurantId } });
-    notifyMenuChanged(req);
-    res.json({ success:true, data:null });
-  } catch(e){ res.status(500).json({ success:false, error:e.message }); }
-});
-
-// ── Sides ("add a salad +500") — one list per restaurant, offered on items with allowsSides ──
-router.get('/sides', authStaff, async (req, res) => {
-  try {
-    const sides = await prisma.menuSide.findMany({ where:{ restaurantId:req.restaurantId }, orderBy:[{ sortOrder:'asc' }, { createdAt:'asc' }] });
-    res.json({ success:true, data:sides });
-  } catch(e){ res.status(500).json({ success:false, error:e.message }); }
-});
-
-router.post('/sides', authStaff, blockViewer, requireManager, async (req, res) => {
-  try {
-    const name = String(req.body.name ?? '').trim().replace(/\s+/g, ' ');
-    if (!name) return res.status(400).json({ success:false, error:'Side name required' });
-    if (name.length > 40) return res.status(400).json({ success:false, error:'Side name must be 40 characters or less' });
-    if (!validPrice(req.body.price)) return res.status(400).json({ success:false, error:'Price must be a number, 0 or more' });
-    const last = await prisma.menuSide.findFirst({ where:{ restaurantId:req.restaurantId }, orderBy:{ sortOrder:'desc' }, select:{ sortOrder:true } });
-    const side = await prisma.menuSide.create({ data:{ restaurantId:req.restaurantId, name, price:parseFloat(req.body.price), sortOrder:(last?.sortOrder ?? -1) + 1 } });
-    notifyMenuChanged(req);
-    res.json({ success:true, data:side });
-  } catch(e){ res.status(500).json({ success:false, error:e.message }); }
-});
-
-router.put('/sides/:id', authStaff, blockViewer, requireManager, async (req, res) => {
-  try {
-    const side = await prisma.menuSide.findFirst({ where:{ id:req.params.id, restaurantId:req.restaurantId } });
-    if (!side) return res.status(404).json({ success:false, error:'Not found' });
-    const { name, price, isAvailable } = req.body;
-    if (name !== undefined && !String(name).trim()) return res.status(400).json({ success:false, error:'Side name can\'t be empty' });
-    if (price !== undefined && !validPrice(price)) return res.status(400).json({ success:false, error:'Price must be a number, 0 or more' });
-    const updated = await prisma.menuSide.update({ where:{ id:side.id }, data:{
-      name: name!==undefined ? String(name).trim().replace(/\s+/g, ' ').slice(0, 40) : undefined,
-      price: price!==undefined ? parseFloat(price) : undefined,
-      isAvailable: isAvailable!==undefined ? isAvailable!==false && isAvailable!=='false' : undefined,
-    } });
-    notifyMenuChanged(req);
-    res.json({ success:true, data:updated });
-  } catch(e){ res.status(500).json({ success:false, error:e.message }); }
-});
-
-router.delete('/sides/:id', authStaff, blockViewer, requireManager, async (req, res) => {
-  try {
-    await prisma.menuSide.deleteMany({ where:{ id:req.params.id, restaurantId:req.restaurantId } });
     notifyMenuChanged(req);
     res.json({ success:true, data:null });
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }

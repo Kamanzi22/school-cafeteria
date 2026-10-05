@@ -8,6 +8,9 @@ const { isDeliveryEnabled, applyPlatformDelivery } = require('../lib/platformDel
 const OPEN_STATUSES = ['pending', 'confirmed', 'preparing', 'ready', 'on_the_way'];
 const ALL_STATUSES = [...OPEN_STATUSES, 'picked_up', 'cancelled'];
 
+// A restaurant's "Sides" category holds the extras customers can add to any meal (e.g. Salad)
+const isSidesCategory = (name) => String(name || '').trim().toLowerCase() === 'sides';
+
 const genNum = () => 'CC-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2,5).toUpperCase();
 
 // Thrown for expected, user-correctable order problems (out of stock, missing option) so the
@@ -69,12 +72,12 @@ router.post('/', async (req, res) => {
 
     // The same meal can be on two lines (another option, or with/without sides), so compare unique ids
     const menuIds = [...new Set(items.map(i => i.menuItemId))];
-    const menuItems = await prisma.menuItem.findMany({ where:{ id:{ in:menuIds }, restaurantId, isAvailable:true }, include:{ variants:true } });
+    const menuItems = await prisma.menuItem.findMany({ where:{ id:{ in:menuIds }, restaurantId, isAvailable:true }, include:{ variants:true, category:{ select:{ name:true } } } });
     if (menuItems.length !== menuIds.length) return res.status(400).json({ success:false, error:'One or more items are unavailable' });
 
-    // Sides ("+ Salad") the customer picked, checked against this restaurant's own list
+    // Sides ("+ Salad") added to a meal are this restaurant's own items in its "Sides" category
     const sideIds = [...new Set(items.flatMap(i => Array.isArray(i.sideIds) ? i.sideIds : []))];
-    const sides = sideIds.length ? await prisma.menuSide.findMany({ where:{ id:{ in:sideIds }, restaurantId } }) : [];
+    const sides = sideIds.length ? await prisma.menuItem.findMany({ where:{ id:{ in:sideIds }, restaurantId, isAvailable:true }, include:{ category:{ select:{ name:true } } } }) : [];
 
     let subtotal = 0;
     const orderItems = items.map(item => {
@@ -90,9 +93,9 @@ router.post('/', async (req, res) => {
       }
       const picked = [];
       for (const sid of new Set(Array.isArray(item.sideIds) ? item.sideIds : [])) {
+        if (isSidesCategory(m.category?.name)) throw new OrderValidationError(`${m.name} is a side — add it to a meal or order it on its own`);
         const side = sides.find(sd => sd.id === sid);
-        if (!side || !side.isAvailable) throw new OrderValidationError(`${m.name}: a side you picked is no longer available`);
-        if (!m.allowsSides) throw new OrderValidationError(`${m.name} doesn't come with sides`);
+        if (!side || !isSidesCategory(side.category?.name)) throw new OrderValidationError(`${m.name}: a side you picked is no longer available`);
         picked.push({ id:side.id, name:side.name, price:side.price });
         unitPrice += side.price;
       }

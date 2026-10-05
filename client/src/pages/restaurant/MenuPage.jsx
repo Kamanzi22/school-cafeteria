@@ -1,21 +1,21 @@
 import { useState, useEffect, useRef } from 'react'
-import { Plus, Edit2, Trash2, Search, X, Loader, ImagePlus, ShoppingBag, PackageX, Star, Sparkles, Hand, Salad } from 'lucide-react'
+import { Plus, Edit2, Trash2, Search, X, Loader, ImagePlus, ShoppingBag, PackageX, Star, Sparkles, Hand } from 'lucide-react'
 import { menuAPI, restaurantAPI, uploadAPI } from '../../services/api'
 import { useAdminStore } from '../../store'
 import AdminLayout from '../../components/restaurant/AdminLayout'
 import toast from 'react-hot-toast'
 
-const EMPTY = { name: '', categoryId: '', description: '', price: '', prepTime: '', image: '', soldOut: false, trackStock: false, stock: '', sku: '', hasVariants: false, variants: [], isVeg: false, isVegan: false, isSpicy: false, isPopular: false, allowsSides: false }
+const EMPTY = { name: '', categoryId: '', description: '', price: '', prepTime: '', image: '', soldOut: false, trackStock: false, stock: '', sku: '', hasVariants: false, variants: [], isVeg: false, isVegan: false, isSpicy: false, isPopular: false }
 // The badges customers see on the menu
 const TAGS = [['isVeg', '🥦 Veg'], ['isVegan', '🌱 Vegan'], ['isSpicy', '🌶 Spicy'], ['isPopular', '🔥 Popular']]
 const EMPTY_VARIANT = { name: '', priceDelta: '0', stock: '0', sku: '' }
 
-function ItemModal({ item, categories, sides, onCategoryAdded, onSave, onClose }) {
+function ItemModal({ item, categories, onCategoryAdded, onSave, onClose }) {
   const [form, setForm] = useState(
     item ? {
       name: item.name, categoryId: item.categoryId || '', description: item.description || '', price: item.price, prepTime: item.prepTime || '', image: item.image || '', soldOut: !item.isAvailable,
       trackStock: item.trackStock || false, stock: item.stock ?? '', sku: item.sku || '', hasVariants: item.hasVariants || false,
-      isVeg: !!item.isVeg, isVegan: !!item.isVegan, isSpicy: !!item.isSpicy, isPopular: !!item.isPopular, allowsSides: !!item.allowsSides,
+      isVeg: !!item.isVeg, isVegan: !!item.isVegan, isSpicy: !!item.isSpicy, isPopular: !!item.isPopular,
       variants: (item.variants || []).map(v => ({ id: v.id, name: v.name, priceDelta: v.priceDelta, stock: v.stock, sku: v.sku || '', isAvailable: v.isAvailable, options: v.options })),
     } : EMPTY
   )
@@ -78,7 +78,6 @@ function ItemModal({ item, categories, sides, onCategoryAdded, onSave, onClose }
         hasVariants: form.hasVariants,
         variants: form.hasVariants ? form.variants : [],
         isVeg: form.isVeg || form.isVegan, isVegan: form.isVegan, isSpicy: form.isSpicy, isPopular: form.isPopular,
-        allowsSides: form.allowsSides,
       }
       const res = item?.id ? await menuAPI.update(item.id, payload) : await menuAPI.create(payload)
       onSave(res.data.data, !!item?.id)
@@ -147,6 +146,9 @@ function ItemModal({ item, categories, sides, onCategoryAdded, onSave, onClose }
                   {categories.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
                   <option value="__new">＋ Add category…</option>
                 </select>
+                {newCat === null && categories.find(c => c.id === form.categoryId)?.name.trim().toLowerCase() === 'sides' && (
+                  <p className="text-xs text-emerald-600 mt-1.5">Customers can add this to any meal, or order it on its own.</p>
+                )}
                 {newCat !== null && (
                   <div className="flex items-center gap-2 mt-2">
                     <input autoFocus value={newCat} onChange={e => setNewCat(e.target.value)}
@@ -192,19 +194,6 @@ function ItemModal({ item, categories, sides, onCategoryAdded, onSave, onClose }
             </div>
           </div>
 
-          {/* Sides customers can add to this meal — the list itself is managed under "Sides" on the menu page */}
-          <label className="flex items-start gap-3 p-3 rounded-xl border border-ink-200 cursor-pointer">
-            <input type="checkbox" checked={form.allowsSides} onChange={f('allowsSides')} className="mt-0.5 accent-flame-500" />
-            <span className="text-sm">
-              <span className="font-semibold text-ink-900 block">Customers can add sides</span>
-              <span className="text-xs text-ink-400">
-                {sides.length > 0
-                  ? `Offers ${sides.map(s => `${s.name} +${s.price.toLocaleString()}`).join(', ')}`
-                  : 'Add your sides (e.g. Salad +500) under "Sides" on the menu page.'}
-              </span>
-            </span>
-          </label>
-
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={onClose} className="btn btn-secondary flex-1">Cancel</button>
             <button type="submit" disabled={saving || uploading || addingCat} className="btn btn-primary flex-1">
@@ -218,88 +207,9 @@ function ItemModal({ item, categories, sides, onCategoryAdded, onSave, onClose }
   )
 }
 
-// The restaurant's sides ("Salad +500"), offered on every meal that has "Customers can add sides" on
-function SidesCard({ sides, setSides, readOnly }) {
-  const [name, setName] = useState('')
-  const [price, setPrice] = useState('')
-  const [busy, setBusy] = useState(false)
-
-  const add = async (e) => {
-    e.preventDefault()
-    if (!name.trim() || price === '') { toast.error('Enter the side and its price'); return }
-    setBusy(true)
-    try {
-      const res = await menuAPI.createSide({ name, price })
-      setSides(prev => [...prev, res.data.data])
-      setName(''); setPrice('')
-      toast.success('Side added')
-    } catch (e) { toast.error(e.response?.data?.error || 'Could not add side') }
-    finally { setBusy(false) }
-  }
-
-  const update = async (side, data) => {
-    try {
-      const res = await menuAPI.updateSide(side.id, data)
-      setSides(prev => prev.map(s => s.id === side.id ? res.data.data : s))
-    } catch (e) { toast.error(e.response?.data?.error || 'Failed to update') }
-  }
-
-  const remove = async (side) => {
-    if (!window.confirm(`Remove ${side.name} from your sides?`)) return
-    try {
-      await menuAPI.deleteSide(side.id)
-      setSides(prev => prev.filter(s => s.id !== side.id))
-    } catch (e) { toast.error(e.response?.data?.error || 'Failed to delete') }
-  }
-
-  return (
-    <div className="card p-4 mb-5">
-      <p className="font-bold text-sm text-ink-900 flex items-center gap-1.5"><Salad size={14} className="text-emerald-500" /> Sides</p>
-      <p className="text-xs text-ink-400 mt-0.5 mb-3">
-        Extras customers can add to a meal, like a salad. Turn on "Customers can add sides" on the meals that take them.
-      </p>
-      {sides.length > 0 && (
-        <div className="space-y-2 mb-3">
-          {sides.map(side => (
-            <div key={side.id} className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-semibold text-ink-900 flex-1 min-w-0 truncate">{side.name}</span>
-              <span className="text-xs font-semibold text-brand-500">+{side.price.toLocaleString()} RWF</span>
-              {!readOnly && (
-                <>
-                  <select value={side.isAvailable ? 'available' : 'soldout'} onChange={e => update(side, { isAvailable: e.target.value === 'available' })}
-                    className={`input text-xs font-semibold py-1.5 pl-2 pr-6 w-auto ${side.isAvailable ? 'text-emerald-600' : 'text-red-400'}`}>
-                    <option value="available">Available</option>
-                    <option value="soldout">Sold Out</option>
-                  </select>
-                  <button onClick={() => {
-                    const p = window.prompt(`New price for ${side.name} (RWF)`, side.price)
-                    if (p !== null && p.trim() !== '') update(side, { price: p.trim() })
-                  }} title="Change price" className="btn btn-ghost btn-icon text-ink-400 hover:text-blue-500"><Edit2 size={14} /></button>
-                  <button onClick={() => remove(side)} title="Remove" className="btn btn-ghost btn-icon text-ink-400 hover:text-red-500"><Trash2 size={14} /></button>
-                </>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-      {!readOnly && (
-        <form onSubmit={add} className="flex items-center gap-2 flex-wrap">
-          <input value={name} onChange={e => setName(e.target.value)} placeholder="Side, e.g. Salad" maxLength={40} className="input text-sm flex-1 min-w-[8rem]" />
-          <input type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="Price" min="0" className="input text-sm w-24" />
-          <button type="submit" disabled={busy} className="btn btn-primary btn-sm">
-            {busy ? <Loader size={12} className="animate-spin" /> : <Plus size={14} />} Add side
-          </button>
-        </form>
-      )}
-      {readOnly && sides.length === 0 && <p className="text-xs text-ink-400">No sides yet.</p>}
-    </div>
-  )
-}
-
 export default function MenuPage() {
   const [items, setItems] = useState([])
   const [categories, setCategories] = useState([])
-  const [sides, setSides] = useState([])
   const [loading, setLoading] = useState(true)
   const [editItem, setEditItem] = useState(null)
   const [showModal, setShowModal] = useState(false)
@@ -311,10 +221,9 @@ export default function MenuPage() {
   const isViewer = role === 'viewer' || role === 'staff'
 
   useEffect(() => {
-    Promise.all([menuAPI.list(), restaurantAPI.getFeaturedMode().catch(() => null), menuAPI.categories().catch(() => null), menuAPI.sides().catch(() => null)])
-      .then(([menu, mode, cats, sideList]) => {
+    Promise.all([menuAPI.list(), restaurantAPI.getFeaturedMode().catch(() => null), menuAPI.categories().catch(() => null)])
+      .then(([menu, mode, cats]) => {
         setItems(menu.data.data)
-        if (sideList) setSides(sideList.data.data)
         if (cats) setCategories(cats.data.data)
         if (mode) setFeaturedMode(mode.data.data.featuredMode)
         setLoading(false)
@@ -422,8 +331,6 @@ export default function MenuPage() {
           </div>
         </div>
 
-        <SidesCard sides={sides} setSides={setSides} readOnly={isViewer} />
-
         {/* Search */}
         <div className="relative mb-5 max-w-xs">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
@@ -469,8 +376,8 @@ export default function MenuPage() {
                     {item.hasVariants && (
                       <span className="badge bg-ink-100 text-ink-500 text-[10px] shrink-0">{item.variants?.length || 0} options</span>
                     )}
-                    {item.allowsSides && (
-                      <span className="badge bg-emerald-50 text-emerald-600 text-[10px] shrink-0">+ Sides</span>
+                    {item.category?.name?.trim().toLowerCase() === 'sides' && (
+                      <span className="badge bg-emerald-50 text-emerald-600 text-[10px] shrink-0">Side · add to any meal</span>
                     )}
                     {!item.hasVariants && item.trackStock && (
                       <span className={`badge text-[10px] shrink-0 ${item.stock > 0 ? 'bg-ink-100 text-ink-500' : 'bg-red-100 text-red-500'}`}>
@@ -523,7 +430,6 @@ export default function MenuPage() {
         <ItemModal
           item={editItem}
           categories={categories}
-          sides={sides}
           onCategoryAdded={cat => setCategories(prev => prev.some(c => c.id === cat.id) ? prev : [...prev, cat])}
           onSave={saveItem}
           onClose={() => { setShowModal(false); setEditItem(null) }}

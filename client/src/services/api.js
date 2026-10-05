@@ -82,10 +82,6 @@ export const menuAPI = {
   createCategory: (d) => api.post('/menu/categories', d),
   updateCategory: (id, d) => api.put(`/menu/categories/${id}`, d),
   deleteCategory: (id) => api.delete(`/menu/categories/${id}`),
-  sides: () => api.get('/menu/sides'),
-  createSide: (d) => api.post('/menu/sides', d),
-  updateSide: (id, d) => api.put(`/menu/sides/${id}`, d),
-  deleteSide: (id) => api.delete(`/menu/sides/${id}`),
 }
 
 export const orderAPI = {
