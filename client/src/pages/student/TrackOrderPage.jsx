@@ -43,6 +43,9 @@ export default function TrackOrderPage() {
   const goBack = () => navigate(backTo, { state: location.state?.fromState })
   // An order the customer just placed or opened shows straight away; the fetch below updates it
   const [order, setOrder] = useState(() => getRememberedOrder(id))
+  // Keep the remembered copy current (live status changes, cancelling, reviewing), so reopening
+  // this order shows where it is now rather than where it was when it was first loaded
+  useEffect(() => { if (order?.id === id) rememberOrder(order) }, [order, id])
   const [showReview, setShowReview] = useState(false)
   const [review, setReview] = useState({ foodRating: 5, serviceRating: 5, comment: '' })
   const [submitting, setSubmitting] = useState(false)

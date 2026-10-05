@@ -8,9 +8,33 @@ export default function OrderConfirmPageImpl() {
   // Placing the order already returned it in full (see CartDrawer), so show that straight away;
   // the fetch below still brings it up to date
   const [order, setOrder] = useState(() => getRememberedOrder(id))
+  // null while loading or loaded; 'missing' (no such order) or 'failed' (couldn't reach the server)
+  const [loadError, setLoadError] = useState(null)
 
-  useEffect(() => { fetchOrder(id).then(o => { rememberOrder(o); setOrder(o) }) }, [id])
+  const load = () => {
+    setLoadError(null)
+    fetchOrder(id)
+      .then(o => { rememberOrder(o); setOrder(o) })
+      .catch(e => setLoadError(e?.response?.status === 404 ? 'missing' : 'failed'))
+  }
+  useEffect(load, [id])
 
+  // Only when there's nothing to show — a remembered order stays on screen if the refresh fails
+  if (!order && loadError) return (
+    <div className="min-h-dvh bg-alu-bg flex items-center justify-center p-4">
+      <div className="card p-6 w-full max-w-sm text-center">
+        <p className="text-4xl mb-3">{loadError === 'missing' ? '🔍' : '📡'}</p>
+        <h1 className="font-bold text-alu-cream text-lg">{loadError === 'missing' ? "We couldn't find this order" : "Couldn't load your order"}</h1>
+        <p className="text-alu-muted text-sm mt-1">
+          {loadError === 'missing' ? 'It may have been removed. Your other orders are in Order History.' : 'Check your connection and try again. If you placed it, it is in your Order History.'}
+        </p>
+        <div className="flex gap-2 mt-5">
+          {loadError === 'failed' && <button onClick={load} className="btn btn-primary flex-1">Try again</button>}
+          <Link to="/orders" className="btn btn-secondary flex-1">Order History</Link>
+        </div>
+      </div>
+    </div>
+  )
   if (!order) return <div className="min-h-dvh flex items-center justify-center"><div className="text-4xl animate-pulse">🎉</div></div>
 
   const isDelivery = order.fulfillmentType === 'delivery'

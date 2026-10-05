@@ -6,7 +6,7 @@ import { useRestaurantOrderNotifications } from './hooks/useRestaurantOrderNotif
 import { usePwaScope } from './hooks/usePwaScope'
 import { useAppUpdateCheck } from './hooks/useAppUpdateCheck'
 import OfflineScreen from './components/shared/OfflineScreen'
-import { portalHome } from './portal'
+import { portalHome, currentPath } from './portal'
 
 // Customer-facing
 import HomePage from './pages/student/HomePage'
@@ -29,7 +29,8 @@ const CustomerProfilePage = lazy(loadCustomerProfilePage)
 const OrderHistoryPage = lazy(loadOrderHistoryPage)
 const PrivacyPage = lazy(loadPrivacyPage)
 const prefetchCustomerPages = () => {
-  if (/^\/(admin|superadmin|delivery|restaurant\/auth)/.test(window.location.pathname)) return
+  // The app's own path: on restaurant./superadmin. the address bar shows a shortened one (/menu)
+  if (/^\/(admin|superadmin|delivery|restaurant\/auth)/.test(currentPath())) return
   ;[loadSearchPage, loadCustomerAuthPage, loadCustomerProfilePage, loadOrderHistoryPage, loadPrivacyPage].forEach(load => load().catch(() => {}))
 }
 
