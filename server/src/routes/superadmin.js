@@ -59,18 +59,24 @@ router.patch('/restaurants/campus-delivery-all', authSuperAdmin, async (req, res
 // Wipes every order on the platform — customer, restaurant and super admin history, sales and
 // analytics all start from zero. Reviews belong to orders, so they go too and ratings reset.
 // Irreversible, so the client must send { confirm: 'DELETE' }.
-router.delete('/orders/all', authSuperAdmin, async (req, res) => {
+// Factory reset: every order, review, store (live or already deleted) and customer account, with
+// everything hanging off them — menus, staff, promos, visits, help-chat messages, favorites and
+// notification devices all cascade. Only the super admin, delivery runner logins and platform
+// settings survive. Orders and reviews go first because they point at stores and customers
+// without cascading.
+router.delete('/everything', authSuperAdmin, async (req, res) => {
   try {
     if (req.body?.confirm !== 'DELETE') return res.status(400).json({ success:false, error:'Type DELETE to confirm' });
-    const [reviews, orders] = await prisma.$transaction([
+    const [reviews, orders, , restaurants, customers] = await prisma.$transaction([
       prisma.review.deleteMany({}),
       prisma.order.deleteMany({}), // order items and status history cascade
-      prisma.restaurant.updateMany({ data:{ totalOrders:0, totalRevenue:0, rating:0, ratingCount:0 } }),
-      prisma.customer.updateMany({ data:{ totalSpent:0, orderCount:0 } }),
-      prisma.promotion.updateMany({ data:{ usageCount:0 } }),
+      prisma.favorite.deleteMany({}),
+      prisma.restaurant.deleteMany({}),
+      prisma.customer.deleteMany({}),
+      prisma.verificationCode.deleteMany({}),
     ]);
     broadcastCatalogChange(req);
-    res.json({ success:true, data:{ orders:orders.count, reviews:reviews.count } });
+    res.json({ success:true, data:{ orders:orders.count, reviews:reviews.count, restaurants:restaurants.count, customers:customers.count } });
   } catch(e){ res.status(500).json({ success:false, error:e.message }); }
 });
 

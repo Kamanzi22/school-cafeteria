@@ -429,16 +429,18 @@ export default function SuperAdminPage() {
     } finally { setDeliverySaving(false) }
   }
 
-  const wipeAllOrders = async () => {
+  const wipeEverything = async () => {
     if (wipeText !== 'DELETE') return
-    if (!window.confirm('Last check: permanently delete EVERY order and review on the platform?')) return
+    if (!window.confirm('Last check: permanently delete EVERY store, customer account, order and review on the platform?')) return
     setWiping(true)
     try {
-      const res = await superAdminAPI.deleteAllOrders()
-      const { orders, reviews } = res.data.data
-      toast.success(`Deleted ${orders} order(s) and ${reviews} review(s)`)
+      const res = await superAdminAPI.deleteEverything()
+      const { restaurants, customers, orders } = res.data.data
+      toast.success(`Deleted ${restaurants} store(s), ${customers} customer(s) and ${orders} order(s)`)
       setWipeText('')
-    } catch (e) { toast.error(e.response?.data?.error || 'Failed to delete orders') }
+      // Every list on this page (stores, messages, visits, delivery) is now stale — start fresh
+      setTimeout(() => window.location.reload(), 1200)
+    } catch (e) { toast.error(e.response?.data?.error || 'Failed to delete everything') }
     finally { setWiping(false) }
   }
 
@@ -818,14 +820,14 @@ export default function SuperAdminPage() {
 
         <DeliveryRunners />
 
-        {/* Danger zone — wipe every order on the platform */}
+        {/* Danger zone — reset the whole platform */}
         <div className="bg-red-50/60 rounded-2xl border border-red-200 p-5">
-          <h2 className="font-bold text-red-700 mb-1 flex items-center gap-2"><Trash2 size={16}/>Delete All Orders</h2>
-          <p className="text-sm text-red-600 mb-4">Permanently deletes every order from every store: customer order history, restaurant orders, sales reports and analytics all start from zero. All reviews are deleted too and store ratings reset. <strong>This cannot be undone.</strong></p>
+          <h2 className="font-bold text-red-700 mb-1 flex items-center gap-2"><Trash2 size={16}/>Delete Everything</h2>
+          <p className="text-sm text-red-600 mb-4">Permanently deletes every store (with its menu, staff, promotions and visits), every customer account, and every order, review and help-chat message. Only your super admin login, delivery runner logins and platform settings are kept. <strong>This cannot be undone.</strong></p>
           <div className="flex gap-2 flex-wrap">
             <input value={wipeText} onChange={e => setWipeText(e.target.value)} placeholder="Type DELETE to confirm" className="input max-w-xs border-red-200" />
-            <button onClick={wipeAllOrders} disabled={wipeText !== 'DELETE' || wiping} className="btn bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">
-              {wiping ? <Loader size={14} className="animate-spin"/> : <Trash2 size={14}/>}Delete all orders
+            <button onClick={wipeEverything} disabled={wipeText !== 'DELETE' || wiping} className="btn bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">
+              {wiping ? <Loader size={14} className="animate-spin"/> : <Trash2 size={14}/>}Delete everything
             </button>
           </div>
         </div>

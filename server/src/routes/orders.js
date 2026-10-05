@@ -60,6 +60,8 @@ router.post('/', async (req, res) => {
     let customer;
     if (customerId) {
       customer = await prisma.customer.findUnique({ where:{ id:customerId } });
+      // The account was deleted (e.g. a platform reset) while this phone was still signed in
+      if (!customer) return res.status(401).json({ success:false, error:'Your account no longer exists — please sign in again' });
     } else if (guestToken) {
       customer = await prisma.customer.findUnique({ where:{ guestToken } });
       if (!customer) {
