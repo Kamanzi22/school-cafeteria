@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Search, ShoppingBag, User, Star, Clock, MapPin, TrendingUp } from 'lucide-react'
 import { restaurantAPI } from '../../services/api'
-import { getCachedRestaurantList, setCachedRestaurantList, fetchRestaurantList } from '../../lib/catalogCache'
+import { getCachedRestaurantList, setCachedRestaurantList, setCachedRestaurant, cachedRestaurantAge } from '../../lib/catalogCache'
+import { fetchRestaurantList } from '../../lib/earlyData'
 import { useCartStore, useCustomerStore, useUIStore, useAdminStore } from '../../store'
 import { useSocket } from '../../hooks/useSocket'
 import { useLiveRefresh } from '../../hooks/useLiveRefresh'
@@ -114,6 +115,18 @@ export default function HomePage() {
   }, [])
 
   useEffect(() => { if (restaurants.length > 0) setCachedRestaurantList(restaurants, student?.id) }, [restaurants])
+
+  // While the customer looks at the list, quietly load the menus of open restaurants that aren't
+  // saved on the phone yet (or were saved over half an hour ago), so the first tap on one opens it
+  // straight away. The menu screen still refreshes itself when opened. Skipped in data-saver mode.
+  useEffect(() => {
+    if (loading || restaurants.length === 0 || navigator.connection?.saveData) return
+    const t = setTimeout(() => {
+      restaurants.filter(r => r.isOpen && cachedRestaurantAge(r.id, student?.id) > 30 * 60 * 1000).slice(0, 6)
+        .forEach(r => restaurantAPI.get(r.id).then(res => setCachedRestaurant(res.data.data, student?.id)).catch(() => {}))
+    }, 2000)
+    return () => clearTimeout(t)
+  }, [loading])
 
   // A restaurant changing its settings or being approved, suspended or deleted, or the super
   // admin changing platform settings — reload the list quietly (no spinner). Open/closed is

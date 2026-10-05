@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft, CheckCircle, Clock, X, Star, Loader, Phone } from 'lucide-react'
 import { orderAPI, reviewAPI } from '../../services/api'
+import { fetchOrder, getRememberedOrder, rememberOrder } from '../../lib/earlyData'
 import { useSocket } from '../../hooks/useSocket'
 import { useCustomerStore } from '../../store'
 import { showOrderStatusToast } from '../../hooks/useOrderNotifications'
@@ -40,7 +41,8 @@ export default function TrackOrderPage() {
   const backTo = location.state?.from || '/'
   // fromState lets that page restore its own back destination (e.g. order history → cart)
   const goBack = () => navigate(backTo, { state: location.state?.fromState })
-  const [order, setOrder] = useState(null)
+  // An order the customer just placed or opened shows straight away; the fetch below updates it
+  const [order, setOrder] = useState(() => getRememberedOrder(id))
   const [showReview, setShowReview] = useState(false)
   const [review, setReview] = useState({ foodRating: 5, serviceRating: 5, comment: '' })
   const [submitting, setSubmitting] = useState(false)
@@ -63,7 +65,7 @@ export default function TrackOrderPage() {
 
   useEffect(() => {
     socket.emit('join:order', id)
-    orderAPI.get(id).then(r => setOrder(r.data.data)).catch(() => navigate('/orders'))
+    fetchOrder(id).then(o => { rememberOrder(o); setOrder(o) }).catch(() => navigate('/orders'))
     return () => socket.emit('leave:order', id)
   }, [id])
 

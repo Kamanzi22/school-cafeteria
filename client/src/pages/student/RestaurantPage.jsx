@@ -12,6 +12,7 @@ import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 import { promoHeadline, promoTerms } from '../../lib/promo'
 import { getCachedRestaurant, setCachedRestaurant } from '../../lib/catalogCache'
+import { fetchRestaurant } from '../../lib/earlyData'
 
 // Category names that actually have meals, in the restaurant's own category order (Food, then Drinks)
 const usedCategoryNames = (r) => {
@@ -106,8 +107,7 @@ export default function RestaurantPage() {
       setActiveCategory(initialCategory(cached, focusItemId))
       setLoading(false)
     }
-    restaurantAPI.get(id).then(r => {
-      const fresh = r.data.data
+    fetchRestaurant(id).then(fresh => {
       setRestaurant(fresh)
       setFavorited(fresh.isFavorited)
       // Keep the tab the customer is already on when the menu was shown from the cache

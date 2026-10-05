@@ -5,6 +5,7 @@ import { useCartStore, useCustomerStore, useUIStore } from '../../store'
 import { orderAPI, restaurantAPI, promoAPI } from '../../services/api'
 import { promoDiscount, promoHeadline } from '../../lib/promo'
 import { enableNotifications } from '../../services/push'
+import { rememberOrder } from '../../lib/earlyData'
 import toast from 'react-hot-toast'
 import { useLiveRefresh } from '../../hooks/useLiveRefresh'
 
@@ -116,6 +117,8 @@ export default function CartDrawer() {
           promoCode: group.promo ? group.promo.code : undefined,
         })
       }))
+      // The confirmation and tracking screens show these straight away instead of fetching them again first
+      results.forEach(r => { if (r.status === 'fulfilled') rememberOrder(r.value.data.data) })
       const placed = groups.filter((_, i) => results[i].status === 'fulfilled')
       const failed = groups.map((group, i) => ({ group, result: results[i] })).filter(f => f.result.status === 'rejected')
       if (failed.length === 0) {

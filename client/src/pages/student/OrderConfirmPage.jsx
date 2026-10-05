@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { CheckCircle, MapPin, Backpack, Home, Radar } from 'lucide-react'
-import { orderAPI } from '../../services/api'
+import { fetchOrder, getRememberedOrder, rememberOrder } from '../../lib/earlyData'
 
 export default function OrderConfirmPageImpl() {
   const { id } = useParams()
-  const [order, setOrder] = useState(null)
+  // Placing the order already returned it in full (see CartDrawer), so show that straight away;
+  // the fetch below still brings it up to date
+  const [order, setOrder] = useState(() => getRememberedOrder(id))
 
-  useEffect(() => { orderAPI.get(id).then(r => setOrder(r.data.data)) }, [id])
+  useEffect(() => { fetchOrder(id).then(o => { rememberOrder(o); setOrder(o) }) }, [id])
 
   if (!order) return <div className="min-h-dvh flex items-center justify-center"><div className="text-4xl animate-pulse">🎉</div></div>
 

@@ -43,19 +43,30 @@
   <!-- Opens the connection to the API while the app's code is still downloading, so the first
        request doesn't also pay for the connection setup (~0.3 s from Rwanda). -->
   <link rel="preconnect" href="%VITE_BACKEND_URL%" crossorigin />
-  <!-- The customer home screen's restaurant list, requested now rather than after the app's code
-       has downloaded and started (~1 s later on a phone). src/lib/catalogCache.js hands it to the
-       home screen; on any other page it's simply never used. Only on the customer site's own
-       home address — the restaurant./superadmin. redirect above has already navigated away. -->
+  <!-- The data the opened screen needs, requested now rather than after the app's code has
+       downloaded and started (~0.5-1 s later on a phone): the home list, a restaurant's menu (also
+       opened from shared links) or an order (opened from notifications). src/lib/earlyData.js
+       hands it to that screen. Not on restaurant./superadmin. — the redirect above has already
+       navigated away from those. -->
   <script>
     (function () {
       var api = '%VITE_BACKEND_URL%'
-      if (api.charAt(0) === '%' || location.pathname !== '/' || !window.fetch) return
+      if (api.charAt(0) === '%' || !window.fetch) return
       if (/^(restaurant|superadmin)\./.test(location.hostname)) return
-      // Signed-in customers get their favorites flagged in the list, so send their login as the app would
-      var token = null
-      try { token = JSON.parse(localStorage.getItem('cc-customer-v4') || '{}').state.token || null } catch (e) {}
-      window.__ccRestaurantList = fetch(api + '/api/restaurants', token ? { headers: { Authorization: 'Bearer ' + token } } : undefined)
+      var p = location.pathname, m, path = null, withLogin = false
+      if (p === '/') path = '/restaurants'
+      else if ((m = p.match(/^\/restaurant\/([^/]+)\/?$/)) && m[1] !== 'auth') { path = '/restaurants/' + m[1]; withLogin = true }
+      else if ((m = p.match(/^\/order\/(track|confirm)\/([^/]+)\/?$/))) path = '/orders/' + m[2]
+      if (!path) return
+      // A menu shows whether the signed-in customer saved it as a favorite, so that one is asked for
+      // with their login, as the app would. The others don't depend on who's asking.
+      var headers
+      if (withLogin) try {
+        var token = JSON.parse(localStorage.getItem('cc-customer-v4') || '{}').state.token
+        if (token) headers = { Authorization: 'Bearer ' + token }
+      } catch (e) {}
+      window.__ccEarly = {}
+      window.__ccEarly[path] = fetch(api + '/api' + path, headers ? { headers: headers } : undefined)
         .then(function (r) { return r.ok ? r.json() : null })
         .catch(function () { return null })
     })()
