@@ -5,6 +5,7 @@ import { useAdminStore } from '../../store'
 import AdminLayout from '../../components/restaurant/AdminLayout'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
+import { sidesLabel } from '../../lib/sides'
 
 const STATUS_LABELS = { pending: 'Received', confirmed: 'Confirmed', preparing: 'Cooking', ready: 'Ready', on_the_way: 'On the way', picked_up: 'Picked up', cancelled: 'Cancelled' }
 const STATUS_COLORS = {
@@ -208,7 +209,7 @@ export default function OrderHistoryPage() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-ink-500 max-w-[240px]">
-                        <span className="line-clamp-2">{o.items.map(i => `${i.quantity}× ${i.menuItemName}${i.variantName ? ` (${i.variantName})` : ''}${i.notes ? ` — “${i.notes}”` : ''}`).join(', ')}</span>
+                        <span className="line-clamp-2">{o.items.map(i => `${i.quantity}× ${i.menuItemName}${i.variantName ? ` (${i.variantName})` : ''}${i.sides ? ` + ${sidesLabel(i.sides)}` : ''}${i.notes ? ` — “${i.notes}”` : ''}`).join(', ')}</span>
                       </td>
                       <td className="px-4 py-3 text-right font-semibold text-ink-900 whitespace-nowrap">{o.totalPrice.toLocaleString()} RWF</td>
                       <td className="px-4 py-3">

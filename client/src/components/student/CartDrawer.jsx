@@ -7,6 +7,7 @@ import { promoDiscount, promoHeadline } from '../../lib/promo'
 import { enableNotifications } from '../../services/push'
 import { rememberOrder } from '../../lib/earlyData'
 import toast from 'react-hot-toast'
+import { sidesLabel } from '../../lib/sides'
 import { useLiveRefresh } from '../../hooks/useLiveRefresh'
 
 export default function CartDrawer() {
@@ -109,7 +110,7 @@ export default function CartDrawer() {
         return orderAPI.place({
           customerId: customer.id,
           restaurantId: group.id,
-          items: group.items.map(i => ({ menuItemId: i.id, variantId: i.variantId || undefined, quantity: i.qty, notes: i.notes?.trim() || undefined })),
+          items: group.items.map(i => ({ menuItemId: i.id, variantId: i.variantId || undefined, sideIds: i.sides?.length ? i.sides.map(s => s.id) : undefined, quantity: i.qty, notes: i.notes?.trim() || undefined })),
           paymentMethod: 'cash',
           fulfillmentType: f.type,
           deliveryScope: f.type === 'delivery' ? f.scope : undefined,
@@ -184,6 +185,7 @@ export default function CartDrawer() {
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-sm text-ink-900 truncate">{item.name}</p>
                           {item.variantName && <p className="text-xs text-ink-500">{item.variantName}</p>}
+                          {item.sides?.length > 0 && <p className="text-xs text-ink-500">+ {sidesLabel(item.sides)}</p>}
                           <p className="text-xs text-ink-400">{item.price.toLocaleString()} RWF each</p>
                         </div>
                         <div className="flex items-center gap-2">

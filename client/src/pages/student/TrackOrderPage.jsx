@@ -8,6 +8,7 @@ import { useCustomerStore } from '../../store'
 import { showOrderStatusToast } from '../../hooks/useOrderNotifications'
 import { format, formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
+import { sidesLabel } from '../../lib/sides'
 
 const STEPS = [
   { key: 'pending', emoji: '📋', label: 'Order Placed', sub: 'Waiting for confirmation' },
@@ -237,6 +238,7 @@ export default function TrackOrderPage() {
               <div key={item.id} className="flex justify-between gap-3 text-sm">
                 <span className="text-alu-muted min-w-0">
                   {item.quantity}× {item.menuItemName}
+                  {item.sides && <span className="block text-xs">+ {sidesLabel(item.sides)}</span>}
                   {item.notes && <span className="block text-xs italic break-words">“{item.notes}”</span>}
                 </span>
                 <span className="font-medium text-alu-cream">{item.subtotal.toLocaleString()} RWF</span>

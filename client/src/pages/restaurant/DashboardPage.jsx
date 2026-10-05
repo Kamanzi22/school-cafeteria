@@ -7,6 +7,7 @@ import AdminLayout from '../../components/restaurant/AdminLayout'
 import AppNudge from '../../components/restaurant/AppNudge'
 import { format, formatDistanceToNow, isToday } from 'date-fns'
 import toast from 'react-hot-toast'
+import { sidesLabel } from '../../lib/sides'
 
 // New-order chime, made with Web Audio so there's no sound file to ship. Browsers only allow
 // sound after the page has been tapped or clicked, so the context is created/resumed on the
@@ -161,6 +162,7 @@ function OrderCard({ order, onUpdate, isViewer }) {
                 <span className="text-base mr-1">{item.menuItemEmoji}</span>
                 {item.quantity}× {item.menuItemName}
                 {item.variantName && <span className="text-ink-400 font-normal"> ({item.variantName})</span>}
+                {item.sides && <span className="text-ink-500 font-semibold"> + {sidesLabel(item.sides)}</span>}
               </span>
               <span className="text-ink-500 shrink-0">{item.subtotal.toLocaleString()}</span>
             </div>

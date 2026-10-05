@@ -6,6 +6,7 @@ import { useSocket } from '../../hooks/useSocket'
 import { useCustomerStore, useCartStore, useUIStore } from '../../store'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
+import { parseSides } from '../../lib/sides'
 
 const STATUS_LABELS = { pending: 'Pending', confirmed: 'Confirmed', preparing: 'Preparing', ready: 'Ready!', on_the_way: 'On the Way', picked_up: 'Picked Up', cancelled: 'Cancelled' }
 
@@ -62,8 +63,10 @@ export default function OrderHistoryPage() {
       for (const item of order.items) {
         const m = r.items.find(mi => mi.id === item.menuItemId)
         const variant = item.variantId ? m?.variants?.find(v => v.id === item.variantId) : null
+        // Sides at today's price; any that were removed since are left off rather than blocking the reorder
+        const sides = m?.allowsSides ? parseSides(item.sides).map(s => r.sides?.find(sd => sd.id === s.id)).filter(Boolean) : []
         if (!m || !m.isAvailable || (item.variantId ? !variant?.isAvailable : m.hasVariants)) { unavailable.push(item.menuItemName); continue }
-        for (let n = 0; n < item.quantity; n++) addItem({ id: m.id, name: m.name, price: m.price, emoji: m.emoji }, restaurant, variant)
+        for (let n = 0; n < item.quantity; n++) addItem({ id: m.id, name: m.name, price: m.price, emoji: m.emoji }, restaurant, variant, sides)
         added++
       }
       if (added === 0) { toast.error('None of these items are available anymore'); return }

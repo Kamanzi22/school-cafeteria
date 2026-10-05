@@ -30,9 +30,16 @@ const initialCategory = (r, focusItemId) => {
   return target ? (target.category?.name || (cats.length > 0 ? OTHER_TAB : null)) : (cats[0] || null)
 }
 
-function VariantPickerModal({ item, onPick, onClose }) {
+// Opens when a meal needs choices before it goes in the cart: an option (size etc.) when it has
+// variants — required — and/or the restaurant's sides when the meal takes them — optional.
+function OptionsModal({ item, sides, onPick, onClose }) {
+  const variants = item.hasVariants ? item.variants || [] : []
   const [selected, setSelected] = useState(null)
-  const variants = item.variants || []
+  const [sideIds, setSideIds] = useState([])
+  const variant = variants.find(v => v.id === selected) || null
+  const pickedSides = sides.filter(sd => sideIds.includes(sd.id))
+  const total = item.price + (variant?.priceDelta || 0) + pickedSides.reduce((s, sd) => s + sd.price, 0)
+  const toggleSide = (id) => setSideIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
 
   return (
     <div className="fixed inset-0 bg-ink-950/60 z-50 flex items-end sm:items-center justify-center sm:p-4 backdrop-blur-sm">
@@ -40,33 +47,55 @@ function VariantPickerModal({ item, onPick, onClose }) {
         <div className="flex items-center justify-between p-5 border-b border-ink-100 sticky top-0 bg-white z-10">
           <div>
             <h2 className="font-bold text-lg text-ink-900">{item.name}</h2>
-            <p className="text-xs text-ink-400">Choose an option</p>
+            <p className="text-xs text-ink-400">{variants.length > 0 ? 'Choose an option' : 'Add sides if you like'}</p>
           </div>
           <button onClick={onClose} className="btn btn-ghost btn-icon"><X size={18} /></button>
         </div>
-        <div className="p-5 space-y-2">
-          {variants.map(v => {
-            const outOfStock = v.stock <= 0 || !v.isAvailable
-            return (
-              <button key={v.id} disabled={outOfStock} onClick={() => setSelected(v.id)}
-                className={`w-full flex items-center justify-between gap-3 p-3.5 rounded-xl border-2 text-left transition ${outOfStock ? 'opacity-40 cursor-not-allowed border-ink-100' : selected === v.id ? 'border-flame-500 bg-flame-50' : 'border-ink-100 hover:border-ink-200'}`}>
-                <div>
-                  <p className="font-semibold text-sm text-ink-900">{v.name}</p>
-                  <p className="text-xs text-ink-400">
-                    {outOfStock ? 'Out of stock' : v.stock <= 5 ? `Only ${v.stock} left` : 'In stock'}
-                  </p>
-                </div>
-                <span className="font-bold text-sm text-flame-500 shrink-0">
-                  {(item.price + v.priceDelta).toLocaleString()} RWF
-                </span>
-              </button>
-            )
-          })}
-        </div>
+        {variants.length > 0 && (
+          <div className="p-5 space-y-2">
+            {variants.map(v => {
+              const outOfStock = v.stock <= 0 || !v.isAvailable
+              return (
+                <button key={v.id} disabled={outOfStock} onClick={() => setSelected(v.id)}
+                  className={`w-full flex items-center justify-between gap-3 p-3.5 rounded-xl border-2 text-left transition ${outOfStock ? 'opacity-40 cursor-not-allowed border-ink-100' : selected === v.id ? 'border-flame-500 bg-flame-50' : 'border-ink-100 hover:border-ink-200'}`}>
+                  <div>
+                    <p className="font-semibold text-sm text-ink-900">{v.name}</p>
+                    <p className="text-xs text-ink-400">
+                      {outOfStock ? 'Out of stock' : v.stock <= 5 ? `Only ${v.stock} left` : 'In stock'}
+                    </p>
+                  </div>
+                  <span className="font-bold text-sm text-flame-500 shrink-0">
+                    {(item.price + v.priceDelta).toLocaleString()} RWF
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+        {sides.length > 0 && (
+          <div className={`p-5 space-y-2 ${variants.length > 0 ? 'pt-0' : ''}`}>
+            <p className="text-xs font-bold text-ink-500 uppercase tracking-wider">Add sides <span className="normal-case font-medium text-ink-400">(optional)</span></p>
+            {sides.map(sd => {
+              const on = sideIds.includes(sd.id)
+              return (
+                <button key={sd.id} type="button" aria-pressed={on} onClick={() => toggleSide(sd.id)}
+                  className={`w-full flex items-center justify-between gap-3 p-3.5 rounded-xl border-2 text-left transition ${on ? 'border-flame-500 bg-flame-50' : 'border-ink-100 hover:border-ink-200'}`}>
+                  <span className="flex items-center gap-2.5">
+                    <span className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${on ? 'bg-flame-500 border-flame-500 text-white' : 'border-ink-300'}`}>
+                      {on && <Check size={12} strokeWidth={3} />}
+                    </span>
+                    <span className="font-semibold text-sm text-ink-900">{sd.name}</span>
+                  </span>
+                  <span className="font-bold text-sm text-flame-500 shrink-0">+{sd.price.toLocaleString()} RWF</span>
+                </button>
+              )
+            })}
+          </div>
+        )}
         <div className="p-5 pt-0">
-          <button disabled={!selected} onClick={() => onPick(variants.find(v => v.id === selected))}
+          <button disabled={variants.length > 0 && !variant} onClick={() => onPick(variant, pickedSides)}
             className="btn btn-primary w-full btn-lg">
-            Add to cart
+            Add to cart · {total.toLocaleString()} RWF
           </button>
         </div>
       </div>
@@ -90,7 +119,8 @@ export default function RestaurantPage() {
   })
   const [search, setSearch] = useState('')
   const [favorited, setFavorited] = useState(() => !!getCachedRestaurant(id, student?.id)?.isFavorited)
-  const [variantItem, setVariantItem] = useState(null)
+  // The meal whose option/sides sheet is open
+  const [pickerItem, setPickerItem] = useState(null)
   // A meal tapped in the Featured strip — scrolled to once its category tab has rendered
   const [scrollToId, setScrollToId] = useState(null)
   const { items, addItem, setQty, promoCodes, setPromoCode } = useCartStore()
@@ -149,9 +179,14 @@ export default function RestaurantPage() {
 
   const getQty = (itemId) => items.filter(i => i.id === itemId).reduce((s, i) => s + i.qty, 0)
 
-  const handleAdd = (item, variant = null) => {
+  const sides = restaurant?.sides || []
+  const takesSides = (item) => item.allowsSides && sides.length > 0
+  const needsPicker = (item) => item.hasVariants || takesSides(item)
+
+  // pickedSides stays null until the customer has been through the options sheet
+  const handleAdd = (item, variant = null, pickedSides = null) => {
     if (!student) { toast.error('Sign in to order'); navigate('/auth'); return }
-    if (item.hasVariants && !variant) { setVariantItem(item); return }
+    if (needsPicker(item) && pickedSides === null) { setPickerItem(item); return }
     if (variant && (variant.stock <= 0 || !variant.isAvailable)) { toast.error('That option is out of stock'); return }
     if (!variant && item.trackStock && item.stock <= 0) { toast.error('Out of stock'); return }
     addItem(
@@ -162,10 +197,11 @@ export default function RestaurantPage() {
         offersCampusDelivery: restaurant.offersCampusDelivery, offersOffCampusDelivery: restaurant.offersOffCampusDelivery,
         campusDeliveryFee: restaurant.campusDeliveryFee, offCampusDeliveryFee: restaurant.offCampusDeliveryFee,
       },
-      variant
+      variant,
+      pickedSides || []
     )
     toast.success(`${item.name} added!`)
-    setVariantItem(null)
+    setPickerItem(null)
   }
 
   // Once a menu has any categories, meals without one go under an "Other" tab so they don't disappear
@@ -386,6 +422,9 @@ export default function RestaurantPage() {
                     {item.calories && <span className={`text-xs ${mutedText} flex items-center gap-0.5`}><Flame size={10} />{item.calories} cal</span>}
                     <span className={`text-xs ${mutedText} flex items-center gap-0.5`}><Clock size={10} />{item.prepTime} min</span>
                   </div>
+                  {takesSides(item) && (
+                    <p className={`text-[11px] ${mutedText} mt-1`}>Add sides: {sides.map(sd => `${sd.name} +${sd.price.toLocaleString()}`).join(', ')}</p>
+                  )}
                   {item.allergens && JSON.parse(item.allergens).length > 0 && (
                     <p className="text-[10px] text-amber-600 mt-1 flex items-center gap-1">
                       <AlertCircle size={10} />Contains: {JSON.parse(item.allergens).join(', ')}
@@ -400,9 +439,9 @@ export default function RestaurantPage() {
                       : <div className="w-full h-full flex items-center justify-center text-3xl">{item.emoji}</div>}
                   </div>
                   {canOrder ? (
-                    item.hasVariants ? (
+                    needsPicker(item) ? (
                       <button onClick={() => handleAdd(item)} className="btn btn-primary btn-sm text-xs px-3 relative">
-                        {qty > 0 ? `Add more (${qty})` : 'Select'}
+                        {qty > 0 ? `Add more (${qty})` : item.hasVariants ? 'Select' : 'Add'}
                       </button>
                     ) : qty > 0 ? (
                       <div className="flex items-center gap-2">
@@ -444,8 +483,9 @@ export default function RestaurantPage() {
         </div>
       )}
 
-      {variantItem && (
-        <VariantPickerModal item={variantItem} onClose={() => setVariantItem(null)} onPick={(v) => handleAdd(variantItem, v)} />
+      {pickerItem && (
+        <OptionsModal item={pickerItem} sides={takesSides(pickerItem) ? sides : []} onClose={() => setPickerItem(null)}
+          onPick={(v, picked) => handleAdd(pickerItem, v, picked)} />
       )}
 
       <CartDrawer />

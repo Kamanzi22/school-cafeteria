@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { CheckCircle, MapPin, Backpack, Home, Radar } from 'lucide-react'
 import { fetchOrder, getRememberedOrder, rememberOrder } from '../../lib/earlyData'
+import { sidesLabel } from '../../lib/sides'
 
 export default function OrderConfirmPageImpl() {
   const { id } = useParams()
@@ -66,6 +67,7 @@ export default function OrderConfirmPageImpl() {
               <div key={item.id} className="flex justify-between gap-3 text-sm">
                 <span className="text-alu-muted min-w-0">
                   {item.quantity}× {item.menuItemName}
+                  {item.sides && <span className="block text-xs">+ {sidesLabel(item.sides)}</span>}
                   {item.notes && <span className="block text-xs italic break-words">“{item.notes}”</span>}
                 </span>
                 <span className="font-semibold text-alu-cream">{item.subtotal.toLocaleString()} RWF</span>

@@ -65,6 +65,7 @@ model Restaurant {
   staff         RestaurantStaff[]
   categories    MenuCategory[]
   items         MenuItem[]
+  sides         MenuSide[]
   orders        Order[]
   reviews       Review[]
   promotions    Promotion[]
@@ -133,6 +134,7 @@ model MenuItem {
   stock         Int?
   hasVariants   Boolean       @default(false)
   sku           String?
+  allowsSides   Boolean       @default(false) // customers can add the restaurant's sides (MenuSide) to it
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -161,6 +163,23 @@ model ItemVariant {
   orderItems  OrderItem[]
 
   @@index([menuItemId])
+}
+
+// Extras a customer can add to a meal, e.g. "Salad +500". One list per restaurant; each menu item
+// opts in with allowsSides. Orders keep their own copy of what was picked (OrderItem.sides), so
+// renaming, repricing or deleting a side never changes a past order.
+model MenuSide {
+  id           String     @id @default(uuid())
+  restaurantId String
+  name         String
+  price        Float      @default(0)
+  isAvailable  Boolean    @default(true)
+  sortOrder    Int        @default(0)
+  createdAt    DateTime   @default(now())
+
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId])
 }
 
 // ─── CUSTOMERS ──────────────────────────────────────────────────────────────
@@ -302,6 +321,7 @@ model OrderItem {
   menuItemEmoji     String       @default("🍴")
   variantId         String?
   variantName       String?
+  sides             String?      // JSON [{ id, name, price }] picked for each unit; already counted in unitPrice
   quantity          Int
   unitPrice         Float
   subtotal          Float

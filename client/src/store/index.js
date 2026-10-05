@@ -1,19 +1,24 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-// Cart — supports items from multiple restaurants; variants are separate lines
-const cartKey = (itemId, variantId) => `${itemId}:${variantId || ''}`
+// Cart — supports items from multiple restaurants; each option (variant) and each set of sides
+// is its own line. A meal with no option and no sides keeps the plain `${id}:` key.
+const cartKey = (itemId, variantId, sides = []) => {
+  const base = `${itemId}:${variantId || ''}`
+  return sides.length ? `${base}:${sides.map(s => s.id).sort().join(',')}` : base
+}
 
 export const useCartStore = create(persist((set, get) => ({
   items: [],
-  addItem: (item, restaurant, variant = null) => {
-    const key = cartKey(item.id, variant?.id)
+  addItem: (item, restaurant, variant = null, sides = []) => {
+    const key = cartKey(item.id, variant?.id, sides)
     const existing = get().items.find(i => i.key === key)
     if (existing) set({ items: get().items.map(i => i.key === key ? { ...i, qty: i.qty+1 } : i) })
     else set({ items: [...get().items, {
       ...item, key, qty: 1,
-      price: item.price + (variant?.priceDelta || 0),
+      price: item.price + (variant?.priceDelta || 0) + sides.reduce((s, sd) => s + sd.price, 0),
       variantId: variant?.id || null, variantName: variant?.name || null,
+      sides: sides.map(({ id, name, price }) => ({ id, name, price })),
       restaurantId: restaurant.id, restaurantName: restaurant.name, restaurantEmoji: restaurant.emoji || '🍽️',
       restaurantOffersPickup: restaurant.offersPickup !== false, restaurantOffersDelivery: !!restaurant.offersDelivery,
       restaurantOffersCampusDelivery: !!restaurant.offersCampusDelivery, restaurantOffersOffCampusDelivery: !!restaurant.offersOffCampusDelivery,

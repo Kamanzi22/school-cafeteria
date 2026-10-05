@@ -67,9 +67,14 @@ router.post('/', async (req, res) => {
       customer = await prisma.customer.create({ data:{ accountType:'guest', name:guestName||'Guest', phone:guestPhone, guestToken: require('uuid').v4() } });
     }
 
-    const menuIds = items.map(i => i.menuItemId);
+    // The same meal can be on two lines (another option, or with/without sides), so compare unique ids
+    const menuIds = [...new Set(items.map(i => i.menuItemId))];
     const menuItems = await prisma.menuItem.findMany({ where:{ id:{ in:menuIds }, restaurantId, isAvailable:true }, include:{ variants:true } });
     if (menuItems.length !== menuIds.length) return res.status(400).json({ success:false, error:'One or more items are unavailable' });
+
+    // Sides ("+ Salad") the customer picked, checked against this restaurant's own list
+    const sideIds = [...new Set(items.flatMap(i => Array.isArray(i.sideIds) ? i.sideIds : []))];
+    const sides = sideIds.length ? await prisma.menuSide.findMany({ where:{ id:{ in:sideIds }, restaurantId } }) : [];
 
     let subtotal = 0;
     const orderItems = items.map(item => {
@@ -83,9 +88,17 @@ router.post('/', async (req, res) => {
       } else if (m.hasVariants) {
         throw new OrderValidationError(`${m.name}: please select an option`);
       }
+      const picked = [];
+      for (const sid of new Set(Array.isArray(item.sideIds) ? item.sideIds : [])) {
+        const side = sides.find(sd => sd.id === sid);
+        if (!side || !side.isAvailable) throw new OrderValidationError(`${m.name}: a side you picked is no longer available`);
+        if (!m.allowsSides) throw new OrderValidationError(`${m.name} doesn't come with sides`);
+        picked.push({ id:side.id, name:side.name, price:side.price });
+        unitPrice += side.price;
+      }
       const sub = unitPrice * item.quantity;
       subtotal += sub;
-      return { menuItemId:m.id, menuItemName:m.name, menuItemEmoji:m.emoji, variantId:variant?.id||null, variantName:variant?.name||null, quantity:item.quantity, unitPrice, subtotal:sub, notes:String(item.notes||'').trim().slice(0, 200)||null };
+      return { menuItemId:m.id, menuItemName:m.name, menuItemEmoji:m.emoji, variantId:variant?.id||null, variantName:variant?.name||null, sides:picked.length ? JSON.stringify(picked) : null, quantity:item.quantity, unitPrice, subtotal:sub, notes:String(item.notes||'').trim().slice(0, 200)||null };
     });
 
     if (subtotal < restaurant.minOrder) return res.status(400).json({ success:false, error:`Minimum order is ${restaurant.minOrder.toLocaleString()} RWF` });
