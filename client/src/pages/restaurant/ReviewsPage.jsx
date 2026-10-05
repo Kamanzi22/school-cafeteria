@@ -15,7 +15,7 @@ export default function ReviewsPage() {
   const isViewer = role === 'viewer'
 
   useEffect(() => {
-    restaurantAPI.getReviews(restaurant.id).then(r => { setReviews(r.data.data); setLoading(false) })
+    restaurantAPI.getReviews(restaurant.id, { limit: 1000 }).then(r => { setReviews(r.data.data); setLoading(false) })
   }, [restaurant.id])
 
   const submitReply = async (id) => {

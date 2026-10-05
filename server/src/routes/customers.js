@@ -35,9 +35,13 @@ router.delete('/:id/guest', optionalCustomer, requireSelf, async (req, res) => {
     if (!customer) return res.status(404).json({ success: false, error: 'Not found' });
     if (customer.accountType !== 'guest') return res.status(403).json({ success: false, error: 'Only guest accounts can be deleted this way' });
 
-    await prisma.review.deleteMany({ where: { customerId: req.params.id } });
-    await prisma.order.deleteMany({ where: { customerId: req.params.id } });
-    await prisma.customer.delete({ where: { id: req.params.id } });
+    // Signing out as a guest forgets who they were, but their orders and reviews stay — they're
+    // part of the restaurants' sales and history. The account can't be signed into again after this.
+    await prisma.$transaction([
+      prisma.pushSubscription.deleteMany({ where: { customerId: req.params.id } }),
+      prisma.favorite.deleteMany({ where: { customerId: req.params.id } }),
+      prisma.customer.update({ where: { id: req.params.id }, data: { name: 'Guest', phone: null, guestToken: null } }),
+    ]);
 
     res.json({ success: true });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }

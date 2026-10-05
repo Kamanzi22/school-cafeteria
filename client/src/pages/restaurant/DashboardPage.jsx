@@ -8,6 +8,36 @@ import AppNudge from '../../components/restaurant/AppNudge'
 import { format, formatDistanceToNow, isToday } from 'date-fns'
 import toast from 'react-hot-toast'
 
+// New-order chime, made with Web Audio so there's no sound file to ship. Browsers only allow
+// sound after the page has been tapped or clicked, so the context is created/resumed on the
+// first interaction (see DashboardPage) and reused from then on.
+let audioCtx = null
+const unlockAudio = () => {
+  try {
+    audioCtx ||= new (window.AudioContext || window.webkitAudioContext)()
+    if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {})
+  } catch {}
+}
+const playNewOrderChime = () => {
+  try {
+    unlockAudio()
+    if (!audioCtx || audioCtx.state !== 'running') return
+    const start = audioCtx.currentTime
+    ;[[880, 0], [1320, 0.18]].forEach(([freq, at]) => {
+      const osc = audioCtx.createOscillator()
+      const gain = audioCtx.createGain()
+      osc.type = 'sine'
+      osc.frequency.value = freq
+      gain.gain.setValueAtTime(0.0001, start + at)
+      gain.gain.exponentialRampToValueAtTime(0.4, start + at + 0.02)
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + at + 0.35)
+      osc.connect(gain).connect(audioCtx.destination)
+      osc.start(start + at)
+      osc.stop(start + at + 0.4)
+    })
+  } catch {}
+}
+
 const STATUS_NEXT = { pending: 'confirmed', confirmed: 'preparing', preparing: 'ready', ready: 'picked_up' }
 const BTN_LABELS = { pending: 'Confirm Order', confirmed: 'Start Cooking', preparing: 'Mark Ready', ready: 'Picked Up ✓' }
 const BTN_ICONS = { pending: CheckCircle, confirmed: ChefHat, preparing: Bell, ready: CheckCircle }
@@ -224,7 +254,7 @@ export default function DashboardPage() {
       if (order.restaurantId !== restaurant.id) return
       setOrders(prev => [order, ...prev.filter(o => o.id !== order.id)])
       toast.success(`🔔 New order from ${order.customer?.name}!`, { duration: 6000 })
-      try { new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAA').play() } catch {}
+      playNewOrderChime()
     },
     'order:statusChanged': (updated) => {
       if (updated.restaurantId !== restaurant.id) return
@@ -236,6 +266,13 @@ export default function DashboardPage() {
       toast.error(`Order ${updated.orderNumber} cancelled by the customer`)
     }
   })
+
+  // Let the chime play: the first tap or key press anywhere on the dashboard unlocks sound
+  useEffect(() => {
+    const events = ['pointerdown', 'keydown', 'touchstart']
+    events.forEach(e => window.addEventListener(e, unlockAudio, { passive: true }))
+    return () => events.forEach(e => window.removeEventListener(e, unlockAudio))
+  }, [])
 
   useEffect(() => {
     getSocket().emit('join:restaurant', { id: restaurant.id, token })

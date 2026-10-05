@@ -28,7 +28,7 @@ function RestaurantCard({ r, index, matchedItems }) {
             {r.isOpen ? '● Open' : '● Closed'}
           </span>
         </div>
-        {r._count?.orders > 50 && (
+        {r.totalOrders > 50 && (
           <div className="absolute top-3 left-3 badge bg-flame-500/20 text-flame-300">
             <TrendingUp size={10} /> Popular
           </div>

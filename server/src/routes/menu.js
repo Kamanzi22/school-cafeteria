@@ -33,6 +33,14 @@ async function syncVariants(tx, menuItemId, variants) {
 const parseStock = (v) => (v === undefined || v === null || v === '' ? null : Math.max(0, parseInt(v) || 0));
 // A category id is only usable if it belongs to the caller's own restaurant
 const ownsCategory = async (restaurantId, categoryId) => !!(await prisma.menuCategory.findFirst({ where:{ id:categoryId, restaurantId }, select:{ id:true } }));
+// The menu badges (Veg, Vegan, Spicy 🌶, 🔥 Popular). Only the ones sent are set, so an edit that
+// leaves them out keeps what's saved. Vegan food is vegetarian too.
+const dietaryTags = (tags) => {
+  const out = {};
+  for (const [k, v] of Object.entries(tags)) if (v !== undefined) out[k] = v === true || v === 'true';
+  if (out.isVegan) out.isVeg = true;
+  return out;
+};
 const validPrice = (v) => v !== undefined && v !== null && v !== '' && Number.isFinite(parseFloat(v)) && parseFloat(v) >= 0;
 // Tells any customer with this restaurant's menu open right now to refetch it — same
 // broadcast-and-filter-client-side pattern as 'restaurant:status' for open/closed.
@@ -102,7 +110,7 @@ router.get('/admin', authStaff, async (req, res) => {
 
 router.post('/', authStaff, blockViewer, requireManager, async (req, res) => {
   try {
-    const { name, description, price, image, isAvailable, prepTime, sortOrder, trackStock, stock, hasVariants, sku, variants, categoryId } = req.body;
+    const { name, description, price, image, isAvailable, prepTime, sortOrder, trackStock, stock, hasVariants, sku, variants, categoryId, isVeg, isVegan, isSpicy, isPopular } = req.body;
     if (!name?.trim() || price === undefined || price === null || price === '') return res.status(400).json({ success:false, error:'Name and price required' });
     if (!validPrice(price)) return res.status(400).json({ success:false, error:'Price must be a number, 0 or more' });
     if (categoryId && !(await ownsCategory(req.restaurantId, categoryId))) return res.status(400).json({ success:false, error:'Category not found' });
@@ -112,6 +120,7 @@ router.post('/', authStaff, blockViewer, requireManager, async (req, res) => {
         image:image||null, isAvailable:isAvailable!==false&&isAvailable!=='false', prepTime:parseInt(prepTime)||10, sortOrder:parseInt(sortOrder)||0,
         trackStock: !!trackStock, stock: parseStock(stock),
         hasVariants: !!hasVariants, sku: sku || null,
+        ...dietaryTags({ isVeg, isVegan, isSpicy, isPopular }),
       } });
       if (hasVariants) await syncVariants(tx, created.id, variants);
       return tx.menuItem.findUnique({ where:{ id: created.id }, include:{ category:true, variants:{ orderBy:{ sortOrder:'asc' } } } });
@@ -125,7 +134,7 @@ router.put('/:id', authStaff, blockViewer, requireManager, async (req, res) => {
   try {
     const item = await prisma.menuItem.findFirst({ where:{ id:req.params.id, restaurantId:req.restaurantId } });
     if (!item) return res.status(404).json({ success:false, error:'Not found' });
-    const { name, description, price, image, isAvailable, prepTime, sortOrder, trackStock, stock, hasVariants, sku, variants, categoryId } = req.body;
+    const { name, description, price, image, isAvailable, prepTime, sortOrder, trackStock, stock, hasVariants, sku, variants, categoryId, isVeg, isVegan, isSpicy, isPopular } = req.body;
     if (name !== undefined && !String(name).trim()) return res.status(400).json({ success:false, error:'Name can\'t be empty' });
     if (price !== undefined && !validPrice(price)) return res.status(400).json({ success:false, error:'Price must be a number, 0 or more' });
     if (categoryId && !(await ownsCategory(req.restaurantId, categoryId))) return res.status(400).json({ success:false, error:'Category not found' });
@@ -140,6 +149,7 @@ router.put('/:id', authStaff, blockViewer, requireManager, async (req, res) => {
         stock: stock!==undefined ? parseStock(stock) : undefined,
         hasVariants: hasVariants!==undefined ? !!hasVariants : undefined,
         sku: sku!==undefined ? (sku || null) : undefined,
+        ...dietaryTags({ isVeg, isVegan, isSpicy, isPopular }),
       } });
       if (variants !== undefined) await syncVariants(tx, req.params.id, hasVariants ? variants : []);
       return tx.menuItem.findUnique({ where:{ id: req.params.id }, include:{ category:true, variants:{ orderBy:{ sortOrder:'asc' } } } });

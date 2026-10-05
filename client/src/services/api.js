@@ -63,7 +63,7 @@ export const restaurantAPI = {
   getFeaturedMode: () => api.get('/restaurants/admin/featured-mode'),
   setFeaturedMode: (mode) => api.patch('/restaurants/admin/featured-mode', { mode }),
   deleteAccount: (d) => api.delete('/restaurants/admin/account', { data: d }),
-  getReviews: (id) => api.get(`/restaurants/${id}/reviews`),
+  getReviews: (id, params) => api.get(`/restaurants/${id}/reviews`, { params }),
   replyReview: (reviewId, reply) => api.patch(`/restaurants/admin/reviews/${reviewId}/reply`, { reply }),
   // Help chat with the super admin
   getMessages: () => api.get('/restaurants/admin/messages'),
@@ -151,6 +151,11 @@ export const superAdminAPI = {
   markOnTheWay: (id) => api.patch(`/superadmin/delivery-orders/${id}/on-the-way`),
   markDelivered: (id) => api.patch(`/superadmin/delivery-orders/${id}/delivered`),
   getDeliveryHistory: (date, type) => api.get('/superadmin/delivery-orders/history', { params: { date, type } }),
+  getRunners: () => api.get('/superadmin/delivery-staff'),
+  createRunner: (d) => api.post('/superadmin/delivery-staff', d),
+  toggleRunner: (id) => api.patch(`/superadmin/delivery-staff/${id}/toggle`),
+  resetRunnerPassword: (id, password) => api.put(`/superadmin/delivery-staff/${id}/password`, { password }),
+  deleteRunner: (id) => api.delete(`/superadmin/delivery-staff/${id}`),
   getSettings: () => api.get('/superadmin/settings'),
   updateSettings: (d) => api.put('/superadmin/settings', d),
   // Help chat inbox

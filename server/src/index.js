@@ -1,4 +1,8 @@
 require('dotenv').config();
+// Every "today", date filter and hour label (dashboard, sales report, order/visit/delivery
+// history) is worked out in the server's local time — Kigali's, not the host's UTC. Prisma still
+// stores and compares timestamps in UTC, so only the day/hour boundaries move.
+process.env.TZ = 'Africa/Kigali';
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');

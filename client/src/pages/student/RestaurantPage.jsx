@@ -90,6 +90,8 @@ export default function RestaurantPage() {
   const [search, setSearch] = useState('')
   const [favorited, setFavorited] = useState(() => !!getCachedRestaurant(id, student?.id)?.isFavorited)
   const [variantItem, setVariantItem] = useState(null)
+  // A meal tapped in the Featured strip — scrolled to once its category tab has rendered
+  const [scrollToId, setScrollToId] = useState(null)
   const { items, addItem, setQty, promoCodes, setPromoCode } = useCartStore()
   const { openCart } = useUIStore()
   const cartCount = items.reduce((s, i) => s + i.qty, 0)
@@ -111,7 +113,12 @@ export default function RestaurantPage() {
       // Keep the tab the customer is already on when the menu was shown from the cache
       setActiveCategory(prev => cached && (prev === OTHER_TAB || usedCategoryNames(fresh).includes(prev)) ? prev : initialCategory(fresh, focusItemId))
       setLoading(false)
-    }).catch(() => { setLoading(false); navigate('/') })
+    }).catch(err => {
+      setLoading(false)
+      // A shared or old link to a restaurant that's been deleted or suspended
+      if (err.response?.status === 404) toast('This restaurant is no longer available')
+      navigate('/', { replace: true })
+    })
   }, [id])
 
   useEffect(() => {
@@ -133,6 +140,12 @@ export default function RestaurantPage() {
     if (!el) return
     el.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }, [loading, restaurant, focusItemId])
+
+  useEffect(() => {
+    if (!scrollToId) return
+    document.getElementById(`item-${scrollToId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setScrollToId(null)
+  }, [scrollToId])
 
   const getQty = (itemId) => items.filter(i => i.id === itemId).reduce((s, i) => s + i.qty, 0)
 
@@ -302,7 +315,7 @@ export default function RestaurantPage() {
             </p>
             <div className="flex gap-3 overflow-x-auto scrollbar-hide -mx-1 px-1 pb-1">
               {featuredItems.map(item => (
-                <button key={item.id} onClick={() => setActiveCategory(categoryTabOf(item))}
+                <button key={item.id} onClick={() => { setActiveCategory(categoryTabOf(item)); setSearch(''); setScrollToId(item.id) }}
                   className={`flex-none flex flex-col items-center gap-1.5 w-24 group ${!item.isAvailable ? 'opacity-50' : ''}`}>
                   <div className="relative w-16 h-16 rounded-2xl flex items-center justify-center text-3xl transition group-hover:scale-105"
                     style={{ background: `${restaurant.coverColor}18` }}>

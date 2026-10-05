@@ -7,6 +7,7 @@ import { useSocket, getSocket } from '../../hooks/useSocket'
 import InstallApp from '../../components/shared/InstallApp'
 import { superAdminPush } from '../../services/push'
 import PasswordInput from '../../components/shared/PasswordInput'
+import DeliveryRunners from '../../components/admin/DeliveryRunners'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 
@@ -484,7 +485,8 @@ export default function SuperAdminPage() {
       const d = (await superAdminAPI.getSettings()).data.data
       setEmailSettingsForm({ supportName: d.supportName || '', supportEmail: d.supportEmail || '', supportPhone: d.supportPhone || '' })
       setContactVisibility({ showSupportEmail: d.showSupportEmail !== false, showSupportPhone: d.showSupportPhone !== false })
-    } catch { toast.error('Could not load settings') }
+    // Close rather than leave an empty form open — saving it would now clear the saved contact
+    } catch { toast.error('Could not load settings'); setEmailSettingsModal(false) }
     finally { setEmailSettingsLoading(false) }
   }
 
@@ -813,6 +815,8 @@ export default function SuperAdminPage() {
             </table>
           </div>
         </div>
+
+        <DeliveryRunners />
 
         {/* Danger zone — wipe every order on the platform */}
         <div className="bg-red-50/60 rounded-2xl border border-red-200 p-5">

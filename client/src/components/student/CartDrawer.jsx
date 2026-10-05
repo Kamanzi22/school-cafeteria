@@ -10,7 +10,7 @@ import { useLiveRefresh } from '../../hooks/useLiveRefresh'
 
 export default function CartDrawer() {
   const { cartOpen, closeCart } = useUIStore()
-  const { items, setQty, setNote, remove, clear, subtotal, count, byRestaurant, promoCodes, setPromoCode } = useCartStore()
+  const { items, setQty, setNote, remove, clear, removeRestaurant, subtotal, count, byRestaurant, promoCodes, setPromoCode } = useCartStore()
   const { customer } = useCustomerStore()
   const [placing, setPlacing] = useState(false)
   // Per-restaurant fulfillment choice: { [restaurantId]: { type: 'pickup'|'delivery', scope: 'campus'|'off_campus', location: '' } }
@@ -101,7 +101,9 @@ export default function CartDrawer() {
     enableNotifications().catch(() => {})
     setPlacing(true)
     try {
-      const results = await Promise.all(groups.map(group => {
+      // Each restaurant's order is placed on its own, so one can fail (closed, below its minimum,
+      // sold out) while the others go through — settle them all and handle each outcome
+      const results = await Promise.allSettled(groups.map(group => {
         const f = getFulfillment(group.id)
         return orderAPI.place({
           customerId: customer.id,
@@ -114,13 +116,27 @@ export default function CartDrawer() {
           promoCode: group.promo ? group.promo.code : undefined,
         })
       }))
-      clear()
-      closeCart()
-      setFulfillment({})
-      navigate(`/order/confirm/${results[0].data.data.id}`)
-      toast.success(`${results.length > 1 ? `${results.length} orders` : 'Order'} placed! 🎉`)
-    } catch (e) {
-      toast.error(e.response?.data?.error || 'Could not place order')
+      const placed = groups.filter((_, i) => results[i].status === 'fulfilled')
+      const failed = groups.map((group, i) => ({ group, result: results[i] })).filter(f => f.result.status === 'rejected')
+      if (failed.length === 0) {
+        clear()
+        closeCart()
+        setFulfillment({})
+        navigate(`/order/confirm/${results[0].value.data.data.id}`)
+        toast.success(`${results.length > 1 ? `${results.length} orders` : 'Order'} placed! 🎉`)
+        return
+      }
+      // Take the restaurants that went through out of the cart, so the customer can fix the
+      // rest and try again without ordering those twice
+      for (const group of placed) removeRestaurant(group.id)
+      setFulfillment(prev => Object.fromEntries(Object.entries(prev).filter(([id]) => !placed.some(g => g.id === id))))
+      if (placed.length > 0) {
+        toast.success(`Order placed at ${placed.map(g => g.name).join(', ')} 🎉 — see Order History`, { duration: 6000 })
+      }
+      for (const { group, result } of failed) {
+        const message = result.reason?.response?.data?.error || 'Could not place order'
+        toast.error(groups.length > 1 ? `${group.name}: ${message}` : message, { duration: 6000 })
+      }
     } finally { setPlacing(false) }
   }
 

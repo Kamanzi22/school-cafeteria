@@ -12,7 +12,7 @@ router.get('/', optionalCustomer, async (req, res) => {
     const where = { isDeleted: false, isApproved: true };
     const restaurants = await prisma.restaurant.findMany({
       where,
-      select: { id:true, name:true, slug:true, emoji:true, coverColor:true, category:true, description:true, tags:true, location:true, floor:true, phone:true, offersPickup:true, offersDelivery:true, deliveryFee:true, offersCampusDelivery:true, offersOffCampusDelivery:true, campusDeliveryFee:true, offCampusDeliveryFee:true, isOpen:true, isAccepting:true, rating:true, ratingCount:true, prepTimeMin:true, prepTimeMax:true, openTime:true, closeTime:true, totalOrders:true, minOrder:true, notice:true, createdAt:true, _count:{ select:{ items:{ where:{ isAvailable:true } } } } },
+      select: { id:true, name:true, slug:true, emoji:true, logo:true, coverColor:true, category:true, description:true, tags:true, location:true, floor:true, phone:true, offersPickup:true, offersDelivery:true, deliveryFee:true, offersCampusDelivery:true, offersOffCampusDelivery:true, campusDeliveryFee:true, offCampusDeliveryFee:true, isOpen:true, isAccepting:true, rating:true, ratingCount:true, prepTimeMin:true, prepTimeMax:true, openTime:true, closeTime:true, totalOrders:true, minOrder:true, notice:true, createdAt:true, _count:{ select:{ items:{ where:{ isAvailable:true } } } } },
       orderBy: [{ isOpen:'desc' }, { rating:'desc' }, { name:'asc' }]
     });
     const deliveryEnabled = await isDeliveryEnabled();
@@ -198,7 +198,9 @@ router.delete('/admin/account', authOwner, async (req, res) => {
 
 router.get('/:id/reviews', async (req, res) => {
   try {
-    const reviews = await prisma.review.findMany({ where:{ restaurantId: req.params.id }, include:{ customer:{ select:{ name:true, accountType:true } } }, orderBy:{ createdAt:'desc' }, take: 30 });
+    // Latest 30 by default; the restaurant's own Reviews page asks for more so its average covers them all
+    const take = Math.min(Math.max(parseInt(req.query.limit) || 30, 1), 1000);
+    const reviews = await prisma.review.findMany({ where:{ restaurantId: req.params.id }, include:{ customer:{ select:{ name:true, accountType:true } } }, orderBy:{ createdAt:'desc' }, take });
     res.json({ success: true, data: reviews });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

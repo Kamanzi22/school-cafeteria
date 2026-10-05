@@ -5,7 +5,9 @@ import { useAdminStore } from '../../store'
 import AdminLayout from '../../components/restaurant/AdminLayout'
 import toast from 'react-hot-toast'
 
-const EMPTY = { name: '', categoryId: '', description: '', price: '', prepTime: '', image: '', soldOut: false, trackStock: false, stock: '', sku: '', hasVariants: false, variants: [] }
+const EMPTY = { name: '', categoryId: '', description: '', price: '', prepTime: '', image: '', soldOut: false, trackStock: false, stock: '', sku: '', hasVariants: false, variants: [], isVeg: false, isVegan: false, isSpicy: false, isPopular: false }
+// The badges customers see on the menu
+const TAGS = [['isVeg', '🥦 Veg'], ['isVegan', '🌱 Vegan'], ['isSpicy', '🌶 Spicy'], ['isPopular', '🔥 Popular']]
 const EMPTY_VARIANT = { name: '', priceDelta: '0', stock: '0', sku: '' }
 
 function ItemModal({ item, categories, onCategoryAdded, onSave, onClose }) {
@@ -13,6 +15,7 @@ function ItemModal({ item, categories, onCategoryAdded, onSave, onClose }) {
     item ? {
       name: item.name, categoryId: item.categoryId || '', description: item.description || '', price: item.price, prepTime: item.prepTime || '', image: item.image || '', soldOut: !item.isAvailable,
       trackStock: item.trackStock || false, stock: item.stock ?? '', sku: item.sku || '', hasVariants: item.hasVariants || false,
+      isVeg: !!item.isVeg, isVegan: !!item.isVegan, isSpicy: !!item.isSpicy, isPopular: !!item.isPopular,
       variants: (item.variants || []).map(v => ({ id: v.id, name: v.name, priceDelta: v.priceDelta, stock: v.stock, sku: v.sku || '', isAvailable: v.isAvailable, options: v.options })),
     } : EMPTY
   )
@@ -74,6 +77,7 @@ function ItemModal({ item, categories, onCategoryAdded, onSave, onClose }) {
         sku: !form.hasVariants ? form.sku : '',
         hasVariants: form.hasVariants,
         variants: form.hasVariants ? form.variants : [],
+        isVeg: form.isVeg || form.isVegan, isVegan: form.isVegan, isSpicy: form.isSpicy, isPopular: form.isPopular,
       }
       const res = item?.id ? await menuAPI.update(item.id, payload) : await menuAPI.create(payload)
       onSave(res.data.data, !!item?.id)
@@ -166,6 +170,24 @@ function ItemModal({ item, categories, onCategoryAdded, onSave, onClose }) {
             <div>
               <label className="label">Prep Time (min)</label>
               <input type="number" value={form.prepTime} onChange={f('prepTime')} className="input" placeholder="10" min="1" />
+            </div>
+          </div>
+
+          {/* Badges shown next to the item on the customer menu */}
+          <div>
+            <label className="label">Badges</label>
+            <div className="flex flex-wrap gap-2">
+              {TAGS.map(([key, label]) => {
+                // Vegan food is vegetarian too, so Veg stays on while Vegan is
+                const on = form[key] || (key === 'isVeg' && form.isVegan)
+                return (
+                  <button key={key} type="button" aria-pressed={on} disabled={key === 'isVeg' && form.isVegan}
+                    onClick={() => setForm(p => ({ ...p, [key]: !p[key] }))}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition disabled:cursor-default ${on ? 'bg-flame-50 border-flame-400 text-flame-600' : 'bg-white border-ink-200 text-ink-500 hover:border-ink-300'}`}>
+                    {label}
+                  </button>
+                )
+              })}
             </div>
           </div>
 

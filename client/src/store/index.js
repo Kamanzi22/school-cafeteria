@@ -30,6 +30,9 @@ export const useCartStore = create(persist((set, get) => ({
   promoCodes: {},
   setPromoCode: (restaurantId, code) => set({ promoCodes: { ...get().promoCodes, [restaurantId]: code || undefined } }),
   clear: () => set({ items: [], promoCodes: {} }),
+  // Drops one restaurant's lines and promo code — after its order went through but another
+  // restaurant's in the same checkout didn't, so trying again can't order it twice
+  removeRestaurant: (restaurantId) => set({ items: get().items.filter(i => i.restaurantId !== restaurantId), promoCodes: { ...get().promoCodes, [restaurantId]: undefined } }),
   subtotal: () => get().items.reduce((s,i) => s+i.price*i.qty, 0),
   count: () => get().items.reduce((s,i) => s+i.qty, 0),
   byRestaurant: () => {

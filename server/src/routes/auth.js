@@ -5,7 +5,7 @@ const multer = require('multer');
 const rateLimit = require('express-rate-limit');
 const { clientIpKey } = require('../lib/clientIp');
 const { OAuth2Client } = require('google-auth-library');
-const { authStaff, authSuperAdmin, blockViewer } = require('../middleware/auth');
+const { authStaff, authSuperAdmin, blockViewer, optionalCustomer } = require('../middleware/auth');
 const { uploadImage } = require('../lib/supabaseStorage');
 const { isSchoolEmail, SCHOOL_EMAIL_ERROR } = require('../lib/schoolEmail');
 const { normalizePhone } = require('../lib/phone');
@@ -149,6 +149,24 @@ router.post('/customer/login', async (req, res) => {
 // the client re-sends the same credential with a phone to finish creating the account —
 // keeping the phone-required rule that email signup has.
 // ══════════════════════════════════════════════════════
+async function mergeGuestInto(guest, customer) {
+  return prisma.$transaction(async (tx) => {
+    const from = { customerId: guest.id };
+    await tx.order.updateMany({ where: from, data: { customerId: customer.id } });
+    await tx.review.updateMany({ where: from, data: { customerId: customer.id } });
+    await tx.supportMessage.updateMany({ where: from, data: { customerId: customer.id } });
+    await tx.pushSubscription.updateMany({ where: from, data: { customerId: customer.id } });
+    await tx.restaurantVisit.updateMany({ where: { visitorId: guest.id }, data: { visitorId: customer.id, visitorType: 'account' } });
+    const favorites = await tx.favorite.findMany({ where: from, select: { restaurantId: true } });
+    if (favorites.length) await tx.favorite.createMany({ data: favorites.map(f => ({ customerId: customer.id, restaurantId: f.restaurantId })), skipDuplicates: true });
+    await tx.customer.delete({ where: { id: guest.id } }); // takes the guest's leftover favorites with it
+    return tx.customer.update({
+      where: { id: customer.id },
+      data: { totalSpent: { increment: guest.totalSpent || 0 }, orderCount: { increment: guest.orderCount || 0 } },
+    });
+  });
+}
+
 const googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID) : null;
 const googleLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -159,7 +177,7 @@ const googleLimiter = rateLimit({
   message: { success: false, error: 'Too many sign-in attempts — try again later' },
 });
 
-router.post('/customer/google', googleLimiter, async (req, res) => {
+router.post('/customer/google', googleLimiter, optionalCustomer, async (req, res) => {
   try {
     if (!googleClient) return res.status(503).json({ success: false, error: 'Google sign-in is not configured' });
     const { credential, phone } = req.body;
@@ -191,6 +209,12 @@ router.post('/customer/google', googleLimiter, async (req, res) => {
         where: { email }, update: {},
         create: { accountType: 'registered', name, email, phone: cleanPhone },
       });
+    }
+
+    // Signing in from a guest session (Profile → "Create account with Google") brings the guest's
+    // orders, reviews, help chat and favorites along, then removes the guest
+    if (req.customer?.accountType === 'guest' && req.customer.id !== customer.id) {
+      customer = await mergeGuestInto(req.customer, customer);
     }
 
     const token = sign({ type: 'customer', id: customer.id });

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft, Clock, ChevronRight, RotateCcw, Package, Trash2 } from 'lucide-react'
-import { orderAPI } from '../../services/api'
+import { orderAPI, restaurantAPI } from '../../services/api'
 import { useSocket } from '../../hooks/useSocket'
 import { useCustomerStore, useCartStore, useUIStore } from '../../store'
 import { format } from 'date-fns'
@@ -14,6 +14,7 @@ export default function OrderHistoryPage() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
   const [deletingId, setDeletingId] = useState(null)
+  const [reorderingId, setReorderingId] = useState(null)
   const { customer: student } = useCustomerStore()
   const { addItem } = useCartStore()
   const navigate = useNavigate()
@@ -44,16 +45,34 @@ export default function OrderHistoryPage() {
       : o))
   })
 
-  const handleReorder = (order) => {
-    order.items.forEach(item => {
-      // item.unitPrice already has any variant's priceDelta baked in, so pass a zero-delta
-      // variant stub — it only needs to carry the id/name through so the cart line (and the
-      // order placed from it) still references the right option instead of silently dropping it.
-      const variant = item.variantId ? { id: item.variantId, name: item.variantName, priceDelta: 0 } : null
-      addItem({ id: item.menuItemId, name: item.menuItemName, price: item.unitPrice, emoji: item.menuItemEmoji }, { id: order.restaurantId, name: order.restaurant.name, emoji: order.restaurant.emoji }, variant)
-    })
-    toast.success('Items added to cart!')
-    navigate(`/restaurant/${order.restaurantId}`)
+  // Puts the order's items back in the cart at today's menu prices (the cart shows what the order
+  // will actually cost), in the same quantities, leaving out anything no longer on offer.
+  const handleReorder = async (order) => {
+    setReorderingId(order.id)
+    try {
+      const r = (await restaurantAPI.get(order.restaurantId)).data.data
+      const restaurant = {
+        id: r.id, name: r.name, emoji: r.emoji,
+        offersPickup: r.offersPickup, offersDelivery: r.offersDelivery,
+        offersCampusDelivery: r.offersCampusDelivery, offersOffCampusDelivery: r.offersOffCampusDelivery,
+        campusDeliveryFee: r.campusDeliveryFee, offCampusDeliveryFee: r.offCampusDeliveryFee,
+      }
+      const unavailable = []
+      let added = 0
+      for (const item of order.items) {
+        const m = r.items.find(mi => mi.id === item.menuItemId)
+        const variant = item.variantId ? m?.variants?.find(v => v.id === item.variantId) : null
+        if (!m || !m.isAvailable || (item.variantId ? !variant?.isAvailable : m.hasVariants)) { unavailable.push(item.menuItemName); continue }
+        for (let n = 0; n < item.quantity; n++) addItem({ id: m.id, name: m.name, price: m.price, emoji: m.emoji }, restaurant, variant)
+        added++
+      }
+      if (added === 0) { toast.error('None of these items are available anymore'); return }
+      if (unavailable.length) toast(`Added to cart. No longer available: ${unavailable.join(', ')}`, { icon: '🛒', duration: 6000 })
+      else toast.success('Items added to cart!')
+      navigate(`/restaurant/${r.id}`)
+    } catch (e) {
+      toast.error(e.response?.status === 404 ? 'This restaurant is no longer available' : 'Could not reorder — try again')
+    } finally { setReorderingId(null) }
   }
 
   // Removes the order from this list only. A pending order is cancelled too, so warn about that;
@@ -88,7 +107,7 @@ export default function OrderHistoryPage() {
       <div className="max-w-lg mx-auto px-4 py-4">
         {/* Filter tabs */}
         <div className="flex gap-1 overflow-x-auto scrollbar-hide mb-4">
-          {['all', 'pending', 'preparing', 'ready', 'on_the_way', 'picked_up', 'cancelled'].map(f => (
+          {['all', 'pending', 'confirmed', 'preparing', 'ready', 'on_the_way', 'picked_up', 'cancelled'].map(f => (
             <button key={f} onClick={() => setFilter(f)}
               className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-semibold transition ${filter === f ? 'bg-alu-red text-white' : 'bg-alu-surface text-alu-muted hover:bg-alu-card hover:text-alu-cream border border-alu-border'}`}>
               {f === 'all' ? 'All' : STATUS_LABELS[f]}
@@ -136,7 +155,7 @@ export default function OrderHistoryPage() {
                     <ChevronRight size={13} />Details
                   </Link>
                   {['picked_up', 'cancelled'].includes(order.status) && (
-                    <button onClick={() => handleReorder(order)} className="btn btn-primary btn-sm flex-1">
+                    <button onClick={() => handleReorder(order)} disabled={reorderingId === order.id} className="btn btn-primary btn-sm flex-1">
                       <RotateCcw size={13} />Reorder
                     </button>
                   )}

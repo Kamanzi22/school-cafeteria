@@ -40,7 +40,7 @@ router.post('/', async (req, res) => {
     const { customerId, guestToken, guestName, guestPhone, restaurantId, items, specialInstructions, paymentMethod, promoCode, fulfillmentType, deliveryLocation, deliveryScope } = req.body;
     if (!items?.length) return res.status(400).json({ success:false, error:'No items in order' });
 
-    const restaurant = applyPlatformDelivery(await prisma.restaurant.findFirst({ where:{ id:restaurantId, isDeleted:false } }), await isDeliveryEnabled());
+    const restaurant = applyPlatformDelivery(await prisma.restaurant.findFirst({ where:{ id:restaurantId, isDeleted:false, isApproved:true } }), await isDeliveryEnabled());
     if (!restaurant) return res.status(404).json({ success:false, error:'Restaurant not found' });
     if (!restaurant.isOpen) return res.status(400).json({ success:false, error:'This restaurant is currently closed' });
     if (!restaurant.isAccepting) return res.status(400).json({ success:false, error:'This restaurant is not accepting orders right now' });

@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const { authSuperAdmin, authDelivery } = require('../middleware/auth');
 const { encrypt } = require('../lib/crypto');
 const prisma = require('../lib/prisma');
@@ -126,8 +127,9 @@ router.put('/settings', authSuperAdmin, async (req, res) => {
     if (infoName) data.infoName = infoName.trim();
     if (infoEmail) data.infoEmail = infoEmail.trim();
     if (infoAppPassword) data.infoAppPasswordEnc = encrypt(infoAppPassword.replace(/\s+/g, ''));
-    if (supportName) data.supportName = supportName.trim();
-    if (supportEmail) data.supportEmail = supportEmail.trim();
+    // Blank clears these, so a contact can be removed rather than only hidden
+    if (supportName !== undefined) data.supportName = String(supportName || '').trim() || null;
+    if (supportEmail !== undefined) data.supportEmail = String(supportEmail || '').trim() || null;
     if (supportPhone !== undefined) data.supportPhone = supportPhone.trim() || null;
     if (showSupportEmail !== undefined) data.showSupportEmail = !!showSupportEmail;
     if (showSupportPhone !== undefined) data.showSupportPhone = !!showSupportPhone;
@@ -473,6 +475,9 @@ router.patch('/delivery-orders/:id/on-the-way', authDelivery, async (req, res) =
   try {
     const order = await prisma.order.findUnique({ where: { id: req.params.id } });
     if (!order || order.fulfillmentType !== 'delivery') return res.status(404).json({ success: false, error: 'Delivery order not found' });
+    // The runner's list can be a moment behind — never revive an order that was cancelled or finished meanwhile
+    if (order.status === 'cancelled') return res.status(400).json({ success: false, error: 'This order was cancelled' });
+    if (order.status === 'picked_up') return res.status(400).json({ success: false, error: 'This order was already delivered' });
     const updated = await prisma.order.update({
       where: { id: req.params.id },
       data: { status: 'on_the_way', onTheWayAt: new Date(), statusHistory: { create: [{ status: 'on_the_way', note: 'Marked on the way by super admin' }] } },
@@ -491,6 +496,9 @@ router.patch('/delivery-orders/:id/delivered', authDelivery, async (req, res) =>
   try {
     const order = await prisma.order.findUnique({ where: { id: req.params.id } });
     if (!order || order.fulfillmentType !== 'delivery') return res.status(404).json({ success: false, error: 'Delivery order not found' });
+    if (order.status === 'cancelled') return res.status(400).json({ success: false, error: 'This order was cancelled' });
+    // Marking it again would move its pickup time, and with it the day its revenue counts on
+    if (order.status === 'picked_up') return res.status(400).json({ success: false, error: 'This order was already delivered' });
     const updated = await prisma.order.update({
       where: { id: req.params.id },
       data: { status: 'picked_up', pickedUpAt: new Date(), statusHistory: { create: [{ status: 'picked_up', note: 'Marked delivered by super admin' }] } },
@@ -524,6 +532,59 @@ router.get('/delivery-orders/history', authDelivery, async (req, res) => {
       orderBy: { pickedUpAt: 'desc' },
     });
     res.json({ success: true, data: orders });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// ─── Delivery runner accounts ────────────────────────────────────────────────
+// The logins used at /delivery/login. Turning one off (or deleting it) locks it out on its next
+// request, since authDelivery re-checks isActive every time.
+const RUNNER_SELECT = { id: true, name: true, username: true, isActive: true, createdAt: true };
+
+router.get('/delivery-staff', authSuperAdmin, async (req, res) => {
+  try {
+    res.json({ success: true, data: await prisma.deliveryStaff.findMany({ select: RUNNER_SELECT, orderBy: { createdAt: 'asc' } }) });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+router.post('/delivery-staff', authSuperAdmin, async (req, res) => {
+  try {
+    const name = String(req.body.name || '').trim();
+    const username = String(req.body.username || '').trim().toLowerCase();
+    const password = String(req.body.password || '');
+    if (!name || !username || !password) return res.status(400).json({ success: false, error: 'Name, username and password are required' });
+    if (!/^[a-z0-9._-]{3,30}$/.test(username)) return res.status(400).json({ success: false, error: 'Username: 3–30 letters, numbers, dots, dashes or underscores' });
+    if (password.length < 6) return res.status(400).json({ success: false, error: 'Password must be at least 6 characters' });
+    // Login matches usernames ignoring case, so two that differ only in case would clash
+    const taken = await prisma.deliveryStaff.findFirst({ where: { username: { equals: username, mode: 'insensitive' } } });
+    if (taken) return res.status(409).json({ success: false, error: 'That username is already taken' });
+    const runner = await prisma.deliveryStaff.create({ data: { name, username, passwordHash: await bcrypt.hash(password, 12) }, select: RUNNER_SELECT });
+    res.status(201).json({ success: true, data: runner });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+router.patch('/delivery-staff/:id/toggle', authSuperAdmin, async (req, res) => {
+  try {
+    const runner = await prisma.deliveryStaff.findUnique({ where: { id: req.params.id } });
+    if (!runner) return res.status(404).json({ success: false, error: 'Runner not found' });
+    const updated = await prisma.deliveryStaff.update({ where: { id: runner.id }, data: { isActive: !runner.isActive }, select: RUNNER_SELECT });
+    res.json({ success: true, data: updated });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+router.put('/delivery-staff/:id/password', authSuperAdmin, async (req, res) => {
+  try {
+    const password = String(req.body.password || '');
+    if (password.length < 6) return res.status(400).json({ success: false, error: 'Password must be at least 6 characters' });
+    const { count } = await prisma.deliveryStaff.updateMany({ where: { id: req.params.id }, data: { passwordHash: await bcrypt.hash(password, 12) } });
+    if (!count) return res.status(404).json({ success: false, error: 'Runner not found' });
+    res.json({ success: true, data: null });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+router.delete('/delivery-staff/:id', authSuperAdmin, async (req, res) => {
+  try {
+    await prisma.deliveryStaff.deleteMany({ where: { id: req.params.id } });
+    res.json({ success: true, data: null });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
