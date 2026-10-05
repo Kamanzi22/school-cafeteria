@@ -1,7 +1,7 @@
 import { Helmet } from 'react-helmet-async'
 
 const SITE_NAME = 'CaféCampus'
-const SITE_URL = 'https://cafecampus-client.onrender.com'
+const SITE_URL = 'https://cafecampus.org.rw'
 const DEFAULT_DESCRIPTION = 'Order food from campus restaurants, track your order live, and skip the line. Browse menus from campus eateries and pay on pickup or delivery.'
 
 // Drop onto any page to override the static defaults in index.html for that route. `path`

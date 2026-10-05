@@ -3,6 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- The old Render address still serves this site. Send browser visitors (and search engines)
+       to the real domain so links, logins and search results all use one address. An app
+       installed from the old address is left alone — redirecting it would sign people out. -->
+  <script>
+    (function () {
+      var standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true
+      if (location.hostname === 'cafecampus-client.onrender.com' && !standalone)
+        location.replace('https://cafecampus.org.rw' + location.pathname + location.search + location.hash)
+    })()
+  </script>
   <meta name="theme-color" content="#121212" />
   <meta name="robots" content="noindex" />
   <!-- Own HTML shell for the /superadmin* routes — see render.yaml and the note in admin.html

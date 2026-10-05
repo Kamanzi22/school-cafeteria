@@ -3,7 +3,7 @@
 // changes independently of the client's source code — a static file would drift stale within
 // days. Never fails the build: if the API is unreachable (e.g. a local build with no backend
 // running), it just falls back to the static routes below.
-const SITE_URL = 'https://cafecampus-client.onrender.com'
+const SITE_URL = 'https://cafecampus.org.rw'
 const API_URL = process.env.VITE_BACKEND_URL || 'http://localhost:5000'
 
 const STATIC_ROUTES = ['/', '/search']

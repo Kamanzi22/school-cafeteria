@@ -28,9 +28,11 @@ router.post('/start', optionalCustomer, async (req, res) => {
     // The menu page also opens by slug (/restaurant/dragon-wok) and passes that along, but the
     // visit row needs the real id — resolve it the same way GET /restaurants/:id does.
     const restaurant = await prisma.restaurant.findFirst({ where: { OR: [{ id: restaurantId }, { slug: restaurantId }] }, select: { id: true } });
+    // A mistyped or made-up link — nothing to record a visit against
+    if (!restaurant) return res.status(404).json({ success: false, error: 'Restaurant not found' });
 
     const visit = await prisma.restaurantVisit.create({
-      data: { restaurantId: restaurant?.id ?? restaurantId, visitorType, visitorId, visitorName },
+      data: { restaurantId: restaurant.id, visitorType, visitorId, visitorName },
       include: { restaurant: { select: { name: true, emoji: true } } },
     });
     emit(req, visit);

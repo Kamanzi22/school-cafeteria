@@ -6,4 +6,4 @@ Disallow: /delivery
 Disallow: /orders
 Disallow: /profile
 
-Sitemap: https://cafecampus-client.onrender.com/sitemap.xml
+Sitemap: https://cafecampus.org.rw/sitemap.xml
