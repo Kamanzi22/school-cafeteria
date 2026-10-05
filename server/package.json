@@ -5,8 +5,8 @@
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
     "seed": "node src/prisma/seed.js",
-    "db:push": "npx prisma db push",
-    "db:reset": "npx prisma db push --force-reset && node src/prisma/seed.js"
+    "db:migrate": "npx prisma migrate dev",
+    "db:reset": "npx prisma migrate reset --force --skip-seed && node src/prisma/seed.js"
   },
   "dependencies": {
     "@prisma/client": "^5.8.1",

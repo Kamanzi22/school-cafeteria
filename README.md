@@ -28,7 +28,7 @@ At `/superadmin` — oversee all restaurants, suspend/approve, view platform sta
 npm run install:all
 
 # 2. Set up database + seed demo data
-cd server && npx prisma db push && node src/prisma/seed.js && cd ..
+cd server && npx prisma migrate deploy && node src/prisma/seed.js && cd ..
 
 # 3. Start the app
 npm run dev
@@ -109,6 +109,26 @@ closest Render region to users in Kigali (about 150 ms). It moved there from Ore
 
 `kamanzi2025/school-cafeteria` is an old copy of this project with its workflows disabled. It is
 not connected to the live app.
+
+### Changing the database
+
+Database changes ship as Prisma migration files in `server/prisma/migrations/`. Every API
+deploy runs `prisma migrate deploy`, which applies only those files, so nothing is ever dropped
+unless a migration says so. `prisma db push` is no longer used; don't run it against the live
+database.
+
+1. Edit `server/prisma/schema.prisma`.
+2. With `DATABASE_URL`/`DIRECT_URL` pointing at a **local** Postgres (never the live one), run
+   `cd server && npm run db:migrate -- --name what_changed`. This writes a new folder under
+   `prisma/migrations/` and applies it locally.
+3. Read the generated `migration.sql`. Renaming a column shows up as drop + add, which loses
+   the data in it — edit the SQL to `ALTER TABLE … RENAME COLUMN …` instead.
+4. Commit the migration folder together with the schema change.
+
+The deploy also compares the live database with `schema.prisma` after migrating, and fails
+(leaving the previous version running) if they differ — that's what happens if step 2 was
+skipped. `0_init` is the starting point: it matches the database as it was on 2026-10-05 and
+was marked as already applied there, so it never runs on the live database.
 
 ### Still to do
 
