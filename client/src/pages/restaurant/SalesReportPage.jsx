@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Loader, DollarSign, ShoppingBag, Crown, Clock } from 'lucide-react'
 import { analyticsAPI } from '../../services/api'
 import AdminLayout from '../../components/restaurant/AdminLayout'
-import { format } from 'date-fns'
+import { format, startOfWeek, endOfWeek } from 'date-fns'
 
 const RANGES = [
   { key: 'day', label: 'Day' },
@@ -23,13 +23,17 @@ export default function SalesReportPage() {
   const [range, setRange] = useState('day')
   const [month, setMonth] = useState(now.getMonth())
   const [year, setYear] = useState(Math.min(Math.max(now.getFullYear(), YEARS[0]), YEARS[YEARS.length - 1]))
+  // The day picked on the calendar for Day and Week (Week shows the Monday-to-Sunday week it's in)
+  const today = format(now, 'yyyy-MM-dd')
+  const [date, setDate] = useState(today)
+  const pickedDay = new Date(`${date}T00:00:00`)
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     setLoading(true)
-    analyticsAPI.salesReport(range, range === 'month' ? { month, year } : {}).then(r => { setData(r.data.data); setLoading(false) }).catch(() => setLoading(false))
-  }, [range, month, year])
+    analyticsAPI.salesReport(range, range === 'month' ? { month, year } : { date }).then(r => { setData(r.data.data); setLoading(false) }).catch(() => setLoading(false))
+  }, [range, month, year, date])
 
   return (
     <AdminLayout>
@@ -43,6 +47,17 @@ export default function SalesReportPage() {
             <select value={range} onChange={e => setRange(e.target.value)} className="input w-auto">
               {RANGES.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
             </select>
+            {(range === 'day' || range === 'week') && (
+              <>
+                {/* Clearing the field (some phones allow it) keeps the last day picked */}
+                <input type="date" value={date} max={today} onChange={e => e.target.value && setDate(e.target.value)} className="input w-auto" />
+                {range === 'week' && (
+                  <span className="text-sm text-ink-400 whitespace-nowrap">
+                    {format(startOfWeek(pickedDay, { weekStartsOn: 1 }), 'd MMM')} – {format(endOfWeek(pickedDay, { weekStartsOn: 1 }), 'd MMM yyyy')}
+                  </span>
+                )}
+              </>
+            )}
             {range === 'month' && (
               <>
                 <select value={month} onChange={e => setMonth(Number(e.target.value))} className="input w-auto">

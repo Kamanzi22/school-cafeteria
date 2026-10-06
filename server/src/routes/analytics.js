@@ -21,6 +21,14 @@ router.get('/sales-report', authStaff, async (req, res) => {
       const month = Number.isInteger(monthParam) && monthParam >= 0 && monthParam <= 11 ? monthParam : now.getMonth();
       start = new Date(year, month, 1, 0, 0, 0, 0);
       end = new Date(year, month + 1, 1, 0, 0, 0, 0);
+    } else if (/^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') && !Number.isNaN(new Date(`${req.query.date}T00:00:00`).getTime())) {
+      // A day picked on the calendar, or the Monday-to-Sunday week containing it — the same weeks
+      // as the super admin's visitor history (getPeriodRange in superadmin.js)
+      const picked = new Date(`${req.query.date}T00:00:00`);
+      start = new Date(picked);
+      if (range === 'week') start.setDate(picked.getDate() - ((picked.getDay() + 6) % 7));
+      end = new Date(start);
+      end.setDate(start.getDate() + (range === 'week' ? 7 : 1));
     } else {
       start = new Date();
       if (range === 'day') start.setHours(0, 0, 0, 0);
