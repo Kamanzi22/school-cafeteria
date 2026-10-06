@@ -11,6 +11,15 @@ const ALL_STATUSES = [...OPEN_STATUSES, 'picked_up', 'cancelled'];
 // A restaurant's "Sides" category holds the extras customers can add to any meal (e.g. Salad)
 const isSidesCategory = (name) => String(name || '').trim().toLowerCase() === 'sides';
 
+// Midnight of a 'YYYY-MM-DD' day in Rwanda (UTC+2, no daylight saving). The server runs on UTC,
+// so a plain setHours(0) would start the day at 02:00 Kigali time and push early-morning orders
+// onto the previous day.
+const campusDayStart = (day) => {
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(String(day)) ? new Date(`${day}T00:00:00+02:00`) : new Date(day);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(day))) d.setHours(0,0,0,0);
+  return d;
+};
+
 const genNum = () => 'CC-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2,5).toUpperCase();
 
 // Thrown for expected, user-correctable order problems (out of stock, missing option) so the
@@ -233,8 +242,8 @@ router.get('/restaurant/:restaurantId/history', authStaff, async (req, res) => {
     else if (status && status !== 'all') where.status = status;
     if (from || to) {
       where.createdAt = {};
-      if (from) { const d = new Date(from); d.setHours(0,0,0,0); where.createdAt.gte = d; }
-      if (to) { const d = new Date(to); d.setHours(23,59,59,999); where.createdAt.lte = d; }
+      if (from) where.createdAt.gte = campusDayStart(from);
+      if (to) where.createdAt.lte = new Date(campusDayStart(to).getTime() + 24*60*60*1000 - 1);
     }
     const search = typeof q === 'string' ? q.trim() : '';
     if (search) {
