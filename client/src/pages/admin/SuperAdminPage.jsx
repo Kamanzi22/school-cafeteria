@@ -8,6 +8,7 @@ import InstallApp from '../../components/shared/InstallApp'
 import { superAdminPush } from '../../services/push'
 import PasswordInput from '../../components/shared/PasswordInput'
 import DeliveryRunners from '../../components/admin/DeliveryRunners'
+import StoreActivity from '../../components/admin/StoreActivity'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 
@@ -818,12 +819,14 @@ export default function SuperAdminPage() {
           </div>
         </div>
 
+        <StoreActivity />
+
         <DeliveryRunners />
 
         {/* Danger zone — reset the whole platform */}
         <div className="bg-red-50/60 rounded-2xl border border-red-200 p-5">
           <h2 className="font-bold text-red-700 mb-1 flex items-center gap-2"><Trash2 size={16}/>Delete Everything</h2>
-          <p className="text-sm text-red-600 mb-4">Permanently deletes every store (with its menu, staff, promotions and visits), every customer account, and every order, review and help-chat message. Only your super admin login, delivery runner logins and platform settings are kept. <strong>This cannot be undone.</strong></p>
+          <p className="text-sm text-red-600 mb-4">Permanently deletes every store (with its menu, staff, promotions, visits and app activity), every customer account, and every order, review and help-chat message. Only your super admin login, delivery runner logins and platform settings are kept. <strong>This cannot be undone.</strong></p>
           <div className="flex gap-2 flex-wrap">
             <input value={wipeText} onChange={e => setWipeText(e.target.value)} placeholder="Type DELETE to confirm" className="input max-w-xs border-red-200" />
             <button onClick={wipeEverything} disabled={wipeText !== 'DELETE' || wiping} className="btn bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">

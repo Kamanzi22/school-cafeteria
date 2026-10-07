@@ -70,6 +70,7 @@ model Restaurant {
   reviews       Review[]
   promotions    Promotion[]
   visits        RestaurantVisit[]
+  appSessions   RestaurantSession[]
   pushSubscriptions RestaurantPushSubscription[]
   supportMessages SupportMessage[]
 }
@@ -509,6 +510,28 @@ model RestaurantVisit {
   leftAt       DateTime?
   durationSec  Int       @default(0)
   deletedAt    DateTime? // soft-delete marker — set by "Clear Data", recoverable via Restore until "Delete Permanently"
+
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId])
+  @@index([enteredAt])
+}
+
+// Time the store's owner or staff spend in the restaurant app, shown to the super admin like
+// customer visits but kept apart from them (customer visit counts, time and sales are unaffected).
+// A session is time with the app open on screen: it ends when the app is closed or put in the
+// background, and picks up again if they're back within 2 minutes.
+model RestaurantSession {
+  id           String    @id @default(uuid())
+  restaurantId String
+  userType     String    // owner | staff
+  userId       String    // the restaurant's id for its owner, the RestaurantStaff id for staff
+  userName     String    // snapshot at the time, so it survives name changes/removal
+  role         String    // owner | manager | staff
+  enteredAt    DateTime  @default(now())
+  lastSeenAt   DateTime  @default(now())
+  leftAt       DateTime?
+  durationSec  Int       @default(0) // time actually in the app (background gaps aren't counted)
 
   restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 

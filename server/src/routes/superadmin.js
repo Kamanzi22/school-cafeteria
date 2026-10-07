@@ -8,6 +8,7 @@ const { notifyOrderStatus } = require('../lib/notifications');
 const { broadcastCatalogChange } = require('../lib/liveUpdates');
 const { sendPushToCustomer, sendPushToRestaurant } = require('../lib/push');
 const { readBody, preview } = require('../lib/supportChat');
+const { getPeriodRange } = require('../lib/periodRange');
 
 router.get('/restaurants', authSuperAdmin, async (req, res) => {
   try {
@@ -60,7 +61,7 @@ router.patch('/restaurants/campus-delivery-all', authSuperAdmin, async (req, res
 // analytics all start from zero. Reviews belong to orders, so they go too and ratings reset.
 // Irreversible, so the client must send { confirm: 'DELETE' }.
 // Factory reset: every order, review, store (live or already deleted) and customer account, with
-// everything hanging off them — menus, staff, promos, visits, help-chat messages, favorites and
+// everything hanging off them — menus, staff, promos, visits, app activity, help-chat messages, favorites and
 // notification devices all cascade. Only the super admin, delivery runner logins and platform
 // settings survive. Orders and reviews go first because they point at stores and customers
 // without cascading.
@@ -308,30 +309,6 @@ router.get('/visits/live', authSuperAdmin, async (req, res) => {
     res.json({ success: true, data: enriched });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
-
-// `date` anchors the period; the actual window depends on `type`:
-//   day   -> that calendar day
-//   week  -> Mon-Sun containing `date`
-//   month -> the whole calendar month containing `date`
-//   year  -> the whole calendar year containing `date`
-function getPeriodRange(type, dateStr) {
-  const d = new Date(`${dateStr}T00:00:00`);
-  if (type === 'week') {
-    const diffToMonday = (d.getDay() + 6) % 7;
-    const start = new Date(d); start.setDate(d.getDate() - diffToMonday); start.setHours(0, 0, 0, 0);
-    const end = new Date(start); end.setDate(start.getDate() + 6); end.setHours(23, 59, 59, 999);
-    return { start, end };
-  }
-  if (type === 'month') {
-    return { start: new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0), end: new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999) };
-  }
-  if (type === 'year') {
-    return { start: new Date(d.getFullYear(), 0, 1, 0, 0, 0, 0), end: new Date(d.getFullYear(), 11, 31, 23, 59, 59, 999) };
-  }
-  const start = new Date(d); start.setHours(0, 0, 0, 0);
-  const end = new Date(d); end.setHours(23, 59, 59, 999);
-  return { start, end };
-}
 
 // Attaches, to each visit: the visitor's login credential (email for account,
 // name for guest, nothing for anonymous — they have no credential to show), the order they

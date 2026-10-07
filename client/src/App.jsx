@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAdminStore } from './store'
 import { useOrderNotifications } from './hooks/useOrderNotifications'
 import { useRestaurantOrderNotifications } from './hooks/useRestaurantOrderNotifications'
+import { useStoreSessionTracking } from './hooks/useStoreSessionTracking'
 import { usePwaScope } from './hooks/usePwaScope'
 import { useAppUpdateCheck } from './hooks/useAppUpdateCheck'
 import OfflineScreen from './components/shared/OfflineScreen'
@@ -58,6 +59,7 @@ function AdminGuard({ children }) {
 export default function App() {
   useOrderNotifications()
   useRestaurantOrderNotifications()
+  useStoreSessionTracking()
   usePwaScope()
   useAppUpdateCheck()
   useEffect(() => {

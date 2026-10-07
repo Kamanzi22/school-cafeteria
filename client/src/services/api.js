@@ -158,6 +158,9 @@ export const superAdminAPI = {
   deleteRunner: (id) => api.delete(`/superadmin/delivery-staff/${id}`),
   getSettings: () => api.get('/superadmin/settings'),
   updateSettings: (d) => api.put('/superadmin/settings', d),
+  // Store activity: owners/staff in the restaurant app
+  getLiveStoreSessions: () => api.get('/store-sessions/live'),
+  getStoreSessionHistory: (date, type) => api.get('/store-sessions/history', { params: { date, type } }),
   // Help chat inbox
   getConversations: () => api.get('/superadmin/messages'),
   getUnreadMessageCount: () => api.get('/superadmin/messages/unread-count'),
@@ -169,6 +172,13 @@ export const superAdminAPI = {
 // Public support contact (phone/email) shown on the customer and restaurant apps — no auth needed.
 export const contactAPI = {
   get: () => api.get('/superadmin/contact'),
+}
+
+// The store's owner/staff time in the restaurant app (see hooks/useStoreSessionTracking)
+export const storeSessionAPI = {
+  start: () => api.post('/store-sessions/start'),
+  heartbeat: (id) => api.post(`/store-sessions/${id}/heartbeat`),
+  resume: (id) => api.post(`/store-sessions/${id}/resume`),
 }
 
 export const visitAPI = {
